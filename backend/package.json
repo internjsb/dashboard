@@ -1,0 +1,21 @@
+{
+  "name": "amazon-backend",
+  "version": "1.0.0",
+  "description": "Express API — Firebase Auth token verification + RBAC (admin/user) for the dashboard.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "seed": "node src/seed/seedUsers.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

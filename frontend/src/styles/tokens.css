@@ -1,0 +1,74 @@
+:root {
+  /* Color — cool slate + deep ink sidebar + a single decisive teal accent.
+     Deliberately avoiding warm-cream/terracotta and near-black+neon defaults. */
+  --bg: #EEF1F6;
+  --surface: #FFFFFF;
+  --sidebar-bg: #0E1526;
+  --sidebar-bg-hover: #17203A;
+  --sidebar-text: #93A0BD;
+  --sidebar-text-active: #FFFFFF;
+  --border: #E1E5EE;
+  --text-primary: #101526;
+  --text-secondary: #5C6478;
+  --text-muted: #8891A4;
+
+  --accent: #0E8F7F;
+  --accent-strong: #0B7568;
+  --accent-tint: #E3F4F1;
+
+  --success: #1C9A63;
+  --success-tint: #E6F6EE;
+  --danger: #D6425A;
+  --danger-tint: #FBE9EC;
+  --warning: #C4842A;
+  --warning-tint: #FAF0E2;
+
+  /* Type */
+  --font-display: "Manrope", "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --sidebar-width: 240px;
+  --topbar-height: 64px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+/* Visible keyboard focus everywhere, per accessibility floor */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
