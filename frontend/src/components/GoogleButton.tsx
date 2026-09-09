@@ -38,17 +38,19 @@ export default function GoogleButton({ redirectTo }: Props) {
       navigate(data.status === "active" ? redirectTo || "/dashboard" : "/pending");
     } catch (err) {
       const code = err instanceof FirebaseError ? err.code : undefined;
+      console.error("Google sign-in failed:", code, err);
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         // user dismissed the popup — no message needed
       } else if (code === "auth/popup-blocked") {
         setError("Your browser blocked the popup. Allow popups for this site and try again.");
+      } else if (code === "auth/unauthorized-domain") {
+        setError("This site's domain isn't authorized in Firebase (Authentication → Settings → Authorized domains).");
       } else if (code === "auth/account-exists-with-different-credential") {
         setError("An account with this email already exists — sign in with your password.");
       } else if (code === "auth/operation-not-allowed") {
-        setError("Google sign-in isn't enabled for this project yet.");
+        setError("Google sign-in isn't enabled for this project (Firebase → Authentication → Sign-in method).");
       } else {
-        setError("Couldn't sign in with Google. Please try again.");
-        console.error(err);
+        setError(`Couldn't sign in with Google${code ? ` (${code})` : ""}.`);
       }
     } finally {
       setLoading(false);
