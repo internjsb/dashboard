@@ -3,8 +3,8 @@
      Deliberately avoiding warm-cream/terracotta and near-black+neon defaults. */
   --bg: #EEF1F6;
   --surface: #FFFFFF;
-  --sidebar-bg: #0E1526;
-  --sidebar-bg-hover: #17203A;
+  --sidebar-bg: #366b72;
+  --sidebar-bg-hover: #2c5c62;
   --sidebar-text: #93A0BD;
   --sidebar-text-active: #FFFFFF;
   --border: #E1E5EE;
@@ -23,13 +23,27 @@
   --warning: #C4842A;
   --warning-tint: #FAF0E2;
 
+  /* Categorical chart palette — validated for CVD on a white surface
+     (dataviz skill: worst adjacent ΔE 9.1). Assign in fixed order, never cycle. */
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
+  --cat-6: #008300;
+
+  --chart-grid: #E6E9F0;
+  --chart-axis: #C3C6D0;
+
   /* Type */
   --font-display: "Manrope", "Inter", sans-serif;
   --font-body: "Inter", sans-serif;
 
   --radius-sm: 6px;
   --radius-md: 10px;
-  --sidebar-width: 240px;
+  --sidebar-width: 200px;       /* current width — useSidebar.js swaps this */
+  --sidebar-width-full: 200px;
+  --sidebar-width-rail: 68px;
   --topbar-height: 64px;
 }
 
@@ -71,4 +85,48 @@ input:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
+}
+
+/* --- Collapsible / slide-in sidebar ------------------------------------- */
+
+.sidebar { transition: width 0.22s ease, transform 0.22s ease; }
+.content-area { transition: margin-left 0.22s ease; }
+
+/* While dragging the resize handle: no lag, and don't select page text. */
+body.sidebar-resizing { cursor: col-resize; user-select: none; }
+body.sidebar-resizing .sidebar,
+body.sidebar-resizing .content-area { transition: none; }
+
+/* Desktop: collapsed to an icon rail — hide the text, center the glyphs. */
+body.sidebar-collapsed .sidebar .brand span,
+body.sidebar-collapsed .sidebar .user-meta { display: none; }
+body.sidebar-collapsed .sidebar .brand,
+body.sidebar-collapsed .sidebar .user-line { justify-content: center; }
+body.sidebar-collapsed .sidebar .nav-item {
+  font-size: 0;
+  gap: 0;
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+body.sidebar-collapsed .sidebar .nav-item .dot { width: 8px; height: 8px; }
+body.sidebar-collapsed .sidebar .signout { font-size: 0; padding-left: 0; padding-right: 0; }
+body.sidebar-collapsed .sidebar .signout::after { content: "\21B2"; font-size: 15px; }
+
+/* Mobile: off-canvas. Keep full width but slide it out of view until opened. */
+body.sidebar-mobile .sidebar {
+  width: var(--sidebar-width-full);
+  transform: translateX(-100%);
+  z-index: 30;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.4);
+}
+body.sidebar-mobile.sidebar-mobile-open .sidebar { transform: translateX(0); }
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.45);
 }

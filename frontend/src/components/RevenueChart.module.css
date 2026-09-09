@@ -1,0 +1,139 @@
+.chartCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px 28px 18px;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.chartHeader h3 {
+  font-size: 16px;
+}
+
+.chartSub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.headline {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.headValue {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.headDelta {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.headDelta.up { color: var(--success); }
+.headDelta.down { color: var(--danger); }
+
+.plot {
+  position: relative;
+}
+
+.chartSvg {
+  width: 100%;
+  height: 200px;
+  display: block;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.area {
+  fill: var(--accent-tint);
+  stroke: none;
+  opacity: 0.6;
+}
+
+.line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.guide {
+  stroke: var(--chart-axis);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.dot {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  transition: r 0.12s ease;
+}
+
+.tooltip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: var(--text-primary);
+  color: white;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tooltip strong {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+}
+
+.axisMax,
+.axisMin {
+  position: absolute;
+  right: 0;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  padding-left: 4px;
+}
+
+.axisMax { top: -4px; }
+.axisMin { bottom: -4px; }
+
+.chartLabels {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 4px 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}

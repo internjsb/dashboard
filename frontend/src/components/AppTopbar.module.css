@@ -1,0 +1,44 @@
+.topbar {
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menuBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  line-height: 0;
+}
+
+.menuBtn:hover {
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.topbar h2 {
+  font-size: 18px;
+}
+
+.date {
+  font-size: 13px;
+  color: var(--text-secondary);
+}

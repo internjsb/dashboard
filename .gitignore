@@ -1,0 +1,26 @@
+# dependencies (rebuilt by `npm install` — never commit)
+node_modules/
+
+# build output
+dist/
+build/
+.vercel/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# secrets — never commit real env files
+.env
+.env.*
+!.env.example
+
+# logs / editor / OS
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+
+# vite cache
+**/node_modules/.vite
+
+# there is no root package.json lockfile to track separately

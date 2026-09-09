@@ -1,12 +1,19 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/authMiddleware.js";
-import { stats, revenueTrend, recentActivity } from "../data/sampleData.js";
+import { requireAuth, requireActive } from "../middleware/authMiddleware.js";
+import {
+  product,
+  stats,
+  revenueTrend,
+  salesByFinish,
+  variants,
+  recentOrders,
+} from "../data/sampleData.js";
 
 const router = Router();
 
-// Any authenticated user (admin or user) can see the overview.
-router.get("/overview", requireAuth, async (req, res) => {
-  res.json({ stats, revenueTrend, recentActivity });
+// Any approved user (admin or user) can see the overview. Pending/denied 403.
+router.get("/overview", requireAuth, requireActive, async (req, res) => {
+  res.json({ product, stats, revenueTrend, salesByFinish, variants, recentOrders });
 });
 
 export default router;

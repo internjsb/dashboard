@@ -1,0 +1,210 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
+import AppSidebar from "../components/AppSidebar";
+import AppTopbar from "../components/AppTopbar";
+import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
+import type { UserRecord, PendingRequest, Role } from "../types";
+import styles from "./AdminPanel.module.css";
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { error?: string } | undefined;
+    return data?.error || fallback;
+  }
+  return fallback;
+}
+
+export default function AdminPanel() {
+  const { user, isSuperAdmin } = useAuth();
+  const currentUid = user?.uid;
+
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyUid, setBusyUid] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const [u, r] = await Promise.all([
+        api.get<{ users: UserRecord[] }>("/users"),
+        api.get<{ requests: PendingRequest[] }>("/requests"),
+      ]);
+      setUsers(u.data.users);
+      setRequests(r.data.requests);
+    } catch (err) {
+      setError("Couldn't load users. Is the backend running?");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function approve(r: PendingRequest) {
+    setBusyUid(r.uid);
+    try {
+      await api.post(`/requests/${r.uid}/approve`);
+      await load();
+    } catch (err) {
+      window.alert(errorMessage(err, "Failed to approve"));
+    } finally {
+      setBusyUid(null);
+    }
+  }
+
+  async function deny(r: PendingRequest) {
+    if (!window.confirm(`Deny ${r.email}? Their login will be disabled.`)) return;
+    setBusyUid(r.uid);
+    try {
+      await api.post(`/requests/${r.uid}/deny`);
+      await load();
+    } catch (err) {
+      window.alert(errorMessage(err, "Failed to deny"));
+    } finally {
+      setBusyUid(null);
+    }
+  }
+
+  async function changeRole(target: UserRecord, role: Role) {
+    setBusyUid(target.uid);
+    try {
+      await api.patch(`/users/${target.uid}/role`, { role });
+      setUsers((prev) => prev.map((u) => (u.uid === target.uid ? { ...u, role } : u)));
+    } catch (err) {
+      window.alert(errorMessage(err, "Failed to update role"));
+    } finally {
+      setBusyUid(null);
+    }
+  }
+
+  function formatDate(iso: string | null): string {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString();
+  }
+
+  return (
+    <div className={styles.layout}>
+      <AppSidebar />
+      <div className={styles.contentArea}>
+        <AppTopbar title="Manage users" />
+        <main className={styles.content}>
+          <p className={styles.intro}>
+            Approve or deny new signups below.{" "}
+            {isSuperAdmin ? (
+              <>
+                As the super admin you can also grant or revoke <strong>admin</strong> access.
+              </>
+            ) : (
+              <>Only the super admin can grant or revoke <strong>admin</strong> access.</>
+            )}
+          </p>
+
+          {loading ? (
+            <p className={styles.state}>Loading…</p>
+          ) : error ? (
+            <p className={`${styles.state} ${styles.error}`}>{error}</p>
+          ) : (
+            <>
+              {requests.length > 0 && (
+                <section className={styles.panel}>
+                  <h3>
+                    Pending requests <span className={styles.count}>{requests.length}</span>
+                  </h3>
+                  <ul className={styles.requestList}>
+                    {requests.map((r) => (
+                      <li key={r.uid}>
+                        <div className={styles.who}>
+                          <div className={styles.avatar}>{(r.email || "?").slice(0, 2).toUpperCase()}</div>
+                          <div>
+                            <div className={styles.email}>{r.displayName || r.email}</div>
+                            <div className={styles.sub}>{r.email}</div>
+                          </div>
+                        </div>
+                        <div className={styles.requestActions}>
+                          <button className={styles.approve} disabled={busyUid === r.uid} onClick={() => approve(r)}>
+                            Approve
+                          </button>
+                          <button className={styles.deny} disabled={busyUid === r.uid} onClick={() => deny(r)}>
+                            Deny
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              <table className={styles.userTable}>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    {isSuperAdmin && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.uid}>
+                      <td>
+                        <div className={styles.who}>
+                          <div className={styles.avatar}>{(u.email || "?").slice(0, 2).toUpperCase()}</div>
+                          <div>
+                            <div className={styles.email}>{u.email}</div>
+                            {/* <div className={styles.sub}>{u.uid}</div> */}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`${styles.pill} ${(u.isSuperAdmin ? styles.admin : styles[u.role]) || ""}`}>
+                          {u.isSuperAdmin ? "super admin" : u.role}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`${styles.pill} ${styles[u.status] || ""}`}>{u.status}</span>
+                      </td>
+                      <td className={styles.joined}>{formatDate(u.createdAt)}</td>
+                      {isSuperAdmin && (
+                        <td className={styles.actions}>
+                          {u.isSuperAdmin ? (
+                            <span className={styles.locked}>locked</span>
+                          ) : u.uid === currentUid ? (
+                            <span className={styles.locked}>you</span>
+                          ) : u.role !== "admin" ? (
+                            <button
+                              className={styles.promote}
+                              disabled={busyUid === u.uid || u.status !== "active"}
+                              onClick={() => changeRole(u, "admin")}
+                            >
+                              Make admin
+                            </button>
+                          ) : (
+                            <button
+                              className={styles.demote}
+                              disabled={busyUid === u.uid}
+                              onClick={() => changeRole(u, "user")}
+                            >
+                              Revoke admin
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}

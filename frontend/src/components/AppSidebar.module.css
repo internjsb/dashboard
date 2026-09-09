@@ -1,0 +1,224 @@
+.sidebar {
+  width: var(--sidebar-width);
+  min-height: 100vh;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  transition: width 0.22s ease, transform 0.22s ease;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 24px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--sidebar-text-active);
+}
+
+.brandMark {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sidebar-text);
+}
+
+.navItem:hover {
+  background: var(--sidebar-bg-hover);
+  color: var(--sidebar-text-active);
+}
+
+.navItem.active {
+  background: var(--sidebar-bg-hover);
+  color: var(--sidebar-text-active);
+}
+
+.navItem .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.navItem.active .dot {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.sidebarFooter {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 14px;
+}
+
+.userLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.userMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.email {
+  font-size: 12.5px;
+  color: var(--sidebar-text-active);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roleTag {
+  font-size: 11px;
+  text-transform: capitalize;
+  color: var(--sidebar-text);
+  width: fit-content;
+}
+
+.roleTag.admin { color: #6FD7C4; }
+
+.signout {
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--sidebar-text-active);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.signout:hover {
+  background: var(--sidebar-bg-hover);
+}
+
+/* Drag handle on the sidebar's right edge */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  z-index: 1;
+}
+
+.resizeHandle::before {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.resizeHandle:hover::before,
+.resizeHandle.dragging::before {
+  background: var(--accent);
+}
+
+/* little grip that fades in on hover */
+.grip {
+  width: 4px;
+  height: 34px;
+  border-radius: 3px;
+  background: var(--sidebar-text-active);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.resizeHandle:hover .grip,
+.resizeHandle.dragging .grip {
+  opacity: 0.55;
+}
+
+.sidebarBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* Desktop: collapsed to an icon rail — hide the text, center the glyphs. */
+:global(body.sidebar-collapsed) .sidebar .brand span,
+:global(body.sidebar-collapsed) .sidebar .userMeta { display: none; }
+:global(body.sidebar-collapsed) .sidebar .brand,
+:global(body.sidebar-collapsed) .sidebar .userLine { justify-content: center; }
+:global(body.sidebar-collapsed) .sidebar .navItem {
+  font-size: 0;
+  gap: 0;
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+:global(body.sidebar-collapsed) .sidebar .navItem .dot { width: 8px; height: 8px; }
+:global(body.sidebar-collapsed) .sidebar .signout { font-size: 0; padding-left: 0; padding-right: 0; }
+:global(body.sidebar-collapsed) .sidebar .signout::after { content: "\21B2"; font-size: 15px; }
+
+/* Mobile: off-canvas. Keep full width but slide it out of view until opened. */
+:global(body.sidebar-mobile) .sidebar {
+  width: var(--sidebar-width-full);
+  transform: translateX(-100%);
+  z-index: 30;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.4);
+}
+:global(body.sidebar-mobile.sidebar-mobile-open) .sidebar { transform: translateX(0); }
+
+:global(body.sidebar-resizing) .sidebar { transition: none; }
