@@ -41,9 +41,9 @@
 
   --radius-sm: 6px;
   --radius-md: 10px;
-  --sidebar-width: 200px;       /* current width — useSidebar.js swaps this */
-  --sidebar-width-full: 200px;
-  --sidebar-width-rail: 68px;
+  --sidebar-full: 200px;
+  --sidebar-rail: 68px;
+  --sidebar-w: 200px;          /* live drag width — useSidebar.ts updates this */
   --topbar-height: 64px;
 }
 
@@ -87,45 +87,55 @@ input:focus-visible {
   * { transition: none !important; animation: none !important; }
 }
 
-/* --- Collapsible / slide-in sidebar ------------------------------------- */
+/* --- App shell: fixed sidebar + offset content -----------------------------
+   The layout mechanics live in this always-loaded global stylesheet (not in a
+   CSS-module chunk) so they can never lose a cascade race with a lazily loaded
+   view stylesheet. Components add `app-sidebar` / `app-content` alongside their
+   module classes; `useSidebar.ts` only toggles the body-state classes and the
+   --sidebar-w drag width. */
 
-.sidebar { transition: width 0.22s ease, transform 0.22s ease; }
-.content-area { transition: margin-left 0.22s ease; }
+.app-shell { display: flex; min-height: 100vh; }
 
-/* While dragging the resize handle: no lag, and don't select page text. */
-body.sidebar-resizing { cursor: col-resize; user-select: none; }
-body.sidebar-resizing .sidebar,
-body.sidebar-resizing .content-area { transition: none; }
-
-/* Desktop: collapsed to an icon rail — hide the text, center the glyphs. */
-body.sidebar-collapsed .sidebar .brand span,
-body.sidebar-collapsed .sidebar .user-meta { display: none; }
-body.sidebar-collapsed .sidebar .brand,
-body.sidebar-collapsed .sidebar .user-line { justify-content: center; }
-body.sidebar-collapsed .sidebar .nav-item {
-  font-size: 0;
-  gap: 0;
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+.app-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: var(--sidebar-w);
+  z-index: 40;
+  overflow: hidden;
+  transition: width 0.2s ease, transform 0.2s ease;
 }
-body.sidebar-collapsed .sidebar .nav-item .dot { width: 8px; height: 8px; }
-body.sidebar-collapsed .sidebar .signout { font-size: 0; padding-left: 0; padding-right: 0; }
-body.sidebar-collapsed .sidebar .signout::after { content: "\21B2"; font-size: 15px; }
 
-/* Mobile: off-canvas. Keep full width but slide it out of view until opened. */
-body.sidebar-mobile .sidebar {
-  width: var(--sidebar-width-full);
+.app-content {
+  flex: 1;
+  min-width: 0;
+  margin-left: var(--sidebar-w);
+  transition: margin-left 0.2s ease;
+}
+
+/* Desktop, collapsed to an icon rail */
+body.sidebar-collapsed .app-sidebar { width: var(--sidebar-rail); }
+body.sidebar-collapsed .app-content { margin-left: var(--sidebar-rail); }
+
+/* Mobile (<=900px): the sidebar is an off-canvas drawer; content ignores it */
+body.sidebar-mobile .app-sidebar {
+  width: var(--sidebar-full);
   transform: translateX(-100%);
-  z-index: 30;
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.4);
 }
-body.sidebar-mobile.sidebar-mobile-open .sidebar { transform: translateX(0); }
+body.sidebar-mobile.sidebar-mobile-open .app-sidebar { transform: translateX(0); }
+body.sidebar-mobile .app-content { margin-left: 0; }
 
-.sidebar-backdrop {
+/* While dragging the resize handle: no lag, don't select page text */
+body.sidebar-resizing { cursor: col-resize; user-select: none; }
+body.sidebar-resizing .app-sidebar,
+body.sidebar-resizing .app-content { transition: none; }
+
+.app-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 25;
+  z-index: 35;
   border: 0;
   padding: 0;
   background: rgba(0, 0, 0, 0.45);

@@ -44,9 +44,9 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className={styles.layout}>
+    <div className="app-shell">
       <AppSidebar />
-      <div className={styles.contentArea}>
+      <div className="app-content">
         <AppTopbar title="Sales overview" />
         <main className={styles.content}>
           {loading ? (

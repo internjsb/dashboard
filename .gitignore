@@ -13,6 +13,8 @@ frontend/vite.config.d.ts
 .env
 .env.*
 !.env.example
+*.env
+vercel-import.env
 
 # logs / editor / OS
 *.log

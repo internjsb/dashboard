@@ -90,9 +90,9 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className={styles.layout}>
+    <div className="app-shell">
       <AppSidebar />
-      <div className={styles.contentArea}>
+      <div className="app-content">
         <AppTopbar title="Manage users" />
         <main className={styles.content}>
           <p className={styles.intro}>

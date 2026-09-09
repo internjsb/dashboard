@@ -109,9 +109,9 @@ export default function Profile() {
   }
 
   return (
-    <div className={styles.layout}>
+    <div className="app-shell">
       <AppSidebar />
-      <div className={styles.contentArea}>
+      <div className="app-content">
         <AppTopbar title="Profile" />
         <main className={styles.content}>
           <section className={styles.card}>

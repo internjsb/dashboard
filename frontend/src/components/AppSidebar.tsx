@@ -58,9 +58,9 @@ export default function AppSidebar() {
   return (
     <>
       {isMobile && mobileOpen && (
-        <button className={styles.sidebarBackdrop} aria-label="Close menu" onClick={closeMobile} />
+        <button className="app-backdrop" aria-label="Close menu" onClick={closeMobile} />
       )}
-      <aside className={styles.sidebar}>
+      <aside className={`app-sidebar ${styles.sidebar}`}>
         <div className={styles.brand}>
           <div className={styles.brandMark}>A</div>
           <span>Amazon Dashboard</span>

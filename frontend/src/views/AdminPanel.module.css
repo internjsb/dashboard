@@ -1,5 +1,3 @@
-.layout { display: flex; min-height: 100vh; }
-.contentArea { flex: 1; margin-left: var(--sidebar-width); transition: margin-left 0.22s ease; }
 .content { padding: 28px 32px 48px; max-width: 1080px; }
 
 .intro {
@@ -148,4 +146,3 @@
 .deny { border-color: var(--danger); color: var(--danger); }
 .approve:disabled, .deny:disabled { opacity: 0.5; cursor: not-allowed; }
 
-:global(body.sidebar-resizing) .contentArea { transition: none; }

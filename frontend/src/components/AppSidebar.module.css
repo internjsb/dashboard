@@ -1,15 +1,11 @@
+/* Visual styling only — position/width/transform live in tokens.css (.app-sidebar). */
 .sidebar {
-  width: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100%;
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
   padding: 20px 16px;
-  position: fixed;
-  left: 0;
-  top: 0;
-  transition: width 0.22s ease, transform 0.22s ease;
 }
 
 .brand {
@@ -187,38 +183,19 @@
   opacity: 0.55;
 }
 
-.sidebarBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 25;
-  border: 0;
-  padding: 0;
-  background: rgba(0, 0, 0, 0.45);
-}
-
-/* Desktop: collapsed to an icon rail — hide the text, center the glyphs. */
-:global(body.sidebar-collapsed) .sidebar .brand span,
-:global(body.sidebar-collapsed) .sidebar .userMeta { display: none; }
-:global(body.sidebar-collapsed) .sidebar .brand,
-:global(body.sidebar-collapsed) .sidebar .userLine { justify-content: center; }
-:global(body.sidebar-collapsed) .sidebar .navItem {
+/* Collapsed rail — hide the text, center the glyphs. (Width is handled in
+   tokens.css; these rules only restyle the inner elements.) */
+:global(body.sidebar-collapsed) .brand span,
+:global(body.sidebar-collapsed) .userMeta { display: none; }
+:global(body.sidebar-collapsed) .brand,
+:global(body.sidebar-collapsed) .userLine { justify-content: center; }
+:global(body.sidebar-collapsed) .navItem {
   font-size: 0;
   gap: 0;
   justify-content: center;
   padding-left: 0;
   padding-right: 0;
 }
-:global(body.sidebar-collapsed) .sidebar .navItem .dot { width: 8px; height: 8px; }
-:global(body.sidebar-collapsed) .sidebar .signout { font-size: 0; padding-left: 0; padding-right: 0; }
-:global(body.sidebar-collapsed) .sidebar .signout::after { content: "\21B2"; font-size: 15px; }
-
-/* Mobile: off-canvas. Keep full width but slide it out of view until opened. */
-:global(body.sidebar-mobile) .sidebar {
-  width: var(--sidebar-width-full);
-  transform: translateX(-100%);
-  z-index: 30;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.4);
-}
-:global(body.sidebar-mobile.sidebar-mobile-open) .sidebar { transform: translateX(0); }
-
-:global(body.sidebar-resizing) .sidebar { transition: none; }
+:global(body.sidebar-collapsed) .navItem .dot { width: 8px; height: 8px; }
+:global(body.sidebar-collapsed) .signout { font-size: 0; padding-left: 0; padding-right: 0; }
+:global(body.sidebar-collapsed) .signout::after { content: "\21B2"; font-size: 15px; }

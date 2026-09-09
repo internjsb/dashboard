@@ -1,17 +1,3 @@
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
-
-.contentArea {
-  flex: 1;
-  margin-left: var(--sidebar-width);
-  transition: margin-left 0.22s ease;
-}
-
-:global(body.sidebar-resizing) .contentArea {
-  transition: none;
-}
 
 .content {
   padding: 32px 40px 56px;

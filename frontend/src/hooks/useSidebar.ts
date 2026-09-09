@@ -10,8 +10,8 @@ import { useSyncExternalStore } from "react";
 //  - drag the handle on the sidebar's right edge to resize it (persisted)
 //  - the topbar button collapses it to an icon rail (desktop) or slides it
 //    in/out over the content (mobile, <= 900px)
-// The live width is pushed onto the --sidebar-width CSS variable so the page
-// layout (which keys its left margin off that var) follows for free.
+// apply() only toggles body-state classes + the --sidebar-w drag width;
+// tokens.css (.app-sidebar / .app-content) turns those into the actual layout.
 
 const MOBILE_BP = 900;
 const MIN_W = 160;
@@ -47,12 +47,10 @@ const listeners = new Set<() => void>();
 
 function apply() {
   if (typeof document === "undefined" || !document.body) return;
-  const root = document.documentElement;
 
-  root.style.setProperty(
-    "--sidebar-width",
-    state.isMobile ? "0px" : state.collapsed ? "var(--sidebar-width-rail)" : `${state.width}px`
-  );
+  // Only the drag width comes from JS — collapsed/mobile widths are decided by
+  // CSS off the body classes below (see tokens.css .app-sidebar / .app-content).
+  document.documentElement.style.setProperty("--sidebar-w", `${state.width}px`);
 
   document.body.classList.toggle("sidebar-collapsed", !state.isMobile && state.collapsed);
   document.body.classList.toggle("sidebar-mobile", state.isMobile);
