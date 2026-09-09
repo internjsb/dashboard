@@ -141,6 +141,7 @@ export default function AdminPanel() {
                 </section>
               )}
 
+              <div className={styles.tableWrap}>
               <table className={styles.userTable}>
                 <thead>
                   <tr>
@@ -201,6 +202,7 @@ export default function AdminPanel() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </>
           )}
         </main>

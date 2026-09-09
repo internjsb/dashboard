@@ -1,5 +1,16 @@
 .content { padding: 28px 32px 48px; max-width: 1080px; }
 
+@media (max-width: 700px) {
+  .content { padding: 20px 16px 40px; }
+}
+
+/* Table scrolls inside its own box on narrow screens — the page never scrolls sideways. */
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+}
+
 .intro {
   font-size: 13.5px;
   color: var(--text-secondary);
@@ -40,15 +51,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 10px 0;
   border-top: 1px solid var(--border);
 }
 
 .requestList li:first-child { border-top: none; }
 
-.requestActions { display: flex; gap: 8px; }
+.requestActions { display: flex; gap: 8px; flex-shrink: 0; }
 
-.who { display: flex; align-items: center; gap: 10px; }
+.who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.who > div:last-child { min-width: 0; }
 
 .avatar {
   width: 30px;
@@ -64,11 +78,18 @@
   flex-shrink: 0;
 }
 
-.email { font-weight: 500; font-size: 13.5px; }
+.email {
+  font-weight: 500;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .sub { font-size: 11px; color: var(--text-muted); }
 
 .userTable {
   width: 100%;
+  min-width: 520px;
   border-collapse: collapse;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -112,7 +133,7 @@
 .pill.pending { background: var(--warning-tint); color: var(--warning); }
 .pill.denied { background: var(--danger-tint); color: var(--danger); }
 
-.actions { text-align: right; }
+.actions { text-align: right; white-space: nowrap; }
 
 .actions button {
   border: 1px solid var(--border);
@@ -121,7 +142,11 @@
   border-radius: var(--radius-sm);
   font-size: 12.5px;
   font-weight: 600;
+  white-space: nowrap;
 }
+
+.userTable th,
+.joined { white-space: nowrap; }
 
 .actions .promote { border-color: var(--accent); color: var(--accent-strong); }
 .actions .demote { border-color: var(--danger); color: var(--danger); }
