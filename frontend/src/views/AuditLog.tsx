@@ -21,29 +21,31 @@ function label(action: string): string {
 
 function deviceFromUA(ua: string): string {
   if (!ua || ua === "unknown") return "Unknown";
-  const os = /Windows NT/.test(ua)
-    ? "Windows"
-    : /Mac OS X|Macintosh/.test(ua)
-      ? "macOS"
-      : /Android/.test(ua)
-        ? "Android"
-        : /iPhone|iPad|iPod/.test(ua)
-          ? "iOS"
-          : /Linux/.test(ua)
-            ? "Linux"
-            : "Unknown OS";
+
+  // Check mobile FIRST — an iPhone's UA also contains "like Mac OS X".
+  let device: string;
+  if (/iPhone/.test(ua)) device = "iPhone";
+  else if (/iPad/.test(ua)) device = "iPad";
+  else if (/Android/.test(ua)) device = /Mobile/.test(ua) ? "Android phone" : "Android tablet";
+  else if (/CrOS/.test(ua)) device = "Chromebook";
+  else if (/Macintosh|Mac OS X/.test(ua)) device = "MacBook";
+  else if (/Windows NT/.test(ua)) device = "Windows PC";
+  else if (/Linux/.test(ua)) device = "Linux PC";
+  else device = "Unknown device";
+
   const browser = /Edg\//.test(ua)
     ? "Edge"
     : /OPR\/|Opera/.test(ua)
       ? "Opera"
-      : /Firefox\//.test(ua)
+      : /Firefox\/|FxiOS/.test(ua)
         ? "Firefox"
-        : /Chrome\//.test(ua) && !/Chromium/.test(ua)
+        : /CriOS/.test(ua) || (/Chrome\//.test(ua) && !/Chromium/.test(ua))
           ? "Chrome"
           : /Safari\//.test(ua)
             ? "Safari"
             : "browser";
-  return `${browser} · ${os}`;
+
+  return `${browser} · ${device}`;
 }
 
 function when(ts: number): { date: string; time: string; rel: string } {
@@ -89,10 +91,7 @@ export default function AuditLog() {
         <AppTopbar title="Audit log" />
         <main className={styles.content}>
           <div className={styles.head}>
-            <p className={styles.intro}>
-              Every sign-in and admin action — who, what, on what device, and when. Most recent
-              first (last 300).
-            </p>
+            <p className={styles.intro}>Every sign-in and admin action. Most recent first (last 300).</p>
             <button className={styles.refresh} onClick={load} disabled={loading}>
               Refresh
             </button>
