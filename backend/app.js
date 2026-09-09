@@ -8,20 +8,28 @@ import dashboardRoutes from "./src/routes/dashboard.js";
 //   - api/index.js        -> exported as a Vercel serverless function
 const app = express();
 
-// On Vercel the frontend and API share an origin, so CORS is a non-issue there.
-// It only matters for local dev (Vite :5173 -> API :4000) and any split deploy.
-// CLIENT_ORIGIN may be a comma-separated list.
+// CORS only matters for cross-origin calls (local dev: Vite :5173 -> API :4000,
+// or a split deploy). On Vercel the frontend and API share an origin, so no
+// CORS headers are needed there. CLIENT_ORIGIN may be a comma-separated list of
+// extra allowed origins. For anything not allowed we simply DON'T send CORS
+// headers (cb(null, false)) — never throw, or same-origin POSTs (which still
+// carry an Origin header) would 500.
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
 
 app.use(
-  cors({
-    origin(origin, cb) {
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      cb(new Error(`Origin ${origin} not allowed by CORS`));
-    },
+  cors((req, cb) => {
+    const origin = req.headers.origin;
+    let sameOrigin = false;
+    try {
+      sameOrigin = !!origin && new URL(origin).host === req.headers.host;
+    } catch {
+      /* malformed Origin header */
+    }
+    const ok = !origin || sameOrigin || allowedOrigins.includes(origin);
+    cb(null, { origin: ok });
   })
 );
 app.use(express.json());
