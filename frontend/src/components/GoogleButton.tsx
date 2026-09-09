@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
@@ -24,34 +25,50 @@ export default function GoogleButton({ redirectTo }: Props) {
   async function handleGoogle() {
     setError("");
     setLoading(true);
+
+    // Step 1 — Google popup.
+    let displayName = "";
     try {
       const cred = await signInWithPopup(auth, provider);
-
-      // Idempotent: creates a "pending" mirror record for a first-time user,
-      // and just returns the current status/role for a returning one. Same
-      // call works from both the Login and Register pages.
-      const { data } = await api.post<{ status: UserStatus }>("/register", {
-        displayName: cred.user.displayName ?? "",
-      });
-
-      await refreshRole();
-      navigate(data.status === "active" ? redirectTo || "/dashboard" : "/pending");
+      displayName = cred.user.displayName ?? "";
     } catch (err) {
       const code = err instanceof FirebaseError ? err.code : undefined;
-      console.error("Google sign-in failed:", code, err);
+      console.error("Google popup failed:", code, err);
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-        // user dismissed the popup — no message needed
+        // dismissed — no message
       } else if (code === "auth/popup-blocked") {
         setError("Your browser blocked the popup. Allow popups for this site and try again.");
       } else if (code === "auth/unauthorized-domain") {
-        setError("This site's domain isn't authorized in Firebase (Authentication → Settings → Authorized domains).");
+        setError("This domain isn't in Firebase → Authentication → Settings → Authorized domains.");
       } else if (code === "auth/account-exists-with-different-credential") {
         setError("An account with this email already exists — sign in with your password.");
       } else if (code === "auth/operation-not-allowed") {
-        setError("Google sign-in isn't enabled for this project (Firebase → Authentication → Sign-in method).");
+        setError("Google sign-in isn't enabled (Firebase → Authentication → Sign-in method).");
       } else {
-        setError(`Couldn't sign in with Google${code ? ` (${code})` : ""}.`);
+        setError(`Google sign-in failed${code ? ` (${code})` : ""}.`);
       }
+      setLoading(false);
+      return;
+    }
+
+    // Step 2 — provision / look up the account on our backend.
+    try {
+      const { data } = await api.post<{ status: UserStatus }>("/register", { displayName });
+      await refreshRole();
+      navigate(data.status === "active" ? redirectTo || "/dashboard" : "/pending");
+    } catch (err) {
+      console.error("Provisioning after Google sign-in failed:", err);
+      let detail = "";
+      if (axios.isAxiosError(err)) {
+        detail = err.response
+          ? ` (server ${err.response.status}${
+              (err.response.data as { error?: string })?.error
+                ? `: ${(err.response.data as { error?: string }).error}`
+                : ""
+            })`
+          : " (no response — is the API reachable?)";
+      }
+      setError(`Signed in with Google, but setting up your account failed${detail}.`);
     } finally {
       setLoading(false);
     }
