@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
+import api from "../api/client";
 import GoogleButton from "../components/GoogleButton";
 import styles from "./Login.module.css";
 
@@ -21,6 +22,7 @@ export default function Login() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      api.post("/events/login", { method: "password" }).catch(() => {}); // audit, fire-and-forget
       navigate(searchParams.get("redirect") || "/dashboard");
     } catch (err) {
       setError(mapError(err instanceof FirebaseError ? err.code : undefined));

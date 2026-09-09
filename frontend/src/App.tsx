@@ -9,6 +9,7 @@ const Pending = lazy(() => import("./views/Pending"));
 const Dashboard = lazy(() => import("./views/Dashboard"));
 const Profile = lazy(() => import("./views/Profile"));
 const AdminPanel = lazy(() => import("./views/AdminPanel"));
+const AuditLog = lazy(() => import("./views/AuditLog"));
 const Forbidden = lazy(() => import("./views/Forbidden"));
 const NotFound = lazy(() => import("./views/NotFound"));
 
@@ -50,6 +51,14 @@ export default function App() {
               element={
                 <ProtectedRoute role="admin">
                   <AdminPanel />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/audit"
+              element={
+                <ProtectedRoute role="admin">
+                  <AuditLog />
                 </ProtectedRoute>
               }
             />

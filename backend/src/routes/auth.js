@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { auth, db } from "../firebaseAdmin.js";
+import { audit } from "../audit.js";
 import {
   requireAuth,
   requireAdmin,
@@ -8,6 +9,29 @@ import {
 } from "../middleware/authMiddleware.js";
 
 const router = Router();
+
+// The client pings this right after a successful sign-in so the audit log
+// records who logged in, from where, and on what device.
+router.post("/events/login", requireAuth, async (req, res) => {
+  const method = ["password", "google"].includes(req.body?.method) ? req.body.method : "password";
+  await audit(req, "auth.login", { method });
+  res.json({ ok: true });
+});
+
+// Admin + super admin only: the audit log, newest first.
+router.get("/audit", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const all = (await db.get("audit")) || {};
+    const events = Object.entries(all)
+      .map(([id, e]) => ({ id, ...e }))
+      .sort((a, b) => (b.at || 0) - (a.at || 0))
+      .slice(0, 300);
+    res.json({ events });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load the audit log" });
+  }
+});
 
 // Frontend calls this right after login to learn its role + approval status.
 // Deliberately NOT gated on "active" — a pending user needs this to know to
@@ -36,6 +60,7 @@ router.patch("/me", requireAuth, async (req, res) => {
   try {
     await auth.updateUser(req.user.uid, { displayName });
     await db.set(`users/${req.user.uid}/displayName`, displayName);
+    await audit(req, "profile.update", { displayName });
     res.json({ displayName });
   } catch (err) {
     console.error(err);
@@ -62,6 +87,7 @@ router.post("/register", requireAuth, async (req, res) => {
 
     if (isSuperAdmin) await auth.setCustomUserClaims(uid, { role: "admin" });
     await db.set(`users/${uid}`, { email, displayName, role, status });
+    await audit(req, "auth.signup", { email, status });
 
     res.status(201).json({ status, role });
   } catch (err) {
@@ -105,12 +131,14 @@ router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res
     if (!(await authUserExists(uid))) {
       // Firebase account was deleted — drop the orphaned record.
       await db.remove(`users/${uid}`);
+      await audit(req, "user.remove_orphan", { targetUid: uid, email: record.email });
       return res.status(410).json({ error: "That Firebase account no longer exists — request removed" });
     }
 
     await auth.setCustomUserClaims(uid, { role: "user" });
     await auth.updateUser(uid, { disabled: false });
     await db.update(`users/${uid}`, { role: "user", status: "active" });
+    await audit(req, "user.approve", { targetUid: uid, email: record.email });
     res.json({ uid, role: "user", status: "active" });
   } catch (err) {
     console.error(err);
@@ -128,11 +156,13 @@ router.post("/requests/:uid/deny", requireAuth, requireAdmin, async (req, res) =
 
     if (!(await authUserExists(uid))) {
       await db.remove(`users/${uid}`);
+      await audit(req, "user.remove_orphan", { targetUid: uid, email: record.email });
       return res.json({ uid, status: "removed" });
     }
 
     await auth.updateUser(uid, { disabled: true });
     await db.update(`users/${uid}`, { status: "denied" });
+    await audit(req, "user.deny", { targetUid: uid, email: record.email });
     res.json({ uid, status: "denied" });
   } catch (err) {
     console.error(err);
@@ -189,6 +219,7 @@ router.patch("/users/:uid/role", requireAuth, requireSuperAdmin, async (req, res
 
     await auth.setCustomUserClaims(uid, { role });
     await db.set(`users/${uid}/role`, role);
+    await audit(req, "user.role_change", { targetUid: uid, email: target.email, role });
     res.json({ uid, role });
   } catch (err) {
     console.error(err);

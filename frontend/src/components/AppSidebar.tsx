@@ -81,6 +81,12 @@ export default function AppSidebar() {
               Manage users
             </NavLink>
           )}
+          {role === "admin" && (
+            <NavLink to="/audit" className={navItemClass}>
+              <span className={styles.dot} />
+              Audit log
+            </NavLink>
+          )}
         </nav>
 
         <div className={styles.sidebarFooter}>

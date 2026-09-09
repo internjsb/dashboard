@@ -53,6 +53,7 @@ export default function GoogleButton({ redirectTo }: Props) {
 
     // Step 2 — provision / look up the account on our backend.
     try {
+      api.post("/events/login", { method: "google" }).catch(() => {}); // audit, fire-and-forget
       const { data } = await api.post<{ status: UserStatus }>("/register", { displayName });
       await refreshRole();
       navigate(data.status === "active" ? redirectTo || "/dashboard" : "/pending");

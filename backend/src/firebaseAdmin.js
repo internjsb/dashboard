@@ -67,4 +67,6 @@ export const db = {
   update: (path, value) => dbRequest("PATCH", path, value),
   /** Deletes the value at `path`. */
   remove: (path) => dbRequest("DELETE", path),
+  /** Appends `value` under a generated push id; returns { name }. */
+  push: (path, value) => dbRequest("POST", path, value),
 };

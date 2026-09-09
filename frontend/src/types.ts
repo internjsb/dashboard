@@ -80,3 +80,12 @@ export interface PendingRequest {
   email: string;
   displayName?: string;
 }
+
+export interface AuditEvent {
+  id: string;
+  at: number;
+  actorUid: string | null;
+  actorEmail: string | null;
+  action: string;
+  userAgent: string;
+}
