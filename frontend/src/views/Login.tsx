@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
+import GoogleButton from "../components/GoogleButton";
 import styles from "./Login.module.css";
 
 export default function Login() {
@@ -85,6 +86,8 @@ export default function Login() {
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
+
+        <GoogleButton redirectTo={searchParams.get("redirect") || undefined} />
 
         <p className={styles.alt}>
           Don't have an account? <Link to="/register">Create one</Link>
