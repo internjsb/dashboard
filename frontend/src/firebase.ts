@@ -5,6 +5,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   inMemoryPersistence,
+  browserPopupRedirectResolver,
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getFirestore } from "firebase/firestore";
@@ -33,6 +34,9 @@ export const auth = initializeAuth(app, {
     browserSessionPersistence,
     inMemoryPersistence,
   ],
+  // getAuth() wires this up automatically; initializeAuth() does not, and
+  // without it signInWithPopup/Redirect throw auth/argument-error.
+  popupRedirectResolver: browserPopupRedirectResolver,
 });
 export const rtdb = getDatabase(app);       // used for lightweight/live data
 export const firestore = getFirestore(app); // used for file/document metadata (storage)
