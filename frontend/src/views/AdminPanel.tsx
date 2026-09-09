@@ -51,10 +51,10 @@ export default function AdminPanel() {
     setBusyUid(r.uid);
     try {
       await api.post(`/requests/${r.uid}/approve`);
-      await load();
     } catch (err) {
       window.alert(errorMessage(err, "Failed to approve"));
     } finally {
+      await load(); // server state may have changed even on error (orphan cleanup)
       setBusyUid(null);
     }
   }
@@ -64,10 +64,10 @@ export default function AdminPanel() {
     setBusyUid(r.uid);
     try {
       await api.post(`/requests/${r.uid}/deny`);
-      await load();
     } catch (err) {
       window.alert(errorMessage(err, "Failed to deny"));
     } finally {
+      await load();
       setBusyUid(null);
     }
   }

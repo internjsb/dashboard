@@ -86,12 +86,27 @@ router.get("/requests", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+async function authUserExists(uid) {
+  try {
+    await auth.getUser(uid);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Approve a pending signup -> grants standard "user" access.
 router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res) => {
   const { uid } = req.params;
   try {
     const record = await db.get(`users/${uid}`);
     if (!record) return res.status(404).json({ error: "No such account" });
+
+    if (!(await authUserExists(uid))) {
+      // Firebase account was deleted — drop the orphaned record.
+      await db.remove(`users/${uid}`);
+      return res.status(410).json({ error: "That Firebase account no longer exists — request removed" });
+    }
 
     await auth.setCustomUserClaims(uid, { role: "user" });
     await auth.updateUser(uid, { disabled: false });
@@ -103,12 +118,18 @@ router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res
   }
 });
 
-// Deny a pending signup -> disables the login.
+// Deny a pending signup -> disables the login (or removes an orphaned record
+// whose Firebase account has already been deleted).
 router.post("/requests/:uid/deny", requireAuth, requireAdmin, async (req, res) => {
   const { uid } = req.params;
   try {
     const record = await db.get(`users/${uid}`);
     if (!record) return res.status(404).json({ error: "No such account" });
+
+    if (!(await authUserExists(uid))) {
+      await db.remove(`users/${uid}`);
+      return res.json({ uid, status: "removed" });
+    }
 
     await auth.updateUser(uid, { disabled: true });
     await db.update(`users/${uid}`, { status: "denied" });
