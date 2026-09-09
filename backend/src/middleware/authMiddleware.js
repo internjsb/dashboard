@@ -1,4 +1,4 @@
-import { auth, rtdb } from "../firebaseAdmin.js";
+import { auth, db } from "../firebaseAdmin.js";
 
 const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || "").toLowerCase().trim();
 
@@ -28,8 +28,7 @@ export async function requireAuth(req, res, next) {
 
   try {
     const decoded = await auth.verifyIdToken(token);
-    const snap = await rtdb.ref(`users/${decoded.uid}`).get();
-    const record = snap.exists() ? snap.val() : null;
+    const record = await db.get(`users/${decoded.uid}`);
 
     const superAdmin = isSuperAdminEmail(decoded.email);
     let role = decoded.role || record?.role || "user";

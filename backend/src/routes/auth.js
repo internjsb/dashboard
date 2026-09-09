@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { auth, rtdb } from "../firebaseAdmin.js";
+import { auth, db } from "../firebaseAdmin.js";
 import {
   requireAuth,
   requireAdmin,
@@ -35,7 +35,7 @@ router.patch("/me", requireAuth, async (req, res) => {
 
   try {
     await auth.updateUser(req.user.uid, { displayName });
-    await rtdb.ref(`users/${req.user.uid}/displayName`).set(displayName);
+    await db.set(`users/${req.user.uid}/displayName`, displayName);
     res.json({ displayName });
   } catch (err) {
     console.error(err);
@@ -52,17 +52,16 @@ router.post("/register", requireAuth, async (req, res) => {
   const displayName = (req.body?.displayName || "").trim() || null;
 
   try {
-    const existing = await rtdb.ref(`users/${uid}`).get();
-    if (existing.exists()) {
-      const v = existing.val();
-      return res.json({ status: v.status || "active", role: v.role || "user" });
+    const existing = await db.get(`users/${uid}`);
+    if (existing) {
+      return res.json({ status: existing.status || "active", role: existing.role || "user" });
     }
 
     const status = isSuperAdmin ? "active" : "pending";
     const role = isSuperAdmin ? "admin" : "user";
 
     if (isSuperAdmin) await auth.setCustomUserClaims(uid, { role: "admin" });
-    await rtdb.ref(`users/${uid}`).set({ email, displayName, role, status });
+    await db.set(`users/${uid}`, { email, displayName, role, status });
 
     res.status(201).json({ status, role });
   } catch (err) {
@@ -76,8 +75,7 @@ router.post("/register", requireAuth, async (req, res) => {
 // List accounts still waiting for approval.
 router.get("/requests", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const snap = await rtdb.ref("users").get();
-    const all = snap.exists() ? snap.val() : {};
+    const all = (await db.get("users")) || {};
     const requests = Object.entries(all)
       .filter(([, v]) => v.status === "pending")
       .map(([uid, v]) => ({ uid, email: v.email, displayName: v.displayName || null }));
@@ -92,12 +90,12 @@ router.get("/requests", requireAuth, requireAdmin, async (req, res) => {
 router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res) => {
   const { uid } = req.params;
   try {
-    const snap = await rtdb.ref(`users/${uid}`).get();
-    if (!snap.exists()) return res.status(404).json({ error: "No such account" });
+    const record = await db.get(`users/${uid}`);
+    if (!record) return res.status(404).json({ error: "No such account" });
 
     await auth.setCustomUserClaims(uid, { role: "user" });
     await auth.updateUser(uid, { disabled: false });
-    await rtdb.ref(`users/${uid}`).update({ role: "user", status: "active" });
+    await db.update(`users/${uid}`, { role: "user", status: "active" });
     res.json({ uid, role: "user", status: "active" });
   } catch (err) {
     console.error(err);
@@ -109,11 +107,11 @@ router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res
 router.post("/requests/:uid/deny", requireAuth, requireAdmin, async (req, res) => {
   const { uid } = req.params;
   try {
-    const snap = await rtdb.ref(`users/${uid}`).get();
-    if (!snap.exists()) return res.status(404).json({ error: "No such account" });
+    const record = await db.get(`users/${uid}`);
+    if (!record) return res.status(404).json({ error: "No such account" });
 
     await auth.updateUser(uid, { disabled: true });
-    await rtdb.ref(`users/${uid}`).update({ status: "denied" });
+    await db.update(`users/${uid}`, { status: "denied" });
     res.json({ uid, status: "denied" });
   } catch (err) {
     console.error(err);
@@ -126,11 +124,10 @@ router.post("/requests/:uid/deny", requireAuth, requireAdmin, async (req, res) =
 // Any admin: list every user with role + status.
 router.get("/users", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const [authUsers, roleSnap] = await Promise.all([
+    const [authUsers, records] = await Promise.all([
       auth.listUsers(1000),
-      rtdb.ref("users").get(),
+      db.get("users").then((v) => v || {}),
     ]);
-    const records = roleSnap.exists() ? roleSnap.val() : {};
 
     const users = authUsers.users.map((u) => ({
       uid: u.uid,
@@ -170,7 +167,7 @@ router.patch("/users/:uid/role", requireAuth, requireSuperAdmin, async (req, res
     }
 
     await auth.setCustomUserClaims(uid, { role });
-    await rtdb.ref(`users/${uid}/role`).set(role);
+    await db.set(`users/${uid}/role`, role);
     res.json({ uid, role });
   } catch (err) {
     console.error(err);

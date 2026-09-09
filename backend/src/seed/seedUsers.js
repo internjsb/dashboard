@@ -4,7 +4,7 @@
 //
 // SAFE TO RE-RUN: for accounts that already exist it only touches role/status.
 // It will NOT overwrite a display name or password you've since changed.
-import { auth, rtdb } from "../firebaseAdmin.js";
+import { auth, db } from "../firebaseAdmin.js";
 import { sampleUsers } from "../data/sampleData.js";
 
 async function seed() {
@@ -27,10 +27,10 @@ async function seed() {
 
     await auth.setCustomUserClaims(userRecord.uid, { role: u.role });
 
-    const ref = rtdb.ref(`users/${userRecord.uid}`);
-    if (isNew || !(await ref.get()).exists()) {
+    const path = `users/${userRecord.uid}`;
+    if (isNew || !(await db.get(path))) {
       // Fresh record — write the whole thing.
-      await ref.set({
+      await db.set(path, {
         email: u.email,
         displayName: u.displayName,
         role: u.role,
@@ -38,7 +38,7 @@ async function seed() {
       });
     } else {
       // Existing record — only enforce role + status, keep the rest.
-      await ref.update({ role: u.role, status: "active" });
+      await db.update(path, { role: u.role, status: "active" });
     }
 
     console.log(`  -> role "${u.role}", status "active"`);

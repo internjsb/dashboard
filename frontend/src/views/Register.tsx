@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import axios from "axios";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
@@ -34,23 +35,39 @@ export default function Register() {
     }
 
     setLoading(true);
+
+    // Step 1 — create the Firebase Auth account.
+    let name = displayName.trim();
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
-
-      const name = displayName.trim();
       if (name) await updateProfile(user, { displayName: name });
+    } catch (err) {
+      console.error("Firebase createUser failed:", err);
+      setError(mapError(err instanceof FirebaseError ? err.code : undefined));
+      setLoading(false);
+      return;
+    }
 
-      // Backend writes the mirror record in a "pending" state (or "active" if
-      // this email is the configured super admin).
+    // Step 2 — provision the account record on our backend.
+    try {
       const { data } = await api.post<{ status: UserStatus }>("/register", { displayName: name });
-
-      // Pull a fresh token + status so guards route correctly without a re-login.
       await refreshRole();
-
       navigate(data.status === "active" ? "/dashboard" : "/pending");
     } catch (err) {
-      setError(mapError(err instanceof FirebaseError ? err.code : undefined));
-      console.error(err);
+      console.error("Backend /register failed:", err);
+      let detail = "";
+      if (axios.isAxiosError(err)) {
+        detail = err.response
+          ? ` (server ${err.response.status}${
+              (err.response.data as { error?: string })?.error
+                ? `: ${(err.response.data as { error?: string }).error}`
+                : ""
+            })`
+          : " (no response from the API)";
+      }
+      setError(
+        `Your login was created, but finishing setup failed${detail}. An admin can still approve you, or try signing in.`
+      );
     } finally {
       setLoading(false);
     }
