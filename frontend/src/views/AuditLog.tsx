@@ -132,7 +132,8 @@ export default function AuditLog() {
     setError("");
     try {
       const { data } = await api.get<{ events: AuditEvent[] }>("/audit");
-      setEvents(data.events);
+      // Orphan-cleanup events are internal housekeeping — not worth showing.
+      setEvents(data.events.filter((e) => e.action !== "user.remove_orphan"));
     } catch (err) {
       setError("Couldn't load the audit log. Is the backend running?");
       console.error(err);

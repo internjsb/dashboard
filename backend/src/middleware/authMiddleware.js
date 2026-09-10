@@ -28,6 +28,22 @@ export async function requireAuth(req, res, next) {
 
   try {
     const decoded = await auth.verifyIdToken(token);
+
+    // The token can still be valid for up to an hour after an admin deletes the
+    // account. Confirm the Firebase user is still there so a removed user is
+    // logged out with a clear reason instead of silently losing access.
+    try {
+      const authUser = await auth.getUser(decoded.uid);
+      if (authUser.disabled) {
+        return res.status(401).json({ error: "This account has been disabled", code: "account_disabled" });
+      }
+    } catch (lookupErr) {
+      if (lookupErr.code === "auth/user-not-found") {
+        return res.status(401).json({ error: "This account has been removed", code: "account_removed" });
+      }
+      throw lookupErr;
+    }
+
     const record = await db.get(`users/${decoded.uid}`);
 
     const superAdmin = isSuperAdminEmail(decoded.email);

@@ -87,6 +87,17 @@
   margin: -6px 0 14px;
 }
 
+.notice {
+  background: var(--danger-tint);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin: 0 0 18px;
+}
+
 .submitBtn {
   width: 100%;
   padding: 12px;

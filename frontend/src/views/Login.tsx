@@ -1,21 +1,40 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
 import api from "../api/client";
+import { AUTH_NOTICE_KEY } from "../context/AuthContext";
 import GoogleButton from "../components/GoogleButton";
 import PasswordField from "../components/PasswordField";
 import styles from "./Login.module.css";
+
+const NOTICE_TEXT: Record<string, string> = {
+  removed: "This account has been removed. Contact an administrator.",
+  disabled: "This account has been disabled. Contact an administrator.",
+};
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Show why a session was ended (account removed / disabled), then clear it.
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = sessionStorage.getItem(AUTH_NOTICE_KEY);
+      if (stored) sessionStorage.removeItem(AUTH_NOTICE_KEY);
+    } catch {
+      /* ignore */
+    }
+    if (stored && NOTICE_TEXT[stored]) setNotice(NOTICE_TEXT[stored]);
+  }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -57,6 +76,8 @@ export default function Login() {
 
         <h1>Sign in</h1>
         <p className={styles.subtitle}>Use your assigned email and password to continue.</p>
+
+        {notice && <p className={styles.notice}>{notice}</p>}
 
         <form onSubmit={handleSubmit}>
           <label className={styles.field}>

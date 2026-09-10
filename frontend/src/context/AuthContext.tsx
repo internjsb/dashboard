@@ -7,10 +7,23 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import axios from "axios";
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from "firebase/auth";
 import { auth } from "../firebase";
 import api from "../api/client";
 import type { Role, UserStatus, MeResponse } from "../types";
+
+// Left in sessionStorage when a session is force-ended (account removed or
+// disabled) so the login screen can explain why. Login reads and clears it.
+export const AUTH_NOTICE_KEY = "authNotice";
+
+function setAuthNotice(kind: "removed" | "disabled") {
+  try {
+    sessionStorage.setItem(AUTH_NOTICE_KEY, kind);
+  } catch {
+    /* private mode — the notice is a nicety, not essential */
+  }
+}
 
 // Mirrors the Vue composable's shared, module-level reactive state: one
 // AuthProvider wraps the app, and every component reads the same values via
@@ -51,6 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     readyRef.current = { promise, resolve };
   }
 
+  // Force the session closed and record why, so the login screen can say so.
+  const endSession = useCallback(async (kind: "removed" | "disabled") => {
+    setAuthNotice(kind);
+    await firebaseSignOut(auth).catch(() => {});
+    setUser(null);
+    setDisplayName(null);
+    setRole(null);
+    setStatus(null);
+    setIsSuperAdmin(false);
+  }, []);
+
   // Pull role + approval status from the backend (the source of truth). Falls
   // back to token claims if the API is unreachable, and marks status
   // "unknown" so guards don't hand out access we couldn't verify.
@@ -67,8 +91,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // onAuthStateChanged hands back a locally-cached profile snapshot, so
     // fields like displayName can be stale after they were changed elsewhere.
-    // Pull the current profile from Firebase before trusting it.
-    await firebaseUser.reload().catch(() => {});
+    // Pull the current profile from Firebase before trusting it. A removed or
+    // disabled account makes reload() throw — end the session and leave a note.
+    try {
+      await firebaseUser.reload();
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === "auth/user-not-found" || code === "auth/user-token-expired") {
+        return endSession("removed");
+      }
+      if (code === "auth/user-disabled") {
+        return endSession("disabled");
+      }
+    }
     setDisplayName(firebaseUser.displayName ?? null);
 
     try {
@@ -77,13 +112,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus(data.status);
       setIsSuperAdmin(data.isSuperAdmin);
     } catch (err) {
+      const code = axios.isAxiosError(err)
+        ? (err.response?.data as { code?: string } | undefined)?.code
+        : undefined;
+      if (code === "account_removed") return endSession("removed");
+      if (code === "account_disabled") return endSession("disabled");
+
       console.error("Couldn't load /me:", err);
       const t = await firebaseUser.getIdTokenResult().catch(() => null);
       setRole((t?.claims.role as Role) || null);
       setStatus("unknown");
       setIsSuperAdmin(false);
     }
-  }, []);
+  }, [endSession]);
 
   useEffect(() => {
     // Safety net: if Firebase Auth never reports (seen on the newest Safari
