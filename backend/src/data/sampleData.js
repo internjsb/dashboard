@@ -73,6 +73,27 @@ export const variantsByPeriod = {
 // The plain 30-day view, kept for the /stock endpoint and the overview payload.
 export const variants = variantsByPeriod.monthly;
 
+// --- Stock available page ------------------------------------------------
+// On-hand inventory per finish and per fulfilment country. An item counts as
+// "low" when available stock is at or below its reorder level.
+export const stockAvailable = {
+  byItem: [
+    { finish: "Smart Luggage Lock", available: 168, inbound: 90, reorderLevel: 80 },
+    { finish: "5th GEN Outdoor Smart Padlock", available: 132, inbound: 40, reorderLevel: 90 },
+    { finish: "4th GEN. Outdoor Smart Padlock", available: 24, inbound: 0, reorderLevel: 60 },
+    { finish: "Smart Lockout Tagout Lock (RED)", available: 0, inbound: 150, reorderLevel: 40 },
+    { finish: "Smart Padlock Replacement Shackle", available: 312, inbound: 0, reorderLevel: 100 },
+  ],
+  byCountry: [
+    { country: "United States", warehouse: "Phoenix, AZ · FTW1", available: 214 },
+    { country: "Germany", warehouse: "Leipzig · LEJ1", available: 96 },
+    { country: "United Kingdom", warehouse: "Rugeley · BHX4", available: 63 },
+    { country: "Canada", warehouse: "Toronto · YYZ4", available: 41 },
+    { country: "Australia", warehouse: "Sydney · SYD2", available: 12 },
+    { country: "Japan", warehouse: "Chiba · NRT5", available: 0 },
+  ],
+};
+
 // --- Recent orders (activity feed) ------------------------------
 export const recentOrders = [
   { id: "111-2938471-0011", finish: "Smart Luggage Lock", qty: 1, total: 129.99, status: "shipped", time: "9 min ago" },

@@ -9,6 +9,7 @@ import {
   variantsByPeriod,
   recentOrders,
   salesHistory,
+  stockAvailable,
 } from "../data/sampleData.js";
 
 const router = Router();
@@ -34,6 +35,16 @@ router.get("/stock", requireAuth, requireActive, async (req, res) => {
 // and user-base growth.
 router.get("/sales-history", requireAuth, requireActive, async (req, res) => {
   res.json(salesHistory);
+});
+
+// On-hand inventory per finish and per fulfilment country, with each item
+// flagged low/out so the client can surface a notification.
+router.get("/stock-available", requireAuth, requireActive, async (req, res) => {
+  const byItem = stockAvailable.byItem.map((it) => ({
+    ...it,
+    status: it.available <= 0 ? "out" : it.available <= it.reorderLevel ? "low" : "ok",
+  }));
+  res.json({ byItem, byCountry: stockAvailable.byCountry });
 });
 
 export default router;

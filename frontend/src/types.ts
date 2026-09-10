@@ -97,6 +97,27 @@ export interface SalesHistoryData {
   userGrowth: UserGrowthPoint[];
 }
 
+export type StockStatus = "ok" | "low" | "out";
+
+export interface StockItem {
+  finish: string;
+  available: number;
+  inbound: number;
+  reorderLevel: number;
+  status: StockStatus;
+}
+
+export interface StockCountry {
+  country: string;
+  warehouse: string;
+  available: number;
+}
+
+export interface StockAvailableData {
+  byItem: StockItem[];
+  byCountry: StockCountry[];
+}
+
 export interface MeResponse {
   role: Role | null;
   status: UserStatus | null;

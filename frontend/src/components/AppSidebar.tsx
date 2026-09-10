@@ -2,11 +2,13 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../hooks/useSidebar";
+import { useStock } from "../hooks/useStock";
 import styles from "./AppSidebar.module.css";
 
 export default function AppSidebar() {
   const { user, displayName, role, isSuperAdmin, signOut } = useAuth();
   const { isMobile, collapsed, mobileOpen, closeMobile, setWidth, resetWidth } = useSidebar();
+  const { lowItems } = useStock();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -74,6 +76,15 @@ export default function AppSidebar() {
           <NavLink to="/sales-history" className={navItemClass}>
             <span className={styles.dot} />
             Sales history
+          </NavLink>
+          <NavLink to="/stock-available" className={navItemClass}>
+            <span className={styles.dot} />
+            Stock available
+            {lowItems.length > 0 && (
+              <span className={styles.badge} title={`${lowItems.length} item(s) low on stock`}>
+                {lowItems.length}
+              </span>
+            )}
           </NavLink>
           <NavLink to="/profile" className={navItemClass}>
             <span className={styles.dot} />

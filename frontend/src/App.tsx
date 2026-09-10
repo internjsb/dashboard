@@ -8,6 +8,7 @@ const Register = lazy(() => import("./views/Register"));
 const Pending = lazy(() => import("./views/Pending"));
 const Dashboard = lazy(() => import("./views/Dashboard"));
 const SalesHistory = lazy(() => import("./views/SalesHistory"));
+const StockAvailable = lazy(() => import("./views/StockAvailable"));
 const Profile = lazy(() => import("./views/Profile"));
 const AdminPanel = lazy(() => import("./views/AdminPanel"));
 const AuditLog = lazy(() => import("./views/AuditLog"));
@@ -44,6 +45,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <SalesHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/stock-available"
+              element={
+                <ProtectedRoute>
+                  <StockAvailable />
                 </ProtectedRoute>
               }
             />
