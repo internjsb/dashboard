@@ -8,6 +8,7 @@ import {
 import { FirebaseError } from "firebase/app";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
+import PasswordField from "../components/PasswordField";
 import api from "../api/client";
 import { auth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +23,7 @@ function apiError(err: unknown, fallback: string): string {
 }
 
 export default function Profile() {
-  const { user, displayName, role, status, isSuperAdmin, refreshProfile } = useAuth();
+  const { user, displayName, role, isSuperAdmin, refreshProfile } = useAuth();
 
   const email = user?.email ?? "";
   const initials = (displayName || email || "?").slice(0, 2).toUpperCase();
@@ -131,16 +132,8 @@ export default function Profile() {
                 </span>
               </dd>
 
-              <dt>Status</dt>
-              <dd>
-                <span className={`${styles.pill} ${(status && styles[status]) || ""}`}>{status ?? "—"}</span>
-              </dd>
-
               <dt>Member since</dt>
               <dd>{memberSince}</dd>
-
-              <dt>User ID</dt>
-              <dd>{user?.uid ?? "—"}</dd>
             </dl>
           </section>
 
@@ -177,8 +170,7 @@ export default function Profile() {
             <form onSubmit={savePassword}>
               <label className={styles.field}>
                 <span>Current password</span>
-                <input
-                  type="password"
+                <PasswordField
                   autoComplete="current-password"
                   value={current}
                   onChange={(e) => setCurrent(e.target.value)}
@@ -188,8 +180,7 @@ export default function Profile() {
               <div className={styles.row2}>
                 <label className={styles.field}>
                   <span>New password</span>
-                  <input
-                    type="password"
+                  <PasswordField
                     autoComplete="new-password"
                     value={next}
                     onChange={(e) => setNext(e.target.value)}
@@ -198,8 +189,7 @@ export default function Profile() {
                 </label>
                 <label className={styles.field}>
                   <span>Confirm new password</span>
-                  <input
-                    type="password"
+                  <PasswordField
                     autoComplete="new-password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}

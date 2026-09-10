@@ -1,4 +1,5 @@
 import type { OrderRow, OrderStatus } from "../types";
+import ExportCsvButton from "./ExportCsvButton";
 import styles from "./RecentOrders.module.css";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -15,7 +16,21 @@ interface Props {
 export default function RecentOrders({ orders }: Props) {
   return (
     <div className={styles.card}>
-      <h3>Recent orders</h3>
+      <div className={styles.head}>
+        <h3>Recent orders</h3>
+        <ExportCsvButton
+          filename="recent-orders"
+          rows={orders}
+          columns={[
+            { header: "Order ID", value: (o) => o.id },
+            { header: "Item", value: (o) => o.finish },
+            { header: "Qty", value: (o) => o.qty },
+            { header: "Total", value: (o) => o.total.toFixed(2) },
+            { header: "Status", value: (o) => STATUS_LABEL[o.status] },
+            { header: "Time", value: (o) => o.time },
+          ]}
+        />
+      </div>
       <ul>
         {orders.map((o) => (
           <li key={o.id}>

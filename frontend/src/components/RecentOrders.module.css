@@ -10,6 +10,18 @@
   margin-bottom: 16px;
 }
 
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.head h3 {
+  margin-bottom: 0;
+}
+
 .card ul {
   list-style: none;
   margin: 0;

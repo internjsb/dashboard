@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { CategorySlice } from "../types";
 import styles from "./CategoryDonut.module.css";
 
@@ -26,6 +26,7 @@ interface Props {
   title?: string;
   subtitle?: string;
   centerLabel?: string;
+  action?: ReactNode;
 }
 
 export default function CategoryDonut({
@@ -33,6 +34,7 @@ export default function CategoryDonut({
   title = "Sales by category",
   subtitle = "Last 30 days",
   centerLabel = "total revenue",
+  action,
 }: Props) {
   const titleId = useId();
   const [hovered, setHovered] = useState<number | null>(null);
@@ -58,8 +60,11 @@ export default function CategoryDonut({
   return (
     <div className={styles.card}>
       <div className={styles.header}>
-        <h3 id={titleId}>{title}</h3>
-        <span className={styles.sub}>{subtitle}</span>
+        <div className={styles.headerText}>
+          <h3 id={titleId}>{title}</h3>
+          <span className={styles.sub}>{subtitle}</span>
+        </div>
+        {action}
       </div>
 
       <div className={styles.body}>

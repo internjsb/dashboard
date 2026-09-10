@@ -132,6 +132,7 @@
 .pill.active { background: var(--success-tint); color: var(--success); }
 .pill.pending { background: var(--warning-tint); color: var(--warning); }
 .pill.denied { background: var(--danger-tint); color: var(--danger); }
+.pill.disabled { background: var(--danger-tint); color: var(--danger); }
 
 .actions { text-align: right; white-space: nowrap; }
 
@@ -145,11 +146,16 @@
   white-space: nowrap;
 }
 
+.actions button + button { margin-left: 6px; }
+
 .userTable th,
 .joined { white-space: nowrap; }
 
 .actions .promote { border-color: var(--accent); color: var(--accent-strong); }
 .actions .demote { border-color: var(--danger); color: var(--danger); }
+.actions .disable { border-color: var(--warning); color: var(--warning); }
+.actions .enable { border-color: var(--success); color: var(--success); }
+.actions .remove { border-color: var(--danger); color: #fff; background: var(--danger); }
 .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .locked {
@@ -170,4 +176,56 @@
 .approve { border-color: var(--accent); color: var(--accent-strong); }
 .deny { border-color: var(--danger); color: var(--danger); }
 .approve:disabled, .deny:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Remove-user confirmation modal ------------------------------------- */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.modalTitle {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.modalBody {
+  margin: 0 0 20px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modalActions button {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+
+.cancel { background: var(--surface); color: var(--text); }
+.confirm { background: var(--danger); border-color: var(--danger); color: #fff; }
 

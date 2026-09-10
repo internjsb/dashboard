@@ -7,6 +7,7 @@ import { auth } from "../firebase";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import GoogleButton from "../components/GoogleButton";
+import PasswordField from "../components/PasswordField";
 import type { UserStatus } from "../types";
 import styles from "./Register.module.css";
 
@@ -125,8 +126,7 @@ export default function Register() {
 
           <label className={styles.field}>
             <span>Password</span>
-            <input
-              type="password"
+            <PasswordField
               required
               autoComplete="new-password"
               placeholder="At least 6 characters"
@@ -137,8 +137,7 @@ export default function Register() {
 
           <label className={styles.field}>
             <span>Confirm password</span>
-            <input
-              type="password"
+            <PasswordField
               required
               autoComplete="new-password"
               placeholder="••••••••"

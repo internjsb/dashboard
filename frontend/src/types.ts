@@ -3,7 +3,7 @@
 // shapes for the data the backend returns.
 
 export type Role = "admin" | "user";
-export type UserStatus = "pending" | "active" | "denied" | "unknown";
+export type UserStatus = "pending" | "active" | "denied" | "disabled" | "unknown";
 
 export interface StatItem {
   label: string;
@@ -40,6 +40,8 @@ export interface VariantRow {
   rating: number;
 }
 
+export type SalesPeriod = "daily" | "weekly" | "monthly" | "yearly";
+
 export type OrderStatus = "pending" | "shipped" | "delivered" | "returned";
 
 export interface OrderRow {
@@ -57,7 +59,42 @@ export interface DashboardOverview {
   revenueTrend: RevenuePoint[];
   salesByFinish: CategorySlice[];
   variants: VariantRow[];
+  variantsByPeriod: Record<SalesPeriod, VariantRow[]>;
   recentOrders: OrderRow[];
+}
+
+export interface MonthlySalesPoint {
+  month: string;
+  revenue: number;
+  units: number;
+}
+
+export interface TopItemRow {
+  name: string;
+  views: number;
+  clicks: number;
+  addToCart: number;
+  purchases: number;
+}
+
+export interface CountrySalesRow {
+  country: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface UserGrowthPoint {
+  month: string;
+  total: number;
+  added: number;
+}
+
+export interface SalesHistoryData {
+  summary: Record<string, StatItem>;
+  monthlySales: MonthlySalesPoint[];
+  topItems: TopItemRow[];
+  topCountries: CountrySalesRow[];
+  userGrowth: UserGrowthPoint[];
 }
 
 export interface MeResponse {
@@ -72,6 +109,7 @@ export interface UserRecord {
   role: Role;
   status: UserStatus;
   isSuperAdmin: boolean;
+  disabled?: boolean;
   createdAt: string | null;
 }
 
@@ -87,5 +125,6 @@ export interface AuditEvent {
   actorUid: string | null;
   actorEmail: string | null;
   action: string;
+  detail?: Record<string, unknown> | null;
   userAgent: string;
 }

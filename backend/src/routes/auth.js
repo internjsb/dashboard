@@ -227,4 +227,66 @@ router.patch("/users/:uid/role", requireAuth, requireSuperAdmin, async (req, res
   }
 });
 
+// Any admin: disable (suspend) or re-enable an account. A disabled user keeps
+// their record but can't sign in. The super admin and your own account can't be
+// targeted.
+router.patch("/users/:uid/disabled", requireAuth, requireAdmin, async (req, res) => {
+  const { uid } = req.params;
+  const disabled = req.body?.disabled === true;
+
+  if (uid === req.user.uid) {
+    return res.status(400).json({ error: "You can't disable your own account" });
+  }
+
+  try {
+    const target = await auth.getUser(uid);
+    if (isSuperAdminEmail(target.email)) {
+      return res.status(403).json({ error: "The super admin can't be disabled" });
+    }
+
+    await auth.updateUser(uid, { disabled });
+    await db.update(`users/${uid}`, { status: disabled ? "disabled" : "active" });
+    await audit(req, disabled ? "user.disable" : "user.enable", {
+      targetUid: uid,
+      email: target.email,
+    });
+    res.json({ uid, disabled, status: disabled ? "disabled" : "active" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update account" });
+  }
+});
+
+// Any admin: permanently delete a user — the Firebase Auth account and the RTDB
+// mirror record. The super admin can't be removed, nor can you remove yourself.
+router.delete("/users/:uid", requireAuth, requireAdmin, async (req, res) => {
+  const { uid } = req.params;
+
+  if (uid === req.user.uid) {
+    return res.status(400).json({ error: "You can't remove your own account" });
+  }
+
+  try {
+    let email = null;
+    try {
+      const target = await auth.getUser(uid);
+      email = target.email;
+      if (isSuperAdminEmail(target.email)) {
+        return res.status(403).json({ error: "The super admin can't be removed" });
+      }
+      await auth.deleteUser(uid);
+    } catch (err) {
+      if (err?.code !== "auth/user-not-found") throw err;
+      // Auth account already gone — fall through and clean up the record.
+    }
+
+    await db.remove(`users/${uid}`);
+    await audit(req, "user.remove", { targetUid: uid, email });
+    res.json({ uid, removed: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to remove user" });
+  }
+});
+
 export default router;

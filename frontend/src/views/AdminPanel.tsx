@@ -4,7 +4,7 @@ import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import type { UserRecord, PendingRequest, Role } from "../types";
+import type { UserRecord, PendingRequest, Role, UserStatus } from "../types";
 import styles from "./AdminPanel.module.css";
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -24,6 +24,7 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyUid, setBusyUid] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<UserRecord | null>(null);
 
   async function load() {
     setLoading(true);
@@ -84,6 +85,36 @@ export default function AdminPanel() {
     }
   }
 
+  async function setDisabled(target: UserRecord, disabled: boolean) {
+    setBusyUid(target.uid);
+    try {
+      const { data } = await api.patch<{ status: UserStatus }>(
+        `/users/${target.uid}/disabled`,
+        { disabled },
+      );
+      setUsers((prev) =>
+        prev.map((u) => (u.uid === target.uid ? { ...u, disabled, status: data.status } : u)),
+      );
+    } catch (err) {
+      window.alert(errorMessage(err, "Failed to update account"));
+    } finally {
+      setBusyUid(null);
+    }
+  }
+
+  async function removeUser(target: UserRecord) {
+    setConfirmRemove(null);
+    setBusyUid(target.uid);
+    try {
+      await api.delete(`/users/${target.uid}`);
+      setUsers((prev) => prev.filter((u) => u.uid !== target.uid));
+    } catch (err) {
+      window.alert(errorMessage(err, "Failed to remove user"));
+    } finally {
+      setBusyUid(null);
+    }
+  }
+
   function formatDate(iso: string | null): string {
     if (!iso) return "—";
     return new Date(iso).toLocaleDateString();
@@ -97,12 +128,10 @@ export default function AdminPanel() {
         <main className={styles.content}>
           <p className={styles.intro}>
             Approve or deny new signups below.{" "}
-            {isSuperAdmin ? (
+            {isSuperAdmin && (
               <>
                 As the super admin you can also grant or revoke <strong>admin</strong> access.
               </>
-            ) : (
-              <>Only the super admin can grant or revoke <strong>admin</strong> access.</>
             )}
           </p>
 
@@ -149,7 +178,7 @@ export default function AdminPanel() {
                     <th>Role</th>
                     <th>Status</th>
                     <th>Joined</th>
-                    {isSuperAdmin && <th></th>}
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -173,37 +202,89 @@ export default function AdminPanel() {
                         <span className={`${styles.pill} ${styles[u.status] || ""}`}>{u.status}</span>
                       </td>
                       <td className={styles.joined}>{formatDate(u.createdAt)}</td>
-                      {isSuperAdmin && (
-                        <td className={styles.actions}>
-                          {u.isSuperAdmin ? (
-                            <span className={styles.locked}>locked</span>
-                          ) : u.uid === currentUid ? (
-                            <span className={styles.locked}>you</span>
-                          ) : u.role !== "admin" ? (
+                      <td className={styles.actions}>
+                        {u.isSuperAdmin ? (
+                          <span className={styles.locked}>locked</span>
+                        ) : u.uid === currentUid ? (
+                          <span className={styles.locked}>you</span>
+                        ) : (
+                          <>
+                            {isSuperAdmin &&
+                              (u.role !== "admin" ? (
+                                <button
+                                  className={styles.promote}
+                                  disabled={busyUid === u.uid || u.status !== "active"}
+                                  onClick={() => changeRole(u, "admin")}
+                                >
+                                  Make admin
+                                </button>
+                              ) : (
+                                <button
+                                  className={styles.demote}
+                                  disabled={busyUid === u.uid}
+                                  onClick={() => changeRole(u, "user")}
+                                >
+                                  Revoke admin
+                                </button>
+                              ))}
+                            {u.status === "disabled" || u.status === "denied" ? (
+                              <button
+                                className={styles.enable}
+                                disabled={busyUid === u.uid}
+                                onClick={() => setDisabled(u, false)}
+                              >
+                                Enable
+                              </button>
+                            ) : (
+                              <button
+                                className={styles.disable}
+                                disabled={busyUid === u.uid}
+                                onClick={() => setDisabled(u, true)}
+                              >
+                                Disable
+                              </button>
+                            )}
                             <button
-                              className={styles.promote}
-                              disabled={busyUid === u.uid || u.status !== "active"}
-                              onClick={() => changeRole(u, "admin")}
-                            >
-                              Make admin
-                            </button>
-                          ) : (
-                            <button
-                              className={styles.demote}
+                              className={styles.remove}
                               disabled={busyUid === u.uid}
-                              onClick={() => changeRole(u, "user")}
+                              onClick={() => setConfirmRemove(u)}
                             >
-                              Revoke admin
+                              Remove
                             </button>
-                          )}
-                        </td>
-                      )}
+                          </>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               </div>
             </>
+          )}
+
+          {confirmRemove && (
+            <div
+              className={styles.modalOverlay}
+              role="dialog"
+              aria-modal="true"
+              onClick={() => setConfirmRemove(null)}
+            >
+              <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                <h3 className={styles.modalTitle}>Remove user</h3>
+                <p className={styles.modalBody}>
+                  You are removing <strong>{confirmRemove.email}</strong> permanently. Do you wish to
+                  continue the process?
+                </p>
+                <div className={styles.modalActions}>
+                  <button className={styles.cancel} onClick={() => setConfirmRemove(null)}>
+                    Cancel
+                  </button>
+                  <button className={styles.confirm} onClick={() => removeUser(confirmRemove)}>
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>

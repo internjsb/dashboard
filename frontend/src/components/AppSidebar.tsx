@@ -71,6 +71,10 @@ export default function AppSidebar() {
             <span className={styles.dot} />
             Dashboard
           </NavLink>
+          <NavLink to="/sales-history" className={navItemClass}>
+            <span className={styles.dot} />
+            Sales history
+          </NavLink>
           <NavLink to="/profile" className={navItemClass}>
             <span className={styles.dot} />
             Profile

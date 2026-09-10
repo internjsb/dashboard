@@ -4,7 +4,7 @@ import AppTopbar from "../components/AppTopbar";
 import ProductHero from "../components/ProductHero";
 import StatCard from "../components/StatCard";
 import RevenueChart from "../components/RevenueChart";
-import CategoryDonut from "../components/CategoryDonut";
+import SalesByFinishDonut from "../components/SalesByFinishDonut";
 import VariantCards from "../components/VariantCards";
 import RecentOrders from "../components/RecentOrders";
 import api from "../api/client";
@@ -17,6 +17,7 @@ const EMPTY_OVERVIEW: DashboardOverview = {
   revenueTrend: [],
   salesByFinish: [],
   variants: [],
+  variantsByPeriod: { daily: [], weekly: [], monthly: [], yearly: [] },
   recentOrders: [],
 };
 
@@ -67,15 +68,11 @@ export default function Dashboard() {
 
               <section className={styles.chartGrid}>
                 <RevenueChart data={overview.revenueTrend} />
-                <CategoryDonut
-                  data={overview.salesByFinish}
-                  title="Sales by finish"
-                  subtitle="Revenue share · last 30 days"
-                />
+                <SalesByFinishDonut variantsByPeriod={overview.variantsByPeriod} />
               </section>
 
               <section className={styles.block}>
-                <VariantCards variants={overview.variants} />
+                <VariantCards variantsByPeriod={overview.variantsByPeriod} />
               </section>
 
               <section className={styles.block}>

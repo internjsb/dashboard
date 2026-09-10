@@ -5,6 +5,7 @@ import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
 import api from "../api/client";
 import GoogleButton from "../components/GoogleButton";
+import PasswordField from "../components/PasswordField";
 import styles from "./Login.module.css";
 
 export default function Login() {
@@ -72,8 +73,7 @@ export default function Login() {
 
           <label className={styles.field}>
             <span>Password</span>
-            <input
-              type="password"
+            <PasswordField
               required
               autoComplete="current-password"
               placeholder="••••••••"

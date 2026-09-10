@@ -12,11 +12,72 @@ const ACTION_LABEL: Record<string, string> = {
   "user.approve": "Approved user",
   "user.deny": "Denied user",
   "user.role_change": "Changed role",
+  "user.disable": "Disabled account",
+  "user.enable": "Enabled account",
+  "user.remove": "Removed user",
   "user.remove_orphan": "Removed orphaned request",
 };
 
 function label(action: string): string {
   return ACTION_LABEL[action] ?? action;
+}
+
+type Detail = Record<string, unknown> | null | undefined;
+
+function str(d: Detail, key: string): string | null {
+  const v = d?.[key];
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+// "alice@example.com" -> "alice". Leaves anything without an "@" untouched.
+function username(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const at = value.indexOf("@");
+  return at > 0 ? value.slice(0, at) : value;
+}
+
+const ROLE_NAME: Record<string, string> = {
+  admin: "an admin",
+  user: "a standard user",
+};
+
+// A plain-English sentence describing exactly what happened, using the event's
+// stored detail. Falls back to the short action label when detail is missing.
+function describe(e: AuditEvent): string {
+  const d = e.detail;
+  const who = username(str(d, "email")) || str(d, "targetUid") || "this person";
+
+  switch (e.action) {
+    case "auth.login": {
+      const method = str(d, "method");
+      return method === "google" ? "Signed in with Google" : "Signed in";
+    }
+    case "auth.signup": {
+      const name = username(str(d, "email")) || "a new account";
+      const status = str(d, "status");
+      return status === "active"
+        ? `Registered ${name} (auto-approved)`
+        : `Registered ${name} (awaiting approval)`;
+    }
+    case "user.approve":
+      return `Approved ${who} for access`;
+    case "user.deny":
+      return `Denied ${who} access`;
+    case "user.disable":
+      return `Disabled ${who}'s account`;
+    case "user.enable":
+      return `Re-enabled ${who}'s account`;
+    case "user.remove":
+      return `Removed ${who}'s account`;
+    case "user.remove_orphan":
+      return `Removed ${who}'s orphaned request`;
+    case "user.role_change": {
+      const role = str(d, "role") || "";
+      return `Changed ${who} to ${ROLE_NAME[role] || `"${role}"`}`;
+    }
+    default:
+      return label(e.action);
+  }
 }
 
 function deviceFromUA(ua: string): string {
@@ -123,9 +184,11 @@ export default function AuditLog() {
                           <span className={styles.date}>{t.date}</span>
                           <span className={styles.time}>{t.time}</span>
                         </td>
-                        <td className={styles.who}>{e.actorEmail || e.actorUid || "—"}</td>
+                        <td className={styles.who} title={e.actorEmail || undefined}>
+                          {username(e.actorEmail) || e.actorUid || "—"}
+                        </td>
                         <td>
-                          <span className={styles.action}>{label(e.action)}</span>
+                          <span className={styles.action}>{describe(e)}</span>
                         </td>
                         <td className={styles.device} title={e.userAgent}>{deviceFromUA(e.userAgent)}</td>
                       </tr>

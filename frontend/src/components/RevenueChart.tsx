@@ -1,9 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { RevenuePoint } from "../types";
 import styles from "./RevenueChart.module.css";
 
 interface RevenueChartProps {
   data: RevenuePoint[];
+  title?: string;
+  subtitle?: string;
+  deltaSuffix?: string;
+  format?: "currency" | "number";
+  action?: ReactNode;
 }
 
 const WIDTH = 560;
@@ -14,8 +19,20 @@ function money(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-export default function RevenueChart({ data }: RevenueChartProps) {
+function count(n: number): string {
+  return Math.round(n).toLocaleString();
+}
+
+export default function RevenueChart({
+  data,
+  title = "Revenue trend",
+  subtitle,
+  deltaSuffix = "MoM",
+  format = "currency",
+  action,
+}: RevenueChartProps) {
   const [hover, setHover] = useState<number | null>(null);
+  const fmt = format === "currency" ? money : count;
 
   const { plotted, max, min } = useMemo(() => {
     const values = data.map((d) => d.value);
@@ -51,14 +68,17 @@ export default function RevenueChart({ data }: RevenueChartProps) {
     <div className={styles.chartCard}>
       <div className={styles.chartHeader}>
         <div>
-          <h3>Revenue trend</h3>
-          <span className={styles.chartSub}>Last {data.length} months</span>
+          <h3>{title}</h3>
+          <span className={styles.chartSub}>{subtitle ?? `Last ${data.length} months`}</span>
         </div>
-        <div className={styles.headline}>
-          <span className={styles.headValue}>{money(latest)}</span>
-          <span className={`${styles.headDelta} ${up ? styles.up : styles.down}`}>
-            {up ? "▲" : "▼"} {Math.abs(momDelta).toFixed(1)}% MoM
-          </span>
+        <div className={styles.headerRight}>
+          <div className={styles.headline}>
+            <span className={styles.headValue}>{fmt(latest)}</span>
+            <span className={`${styles.headDelta} ${up ? styles.up : styles.down}`}>
+              {up ? "▲" : "▼"} {Math.abs(momDelta).toFixed(1)}% {deltaSuffix}
+            </span>
+          </div>
+          {action}
         </div>
       </div>
 
@@ -100,13 +120,13 @@ export default function RevenueChart({ data }: RevenueChartProps) {
             className={styles.tooltip}
             style={{ left: `${(active.x / WIDTH) * 100}%`, top: `${(active.y / HEIGHT) * 100}%` }}
           >
-            <strong>{money(active.value)}</strong>
+            <strong>{fmt(active.value)}</strong>
             <span>{active.month}</span>
           </div>
         )}
 
-        <div className={styles.axisMax}>{money(max)}</div>
-        <div className={styles.axisMin}>{money(min)}</div>
+        <div className={styles.axisMax}>{fmt(max)}</div>
+        <div className={styles.axisMin}>{fmt(min)}</div>
       </div>
 
       <div className={styles.chartLabels}>
