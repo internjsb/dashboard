@@ -94,7 +94,7 @@ export default function Register() {
       <div className={styles.loginCard}>
         <div className={styles.brand}>
           <div className={styles.brandMark}>A</div>
-          <span>Amazon Ops Console</span>
+          <span>Amazon Dashboard</span>
         </div>
 
         <h1>Create account</h1>
