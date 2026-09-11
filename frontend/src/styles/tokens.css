@@ -3,18 +3,18 @@
      Deliberately avoiding warm-cream/terracotta and near-black+neon defaults. */
   --bg: #EEF1F6;
   --surface: #FFFFFF;
-  --sidebar-bg: #366b72;
-  --sidebar-bg-hover: #2c5c62;
-  --sidebar-text: #93A0BD;
+  --sidebar-bg: #5C2F3A;
+  --sidebar-bg-hover: #4B2730;
+  --sidebar-text: #C9A9AF;
   --sidebar-text-active: #FFFFFF;
   --border: #E1E5EE;
   --text-primary: #101526;
   --text-secondary: #5C6478;
   --text-muted: #8891A4;
 
-  --accent: #0E8F7F;
-  --accent-strong: #0B7568;
-  --accent-tint: #E3F4F1;
+  --accent: #CF8181;
+  --accent-strong: #AE6C6C;
+  --accent-tint: #F9F0F0;
 
   --success: #1C9A63;
   --success-tint: #E6F6EE;
