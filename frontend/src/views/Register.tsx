@@ -98,7 +98,7 @@ export default function Register() {
         </div>
 
         <h1>Create account</h1>
-        <p className={styles.subtitle}>An administrator has to approve new accounts before you can sign in.</p>
+        <p className={styles.subtitle}>Admin will approve after the account has created. </p>
 
         <form onSubmit={handleSubmit}>
           <label className={styles.field}>
