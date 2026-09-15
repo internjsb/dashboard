@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
+import DataTable, { type DataTableColumn } from "../components/DataTable";
 import api from "../api/client";
 import type { AuditEvent } from "../types";
 import styles from "./AuditLog.module.css";
@@ -16,6 +17,7 @@ const ACTION_LABEL: Record<string, string> = {
   "user.enable": "Enabled account",
   "user.remove": "Removed user",
   "user.remove_orphan": "Removed orphaned request",
+  "user.department_change": "Changed department",
 };
 
 function label(action: string): string {
@@ -41,6 +43,13 @@ const ROLE_NAME: Record<string, string> = {
   user: "a standard user",
 };
 
+const DEPARTMENT_NAME: Record<string, string> = {
+  super_user: "Super user",
+  sales: "Sales",
+  supplychain: "Supply chain",
+  finance: "Finance",
+};
+
 // A plain-English sentence describing exactly what happened, using the event's
 // stored detail. Falls back to the short action label when detail is missing.
 function describe(e: AuditEvent): string {
@@ -59,8 +68,12 @@ function describe(e: AuditEvent): string {
         ? `Registered ${name} (auto-approved)`
         : `Registered ${name} (awaiting approval)`;
     }
-    case "user.approve":
-      return `Approved ${who} for access`;
+    case "user.approve": {
+      const dept = str(d, "department");
+      return dept
+        ? `Approved ${who} for access (${DEPARTMENT_NAME[dept] || dept})`
+        : `Approved ${who} for access`;
+    }
     case "user.deny":
       return `Denied ${who} access`;
     case "user.disable":
@@ -74,6 +87,10 @@ function describe(e: AuditEvent): string {
     case "user.role_change": {
       const role = str(d, "role") || "";
       return `Changed ${who} to ${ROLE_NAME[role] || `"${role}"`}`;
+    }
+    case "user.department_change": {
+      const dept = str(d, "department");
+      return dept ? `Set ${who}'s department to ${DEPARTMENT_NAME[dept] || dept}` : `Cleared ${who}'s department`;
     }
     default:
       return label(e.action);
@@ -146,6 +163,44 @@ export default function AuditLog() {
     load();
   }, []);
 
+  const columns: DataTableColumn<AuditEvent>[] = [
+    {
+      key: "when",
+      header: "When",
+      accessor: (e) => e.at,
+      searchable: false,
+      render: (e) => {
+        const t = when(e.at);
+        return (
+          <span className={styles.when} title={t.rel}>
+            <span className={styles.date}>{t.date}</span>
+            <span className={styles.time}>{t.time}</span>
+          </span>
+        );
+      },
+    },
+    {
+      key: "who",
+      header: "Who",
+      accessor: (e) => username(e.actorEmail) || e.actorUid || "",
+      className: styles.who,
+      render: (e) => <span title={e.actorEmail || undefined}>{username(e.actorEmail) || e.actorUid || "—"}</span>,
+    },
+    {
+      key: "action",
+      header: "Action",
+      accessor: (e) => describe(e),
+      render: (e) => <span className={styles.action}>{describe(e)}</span>,
+    },
+    {
+      key: "device",
+      header: "Device",
+      accessor: (e) => deviceFromUA(e.userAgent),
+      className: styles.device,
+      render: (e) => <span title={e.userAgent}>{deviceFromUA(e.userAgent)}</span>,
+    },
+  ];
+
   return (
     <div className="app-shell">
       <AppSidebar />
@@ -166,38 +221,13 @@ export default function AuditLog() {
           ) : events.length === 0 ? (
             <p className={styles.state}>No activity recorded yet.</p>
           ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>When</th>
-                    <th>Who</th>
-                    <th>Action</th>
-                    <th>Device</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map((e) => {
-                    const t = when(e.at);
-                    return (
-                      <tr key={e.id}>
-                        <td className={styles.when} title={t.rel}>
-                          <span className={styles.date}>{t.date}</span>
-                          <span className={styles.time}>{t.time}</span>
-                        </td>
-                        <td className={styles.who} title={e.actorEmail || undefined}>
-                          {username(e.actorEmail) || e.actorUid || "—"}
-                        </td>
-                        <td>
-                          <span className={styles.action}>{describe(e)}</span>
-                        </td>
-                        <td className={styles.device} title={e.userAgent}>{deviceFromUA(e.userAgent)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={columns}
+              rows={events}
+              rowKey={(e) => e.id}
+              showSearch={false}
+              emptyMessage="No events recorded yet."
+            />
           )}
         </main>
       </div>

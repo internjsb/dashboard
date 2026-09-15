@@ -5,6 +5,10 @@
 export type Role = "admin" | "user";
 export type UserStatus = "pending" | "active" | "denied" | "disabled" | "unknown";
 
+// Department tag — separate from Role above. Purely informational (which
+// team someone's on), assignable by any admin.
+export type Department = "super_user" | "sales" | "supplychain" | "finance";
+
 export interface StatItem {
   label: string;
   value: number;
@@ -113,14 +117,80 @@ export interface StockCountry {
   available: number;
 }
 
+export interface InventoryRow {
+  finish: string;
+  warehouse: string;
+  country: string;
+  onHand: number;
+  reserved: number;
+  available: number;
+}
+
+export type ShipmentStatus = "in_transit" | "customs" | "delayed" | "arrived";
+
+export interface ShipmentRow {
+  id: string;
+  finish: string;
+  quantity: number;
+  origin: string;
+  destination: string;
+  carrier: string;
+  eta: string;
+  status: ShipmentStatus;
+}
+
 export interface StockAvailableData {
   byItem: StockItem[];
   byCountry: StockCountry[];
+  inventory: InventoryRow[];
+  shipments: ShipmentRow[];
+}
+
+// --- Finance page ----------------------------------------------------
+export type TransactionType = "sale" | "refund" | "payout" | "fee" | "advertising";
+export type TransactionStatus = "completed" | "pending";
+
+export interface TransactionRow {
+  id: string;
+  date: string;
+  type: TransactionType;
+  description: string;
+  amount: number;
+  status: TransactionStatus;
+}
+
+export type TaxStatus = "filed" | "pending";
+
+export interface TaxRow {
+  id: string;
+  jurisdiction: string;
+  period: string;
+  taxableSales: number;
+  taxCollected: number;
+  status: TaxStatus;
+}
+
+export type ReportStatus = "final" | "draft";
+
+export interface FinanceReportRow {
+  id: string;
+  name: string;
+  period: string;
+  type: string;
+  generatedOn: string;
+  status: ReportStatus;
+}
+
+export interface FinanceData {
+  transactions: TransactionRow[];
+  taxes: TaxRow[];
+  reports: FinanceReportRow[];
 }
 
 export interface MeResponse {
   role: Role | null;
   status: UserStatus | null;
+  department: Department | null;
   isSuperAdmin: boolean;
 }
 
@@ -129,6 +199,7 @@ export interface UserRecord {
   email: string;
   role: Role;
   status: UserStatus;
+  department?: Department | null;
   isSuperAdmin: boolean;
   disabled?: boolean;
   createdAt: string | null;
@@ -138,6 +209,7 @@ export interface PendingRequest {
   uid: string;
   email: string;
   displayName?: string;
+  department?: Department | null;
 }
 
 export interface AuditEvent {

@@ -10,6 +10,10 @@ import {
 
 const router = Router();
 
+// Department tag — separate from the admin/user access-control role. Purely
+// informational for now (who's on which team), editable by any admin.
+const DEPARTMENTS = ["super_user", "sales", "supplychain", "finance"];
+
 // The client pings this right after a successful sign-in so the audit log
 // records who logged in, from where, and on what device.
 router.post("/events/login", requireAuth, async (req, res) => {
@@ -42,6 +46,7 @@ router.get("/me", requireAuth, async (req, res) => {
     email: req.user.email,
     role: req.user.role,
     status: req.user.status,
+    department: req.user.department,
     isSuperAdmin: req.user.isSuperAdmin,
   });
 });
@@ -104,7 +109,12 @@ router.get("/requests", requireAuth, requireAdmin, async (req, res) => {
     const all = (await db.get("users")) || {};
     const requests = Object.entries(all)
       .filter(([, v]) => v.status === "pending")
-      .map(([uid, v]) => ({ uid, email: v.email, displayName: v.displayName || null }));
+      .map(([uid, v]) => ({
+        uid,
+        email: v.email,
+        displayName: v.displayName || null,
+        department: v.department || null,
+      }));
     res.json({ requests });
   } catch (err) {
     console.error(err);
@@ -121,9 +131,16 @@ async function authUserExists(uid) {
   }
 }
 
-// Approve a pending signup -> grants standard "user" access.
+// Approve a pending signup -> grants standard "user" access. The approving
+// admin must tag the new account with a department in the same request —
+// there's no "approve now, assign later" path.
 router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res) => {
   const { uid } = req.params;
+  const department = req.body?.department;
+  if (!DEPARTMENTS.includes(department)) {
+    return res.status(400).json({ error: "Choose a department before approving" });
+  }
+
   try {
     const record = await db.get(`users/${uid}`);
     if (!record) return res.status(404).json({ error: "No such account" });
@@ -137,9 +154,9 @@ router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res
 
     await auth.setCustomUserClaims(uid, { role: "user" });
     await auth.updateUser(uid, { disabled: false });
-    await db.update(`users/${uid}`, { role: "user", status: "active" });
-    await audit(req, "user.approve", { targetUid: uid, email: record.email });
-    res.json({ uid, role: "user", status: "active" });
+    await db.update(`users/${uid}`, { role: "user", status: "active", department });
+    await audit(req, "user.approve", { targetUid: uid, email: record.email, department });
+    res.json({ uid, role: "user", status: "active", department });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to approve" });
@@ -186,6 +203,7 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
       displayName: u.displayName || records[u.uid]?.displayName || null,
       role: records[u.uid]?.role || "user",
       status: records[u.uid]?.status || "active",
+      department: records[u.uid]?.department || null,
       isSuperAdmin: isSuperAdminEmail(u.email),
       disabled: u.disabled,
       createdAt: u.metadata.creationTime,
@@ -224,6 +242,36 @@ router.patch("/users/:uid/role", requireAuth, requireSuperAdmin, async (req, res
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to update role" });
+  }
+});
+
+// Any admin: assign or clear a user's department tag — this is now the sole
+// access-control tag driving the business pages (see requirePageAccess).
+// Pass department: null (or omit it) to unassign.
+router.patch("/users/:uid/department", requireAuth, requireAdmin, async (req, res) => {
+  const { uid } = req.params;
+  const rawDept = req.body?.department;
+  if (rawDept != null && !DEPARTMENTS.includes(rawDept)) {
+    return res.status(400).json({ error: "Invalid department" });
+  }
+  const department = rawDept || null;
+
+  if (uid === req.user.uid) {
+    return res.status(400).json({ error: "You can't assign your own department" });
+  }
+
+  try {
+    const target = await auth.getUser(uid);
+    if (isSuperAdminEmail(target.email)) {
+      return res.status(403).json({ error: "The super admin doesn't need a department" });
+    }
+
+    await db.update(`users/${uid}`, { department });
+    await audit(req, "user.department_change", { targetUid: uid, email: target.email, department });
+    res.json({ uid, department });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update department" });
   }
 });
 

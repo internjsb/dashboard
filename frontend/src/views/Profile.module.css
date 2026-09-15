@@ -113,6 +113,14 @@
   margin-bottom: 6px;
 }
 
+.field span.fieldHint {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+}
+
 .field input {
   width: 100%;
   padding: 10px 12px;

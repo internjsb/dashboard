@@ -31,12 +31,16 @@ interface UseStock {
   reload: () => void;
 }
 
-export function useStock(): UseStock {
+// `enabled: false` skips the fetch entirely — for callers (like the sidebar
+// badge) that render on every page, including ones a viewer without stock
+// access can't reach; no point 403ing on their behalf.
+export function useStock(enabled: boolean = true): UseStock {
   const [data, setData] = useState<StockAvailableData | null>(null);
   const [error, setError] = useState("");
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     setError("");
     load()
@@ -49,7 +53,7 @@ export function useStock(): UseStock {
     return () => {
       cancelled = true;
     };
-  }, [nonce]);
+  }, [nonce, enabled]);
 
   const lowItems = (data?.byItem ?? []).filter((i) => i.status !== "ok");
 

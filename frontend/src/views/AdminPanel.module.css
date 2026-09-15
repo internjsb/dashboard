@@ -177,6 +177,27 @@
 .deny { border-color: var(--danger); color: var(--danger); }
 .approve:disabled, .deny:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.deptSelect {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deptSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.deptSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* --- Remove-user confirmation modal ------------------------------------- */
 
 .modalOverlay {

@@ -1,18 +1,22 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { canAccessPage, defaultPageFor, type PageKey } from "../lib/pageAccess";
 import type { Role } from "../types";
 
 interface ProtectedRouteProps {
   children: ReactNode;
   role?: Role;
+  /** For business pages gated by department (see lib/pageAccess.ts). */
+  page?: PageKey;
 }
 
 // Replaces the Vue router's global beforeEach guard. Wrap any route element
 // that needs auth in this; pass `role` for routes that also need a specific
-// role (mirrors the route `meta` object in the old router config).
-export default function ProtectedRoute({ children, role }: ProtectedRouteProps) {
-  const { user, role: userRole, status, waitUntilReady } = useAuth();
+// role, or `page` for routes gated by department (mirrors the route `meta`
+// object in the old router config).
+export default function ProtectedRoute({ children, role, page }: ProtectedRouteProps) {
+  const { user, role: userRole, status, department, isSuperAdmin, waitUntilReady } = useAuth();
   const [checked, setChecked] = useState(false);
   const location = useLocation();
 
@@ -42,12 +46,17 @@ export default function ProtectedRoute({ children, role }: ProtectedRouteProps) 
   if (status === "denied") {
     return <Navigate to="/forbidden" replace />;
   }
-  // Approved — don't leave them stranded on the waiting screen.
+  // Approved — don't leave them stranded on the waiting screen. Send them to
+  // whichever page their role/department actually grants, not always /dashboard.
   if (location.pathname === "/pending") {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={defaultPageFor(isSuperAdmin, department)} replace />;
   }
 
   if (role && role !== userRole) {
+    return <Navigate to="/forbidden" replace />;
+  }
+
+  if (page && !canAccessPage(isSuperAdmin, department, page)) {
     return <Navigate to="/forbidden" replace />;
   }
 

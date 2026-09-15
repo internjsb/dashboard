@@ -1,19 +1,17 @@
-import type { OrderRow, OrderStatus } from "../types";
+import { useState } from "react";
+import type { OrderRow } from "../types";
 import ExportCsvButton from "./ExportCsvButton";
+import { matches } from "../utils/search";
 import styles from "./RecentOrders.module.css";
-
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: "Pending",
-  shipped: "Shipped",
-  delivered: "Delivered",
-  returned: "Returned",
-};
 
 interface Props {
   orders: OrderRow[];
 }
 
 export default function RecentOrders({ orders }: Props) {
+  const [query, setQuery] = useState("");
+  const filtered = orders.filter((o) => matches(`${o.id} ${o.finish}`, query));
+
   return (
     <div className={styles.card}>
       <div className={styles.head}>
@@ -26,29 +24,41 @@ export default function RecentOrders({ orders }: Props) {
             { header: "Item", value: (o) => o.finish },
             { header: "Qty", value: (o) => o.qty },
             { header: "Total", value: (o) => o.total.toFixed(2) },
-            { header: "Status", value: (o) => STATUS_LABEL[o.status] },
             { header: "Time", value: (o) => o.time },
           ]}
         />
       </div>
-      <ul>
-        {orders.map((o) => (
-          <li key={o.id}>
-            <div className={styles.line}>
-              <span className={styles.product}>
-                {o.finish} <span className={styles.orderId}>· {o.id}</span>
-              </span>
-              <span className={styles.total}>${o.total.toFixed(2)}</span>
-            </div>
-            <div className={styles.line}>
-              <span className={styles.meta}>
-                {o.qty} unit{o.qty > 1 ? "s" : ""} · {o.time}
-              </span>
-              <span className={`${styles.badge} ${styles[o.status]}`}>{STATUS_LABEL[o.status]}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
+
+      <input
+        type="search"
+        className={styles.search}
+        placeholder="Search by item names or ID...."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search recent orders"
+      />
+
+      {filtered.length === 0 ? (
+        <p className={styles.empty}>No orders match “{query}”.</p>
+      ) : (
+        <ul>
+          {filtered.map((o) => (
+            <li key={o.id}>
+              <div className={styles.line}>
+                <span className={styles.product}>
+                  {o.finish} <span className={styles.orderId}>· {o.id}</span>
+                </span>
+                <span className={styles.total}>${o.total.toFixed(2)}</span>
+              </div>
+              <div className={styles.line}>
+                <span className={styles.meta}>
+                  {o.qty} unit{o.qty > 1 ? "s" : ""} · {o.time}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

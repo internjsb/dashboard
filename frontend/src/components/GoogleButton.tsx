@@ -56,7 +56,9 @@ export default function GoogleButton({ redirectTo }: Props) {
       api.post("/events/login", { method: "google" }).catch(() => {}); // audit, fire-and-forget
       const { data } = await api.post<{ status: UserStatus }>("/register", { displayName });
       await refreshRole();
-      navigate(data.status === "active" ? redirectTo || "/dashboard" : "/pending");
+      // "/" hands off to HomeRedirect, which picks the first page this
+      // user's role/department actually grants.
+      navigate(data.status === "active" ? redirectTo || "/" : "/pending");
     } catch (err) {
       console.error("Provisioning after Google sign-in failed:", err);
       let detail = "";

@@ -61,17 +61,14 @@
   color: var(--sidebar-text-active);
 }
 
-.navItem .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.5;
+.navItem .icon {
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
-.navItem.active .dot {
-  background: var(--accent);
+.navItem.active .icon {
   opacity: 1;
+  color: var(--accent);
 }
 
 .badge {
@@ -147,6 +144,10 @@
 
 .signout {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--sidebar-text-active);
@@ -158,6 +159,10 @@
 
 .signout:hover {
   background: var(--sidebar-bg-hover);
+}
+
+.signoutIcon {
+  flex-shrink: 0;
 }
 
 /* Drag handle on the sidebar's right edge */
@@ -219,6 +224,10 @@
   padding-left: 0;
   padding-right: 0;
 }
-:global(body.sidebar-collapsed) .navItem .dot { width: 8px; height: 8px; }
-:global(body.sidebar-collapsed) .signout { font-size: 0; padding-left: 0; padding-right: 0; }
-:global(body.sidebar-collapsed) .signout::after { content: "\21B2"; font-size: 15px; }
+:global(body.sidebar-collapsed) .signout {
+  padding-left: 0;
+  padding-right: 0;
+}
+:global(body.sidebar-collapsed) .signoutLabel {
+  display: none;
+}

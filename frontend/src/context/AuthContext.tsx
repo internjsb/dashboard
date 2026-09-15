@@ -11,7 +11,7 @@ import axios from "axios";
 import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUser } from "firebase/auth";
 import { auth } from "../firebase";
 import api from "../api/client";
-import type { Role, UserStatus, MeResponse } from "../types";
+import type { Role, UserStatus, Department, MeResponse } from "../types";
 
 // Left in sessionStorage when a session is force-ended (account removed or
 // disabled) so the login screen can explain why. Login reads and clears it.
@@ -33,6 +33,7 @@ interface AuthContextValue {
   displayName: string | null;
   role: Role | null;
   status: UserStatus | null;
+  department: Department | null;
   isSuperAdmin: boolean;
   ready: boolean;
   waitUntilReady: () => Promise<void>;
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [status, setStatus] = useState<UserStatus | null>(null);
+  const [department, setDepartment] = useState<Department | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [ready, setReady] = useState(false); // true once the first auth state has been resolved
 
@@ -72,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDisplayName(null);
     setRole(null);
     setStatus(null);
+    setDepartment(null);
     setIsSuperAdmin(false);
   }, []);
 
@@ -85,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDisplayName(null);
       setRole(null);
       setStatus(null);
+      setDepartment(null);
       setIsSuperAdmin(false);
       return;
     }
@@ -110,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await api.get<MeResponse>("/me");
       setRole(data.role);
       setStatus(data.status);
+      setDepartment(data.department);
       setIsSuperAdmin(data.isSuperAdmin);
     } catch (err) {
       const code = axios.isAxiosError(err)
@@ -122,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const t = await firebaseUser.getIdTokenResult().catch(() => null);
       setRole((t?.claims.role as Role) || null);
       setStatus("unknown");
+      setDepartment(null);
       setIsSuperAdmin(false);
     }
   }, [endSession]);
@@ -180,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     displayName,
     role,
     status,
+    department,
     isSuperAdmin,
     ready,
     waitUntilReady,

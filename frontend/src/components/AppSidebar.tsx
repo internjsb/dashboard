@@ -1,14 +1,31 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Package,
+  Wallet,
+  CircleUserRound,
+  Users,
+  ScrollText,
+  DoorOpen,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../hooks/useSidebar";
 import { useStock } from "../hooks/useStock";
+import { canAccessPage } from "../lib/pageAccess";
 import styles from "./AppSidebar.module.css";
 
 export default function AppSidebar() {
-  const { user, displayName, role, isSuperAdmin, signOut } = useAuth();
+  const { user, displayName, role, department, isSuperAdmin, signOut } = useAuth();
   const { isMobile, collapsed, mobileOpen, closeMobile, setWidth, resetWidth } = useSidebar();
-  const { lowItems } = useStock();
+
+  const canSeeDashboard = canAccessPage(isSuperAdmin, department, "dashboard");
+  const canSeeSalesHistory = canAccessPage(isSuperAdmin, department, "sales_history");
+  const canSeeStock = canAccessPage(isSuperAdmin, department, "stock_available");
+  const canSeeFinance = canAccessPage(isSuperAdmin, department, "finance");
+
+  const { lowItems } = useStock(canSeeStock);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -64,41 +81,53 @@ export default function AppSidebar() {
       )}
       <aside className={`app-sidebar ${styles.sidebar}`}>
         <div className={styles.brand}>
-          <div className={styles.brandMark}>A</div>
+          <div className={styles.brandMark}>Jsb</div>
           <span>Amazon Dashboard</span>
         </div>
 
         <nav className={styles.nav}>
-          <NavLink to="/dashboard" className={navItemClass}>
-            <span className={styles.dot} />
-            Dashboard
-          </NavLink>
-          <NavLink to="/sales-history" className={navItemClass}>
-            <span className={styles.dot} />
-            Sales history
-          </NavLink>
-          <NavLink to="/stock-available" className={navItemClass}>
-            <span className={styles.dot} />
-            Stock available
-            {lowItems.length > 0 && (
-              <span className={styles.badge} title={`${lowItems.length} item(s) low on stock`}>
-                {lowItems.length}
-              </span>
-            )}
-          </NavLink>
+          {canSeeDashboard && (
+            <NavLink to="/dashboard" className={navItemClass}>
+              <LayoutDashboard className={styles.icon} size={18} />
+              Dashboard
+            </NavLink>
+          )}
+          {canSeeSalesHistory && (
+            <NavLink to="/sales-history" className={navItemClass}>
+              <TrendingUp className={styles.icon} size={18} />
+              Sales history
+            </NavLink>
+          )}
+          {canSeeStock && (
+            <NavLink to="/stock-available" className={navItemClass}>
+              <Package className={styles.icon} size={18} />
+              Stock available
+              {lowItems.length > 0 && (
+                <span className={styles.badge} title={`${lowItems.length} item(s) low on stock`}>
+                  {lowItems.length}
+                </span>
+              )}
+            </NavLink>
+          )}
+          {canSeeFinance && (
+            <NavLink to="/finance" className={navItemClass}>
+              <Wallet className={styles.icon} size={18} />
+              Finance
+            </NavLink>
+          )}
           <NavLink to="/profile" className={navItemClass}>
-            <span className={styles.dot} />
+            <CircleUserRound className={styles.icon} size={18} />
             Profile
           </NavLink>
           {role === "admin" && (
             <NavLink to="/admin" className={navItemClass}>
-              <span className={styles.dot} />
+              <Users className={styles.icon} size={18} />
               Manage users
             </NavLink>
           )}
           {role === "admin" && (
             <NavLink to="/audit" className={navItemClass}>
-              <span className={styles.dot} />
+              <ScrollText className={styles.icon} size={18} />
               Audit log
             </NavLink>
           )}
@@ -115,7 +144,8 @@ export default function AppSidebar() {
             </div>
           </NavLink>
           <button className={styles.signout} onClick={handleSignOut}>
-            Sign out
+            <DoorOpen className={styles.signoutIcon} size={16} />
+            <span className={styles.signoutLabel}>Sign out</span>
           </button>
         </div>
 

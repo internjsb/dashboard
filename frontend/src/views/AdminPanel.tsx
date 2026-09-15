@@ -2,10 +2,20 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
+import DataTable, { type DataTableColumn } from "../components/DataTable";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import type { UserRecord, PendingRequest, Role, UserStatus } from "../types";
+import type { UserRecord, PendingRequest, Role, UserStatus, Department } from "../types";
 import styles from "./AdminPanel.module.css";
+
+const DEPARTMENT_LABEL: Record<Department, string> = {
+  super_user: "Super user",
+  sales: "Sales",
+  supplychain: "Supply chain",
+  finance: "Finance",
+};
+
+const DEPARTMENT_OPTIONS = Object.entries(DEPARTMENT_LABEL).map(([value, label]) => ({ value, label }));
 
 function errorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
@@ -25,6 +35,7 @@ export default function AdminPanel() {
   const [error, setError] = useState("");
   const [busyUid, setBusyUid] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<UserRecord | null>(null);
+  const [requestDept, setRequestDept] = useState<Record<string, Department | "">>({});
 
   async function load() {
     setLoading(true);
@@ -49,9 +60,12 @@ export default function AdminPanel() {
   }, []);
 
   async function approve(r: PendingRequest) {
+    const department = requestDept[r.uid];
+    if (!department) return; // Approve button is disabled until one's chosen, but don't trust that alone.
+
     setBusyUid(r.uid);
     try {
-      await api.post(`/requests/${r.uid}/approve`);
+      await api.post(`/requests/${r.uid}/approve`, { department });
     } catch (err) {
       window.alert(errorMessage(err, "Failed to approve"));
     } finally {
@@ -102,6 +116,20 @@ export default function AdminPanel() {
     }
   }
 
+  async function setDepartment(target: UserRecord, department: Department | "") {
+    setBusyUid(target.uid);
+    try {
+      await api.patch(`/users/${target.uid}/department`, { department: department || null });
+      setUsers((prev) =>
+        prev.map((u) => (u.uid === target.uid ? { ...u, department: department || null } : u)),
+      );
+    } catch (err) {
+      window.alert(errorMessage(err, "Failed to update department"));
+    } finally {
+      setBusyUid(null);
+    }
+  }
+
   async function removeUser(target: UserRecord) {
     setConfirmRemove(null);
     setBusyUid(target.uid);
@@ -119,6 +147,128 @@ export default function AdminPanel() {
     if (!iso) return "—";
     return new Date(iso).toLocaleDateString();
   }
+
+  const columns: DataTableColumn<UserRecord>[] = [
+    {
+      key: "user",
+      header: "User",
+      accessor: (u) => u.email,
+      render: (u) => (
+        <div className={styles.who}>
+          <div className={styles.avatar}>{(u.email || "?").slice(0, 2).toUpperCase()}</div>
+          <div>
+            <div className={styles.email}>{u.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "role",
+      header: "Role",
+      accessor: (u) => (u.isSuperAdmin ? "super admin" : u.role),
+      render: (u) => (
+        <span className={`${styles.pill} ${(u.isSuperAdmin ? styles.admin : styles[u.role]) || ""}`}>
+          {u.isSuperAdmin ? "super admin" : u.role}
+        </span>
+      ),
+    },
+    {
+      key: "department",
+      header: "Department",
+      accessor: (u) => (u.isSuperAdmin ? "" : u.department ? DEPARTMENT_LABEL[u.department] : ""),
+      render: (u) =>
+        u.isSuperAdmin ? (
+          <span className={styles.locked}>—</span>
+        ) : u.uid === currentUid ? (
+          <span className={styles.locked}>{u.department ? DEPARTMENT_LABEL[u.department] : "Unassigned"}</span>
+        ) : (
+          <select
+            className={styles.deptSelect}
+            value={u.department ?? ""}
+            disabled={busyUid === u.uid}
+            onChange={(e) => setDepartment(u, e.target.value as Department | "")}
+          >
+            <option value="">Unassigned</option>
+            {DEPARTMENT_OPTIONS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      accessor: (u) => u.status,
+      render: (u) => <span className={`${styles.pill} ${styles[u.status] || ""}`}>{u.status}</span>,
+    },
+    {
+      key: "joined",
+      header: "Joined",
+      accessor: (u) => (u.createdAt ? new Date(u.createdAt).getTime() : 0),
+      className: styles.joined,
+      render: (u) => formatDate(u.createdAt),
+    },
+    {
+      key: "actions",
+      header: "",
+      sortable: false,
+      searchable: false,
+      className: styles.actions,
+      render: (u) =>
+        u.isSuperAdmin ? (
+          <span className={styles.locked}>locked</span>
+        ) : u.uid === currentUid ? (
+          <span className={styles.locked}>you</span>
+        ) : (
+          <>
+            {isSuperAdmin &&
+              (u.role !== "admin" ? (
+                <button
+                  className={styles.promote}
+                  disabled={busyUid === u.uid || u.status !== "active"}
+                  onClick={() => changeRole(u, "admin")}
+                >
+                  Make admin
+                </button>
+              ) : (
+                <button
+                  className={styles.demote}
+                  disabled={busyUid === u.uid}
+                  onClick={() => changeRole(u, "user")}
+                >
+                  Revoke admin
+                </button>
+              ))}
+            {u.status === "disabled" || u.status === "denied" ? (
+              <button
+                className={styles.enable}
+                disabled={busyUid === u.uid}
+                onClick={() => setDisabled(u, false)}
+              >
+                Enable
+              </button>
+            ) : (
+              <button
+                className={styles.disable}
+                disabled={busyUid === u.uid}
+                onClick={() => setDisabled(u, true)}
+              >
+                Disable
+              </button>
+            )}
+            <button
+              className={styles.remove}
+              disabled={busyUid === u.uid}
+              onClick={() => setConfirmRemove(u)}
+            >
+              Remove
+            </button>
+          </>
+        ),
+    },
+  ];
 
   return (
     <div className="app-shell">
@@ -157,7 +307,33 @@ export default function AdminPanel() {
                           </div>
                         </div>
                         <div className={styles.requestActions}>
-                          <button className={styles.approve} disabled={busyUid === r.uid} onClick={() => approve(r)}>
+                          <select
+                            className={styles.deptSelect}
+                            value={requestDept[r.uid] ?? ""}
+                            disabled={busyUid === r.uid}
+                            aria-label={`Department for ${r.email}`}
+                            onChange={(e) =>
+                              setRequestDept((prev) => ({
+                                ...prev,
+                                [r.uid]: e.target.value as Department | "",
+                              }))
+                            }
+                          >
+                            <option value="" disabled>
+                              Choose department…
+                            </option>
+                            {DEPARTMENT_OPTIONS.map((d) => (
+                              <option key={d.value} value={d.value}>
+                                {d.label}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className={styles.approve}
+                            disabled={busyUid === r.uid || !requestDept[r.uid]}
+                            title={!requestDept[r.uid] ? "Choose a department first" : undefined}
+                            onClick={() => approve(r)}
+                          >
                             Approve
                           </button>
                           <button className={styles.deny} disabled={busyUid === r.uid} onClick={() => deny(r)}>
@@ -170,95 +346,13 @@ export default function AdminPanel() {
                 </section>
               )}
 
-              <div className={styles.tableWrap}>
-              <table className={styles.userTable}>
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Joined</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.uid}>
-                      <td>
-                        <div className={styles.who}>
-                          <div className={styles.avatar}>{(u.email || "?").slice(0, 2).toUpperCase()}</div>
-                          <div>
-                            <div className={styles.email}>{u.email}</div>
-                            {/* <div className={styles.sub}>{u.uid}</div> */}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`${styles.pill} ${(u.isSuperAdmin ? styles.admin : styles[u.role]) || ""}`}>
-                          {u.isSuperAdmin ? "super admin" : u.role}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`${styles.pill} ${styles[u.status] || ""}`}>{u.status}</span>
-                      </td>
-                      <td className={styles.joined}>{formatDate(u.createdAt)}</td>
-                      <td className={styles.actions}>
-                        {u.isSuperAdmin ? (
-                          <span className={styles.locked}>locked</span>
-                        ) : u.uid === currentUid ? (
-                          <span className={styles.locked}>you</span>
-                        ) : (
-                          <>
-                            {isSuperAdmin &&
-                              (u.role !== "admin" ? (
-                                <button
-                                  className={styles.promote}
-                                  disabled={busyUid === u.uid || u.status !== "active"}
-                                  onClick={() => changeRole(u, "admin")}
-                                >
-                                  Make admin
-                                </button>
-                              ) : (
-                                <button
-                                  className={styles.demote}
-                                  disabled={busyUid === u.uid}
-                                  onClick={() => changeRole(u, "user")}
-                                >
-                                  Revoke admin
-                                </button>
-                              ))}
-                            {u.status === "disabled" || u.status === "denied" ? (
-                              <button
-                                className={styles.enable}
-                                disabled={busyUid === u.uid}
-                                onClick={() => setDisabled(u, false)}
-                              >
-                                Enable
-                              </button>
-                            ) : (
-                              <button
-                                className={styles.disable}
-                                disabled={busyUid === u.uid}
-                                onClick={() => setDisabled(u, true)}
-                              >
-                                Disable
-                              </button>
-                            )}
-                            <button
-                              className={styles.remove}
-                              disabled={busyUid === u.uid}
-                              onClick={() => setConfirmRemove(u)}
-                            >
-                              Remove
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
+              <DataTable
+                columns={columns}
+                rows={users}
+                rowKey={(u) => u.uid}
+                showSearch={false}
+                emptyMessage="No users."
+              />
             </>
           )}
 

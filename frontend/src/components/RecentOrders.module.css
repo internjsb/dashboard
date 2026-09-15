@@ -22,6 +22,30 @@
   margin-bottom: 0;
 }
 
+.search {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-body);
+  margin-bottom: 14px;
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  padding: 8px 0;
+}
+
 .card ul {
   list-style: none;
   margin: 0;

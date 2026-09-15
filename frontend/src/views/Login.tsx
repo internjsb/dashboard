@@ -43,7 +43,10 @@ export default function Login() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       api.post("/events/login", { method: "password" }).catch(() => {}); // audit, fire-and-forget
-      navigate(searchParams.get("redirect") || "/dashboard");
+      // "/" hands off to HomeRedirect, which sends each user to the first
+      // page their role/department actually grants — not everyone can see
+      // /dashboard, so hardcoding it here would 403 them right after login.
+      navigate(searchParams.get("redirect") || "/");
     } catch (err) {
       setError(mapError(err instanceof FirebaseError ? err.code : undefined));
     } finally {
@@ -70,7 +73,7 @@ export default function Login() {
     <div className={styles.loginScreen}>
       <div className={styles.loginCard}>
         <div className={styles.brand}>
-          <div className={styles.brandMark}>A</div>
+          <div className={styles.brandMark}>Jsb</div>
           <span>Amazon Dashboard</span>
         </div>
 
@@ -86,7 +89,7 @@ export default function Login() {
               type="email"
               required
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder="example@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -106,7 +109,7 @@ export default function Login() {
           {error && <p className={styles.error}>{error}</p>}
 
           <button type="submit" className={styles.submitBtn} disabled={loading}>
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 

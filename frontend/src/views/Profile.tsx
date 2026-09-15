@@ -12,6 +12,7 @@ import PasswordField from "../components/PasswordField";
 import api from "../api/client";
 import { auth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+import { PASSWORD_RULE_TEXT, passwordError } from "../utils/passwordPolicy";
 import styles from "./Profile.module.css";
 
 function apiError(err: unknown, fallback: string): string {
@@ -69,10 +70,6 @@ export default function Profile() {
     e.preventDefault();
     setPwMsg(null);
 
-    if (next.length < 6) {
-      setPwMsg({ ok: false, text: "New password must be at least 6 characters." });
-      return;
-    }
     if (next !== confirm) {
       setPwMsg({ ok: false, text: "New passwords don't match." });
       return;
@@ -80,6 +77,14 @@ export default function Profile() {
     if (!auth.currentUser || !email) return;
 
     setPwSaving(true);
+
+    const pwIssue = await passwordError(next);
+    if (pwIssue) {
+      setPwMsg({ ok: false, text: pwIssue });
+      setPwSaving(false);
+      return;
+    }
+
     try {
       const cred = EmailAuthProvider.credential(email, current);
       await reauthenticateWithCredential(auth.currentUser, cred);
@@ -102,7 +107,7 @@ export default function Profile() {
       case "auth/invalid-credential":
         return "Current password is incorrect.";
       case "auth/weak-password":
-        return "New password is too weak — use at least 6 characters.";
+        return `New password is too weak — ${PASSWORD_RULE_TEXT.toLowerCase()}`;
       case "auth/too-many-requests":
         return "Too many attempts. Try again in a moment.";
       case "auth/requires-recent-login":
@@ -190,6 +195,7 @@ export default function Profile() {
                     onChange={(e) => setNext(e.target.value)}
                     required
                   />
+                  <span className={styles.fieldHint}>{PASSWORD_RULE_TEXT}</span>
                 </label>
                 <label className={styles.field}>
                   <span>Confirm new password</span>

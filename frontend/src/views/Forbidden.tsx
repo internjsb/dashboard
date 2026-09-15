@@ -6,8 +6,8 @@ export default function Forbidden() {
     <div className={styles.wrap}>
       <h1>403</h1>
       <p>You don't have access to that page.</p>
-      <Link to="/dashboard" className={styles.back}>
-        Back to dashboard
+      <Link to="/" className={styles.back}>
+        Back to your dashboard
       </Link>
     </div>
   );

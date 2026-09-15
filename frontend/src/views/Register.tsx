@@ -8,6 +8,7 @@ import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import GoogleButton from "../components/GoogleButton";
 import PasswordField from "../components/PasswordField";
+import { PASSWORD_RULE_TEXT, passwordError } from "../utils/passwordPolicy";
 import type { UserStatus } from "../types";
 import styles from "./Register.module.css";
 
@@ -26,16 +27,19 @@ export default function Register() {
     e.preventDefault();
     setError("");
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
     if (password !== confirm) {
       setError("Passwords don't match.");
       return;
     }
 
     setLoading(true);
+
+    const pwIssue = await passwordError(password);
+    if (pwIssue) {
+      setError(pwIssue);
+      setLoading(false);
+      return;
+    }
 
     // Step 1 — create the Firebase Auth account.
     let name = displayName.trim();
@@ -53,7 +57,9 @@ export default function Register() {
     try {
       const { data } = await api.post<{ status: UserStatus }>("/register", { displayName: name });
       await refreshRole();
-      navigate(data.status === "active" ? "/dashboard" : "/pending");
+      // "/" hands off to HomeRedirect, which picks the first page this
+      // user's role/department actually grants.
+      navigate(data.status === "active" ? "/" : "/pending");
     } catch (err) {
       console.error("Backend /register failed:", err);
       let detail = "";
@@ -79,9 +85,9 @@ export default function Register() {
       case "auth/email-already-in-use":
         return "An account with that email already exists.";
       case "auth/invalid-email":
-        return "That doesn't look like a valid email.";
+        return "Please enter a valid email!!!";
       case "auth/weak-password":
-        return "Password is too weak — use at least 6 characters.";
+        return `Password is too weak — ${PASSWORD_RULE_TEXT.toLowerCase()}`;
       case "auth/operation-not-allowed":
         return "Email/password sign-up is disabled for this project.";
       default:
@@ -93,7 +99,7 @@ export default function Register() {
     <div className={styles.loginScreen}>
       <div className={styles.loginCard}>
         <div className={styles.brand}>
-          <div className={styles.brandMark}>A</div>
+          <div className={styles.brandMark}>Jsb</div>
           <span>Amazon Dashboard</span>
         </div>
 
@@ -118,7 +124,7 @@ export default function Register() {
               type="email"
               required
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder="example@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -129,10 +135,11 @@ export default function Register() {
             <PasswordField
               required
               autoComplete="new-password"
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <span className={styles.fieldHint}>{PASSWORD_RULE_TEXT}</span>
           </label>
 
           <label className={styles.field}>
@@ -149,7 +156,7 @@ export default function Register() {
           {error && <p className={styles.error}>{error}</p>}
 
           <button type="submit" className={styles.submitBtn} disabled={loading}>
-            {loading ? "Creating…" : "Create account"}
+            {loading ? "Creating..." : "Create account"}
           </button>
         </form>
 
