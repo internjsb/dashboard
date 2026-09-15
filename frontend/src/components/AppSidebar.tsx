@@ -8,7 +8,7 @@ import {
   CircleUserRound,
   Users,
   ScrollText,
-  DoorOpen,
+  LogOut,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../hooks/useSidebar";
@@ -144,7 +144,7 @@ export default function AppSidebar() {
             </div>
           </NavLink>
           <button className={styles.signout} onClick={handleSignOut}>
-            <DoorOpen className={styles.signoutIcon} size={16} />
+            <LogOut className={styles.signoutIcon} size={16} />
             <span className={styles.signoutLabel}>Sign out</span>
           </button>
         </div>
