@@ -44,7 +44,7 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
     return (
         <form onSubmit={handleTokenVerification}>
           <div className={styles.loginScreen}>
-            
+
               <div className={styles.loginCard}>
                 <button type="button" onClick={() => navigate(-1)} className={styles.backBtn} aria-label="Go back">
                   <ArrowLeft size={18} />
@@ -55,9 +55,9 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
                 </div>
                 <h2 className={styles.title}>Validate OTP</h2>
                 <p className={styles.subtitle}>Please enter 6-digit Time base OTP to verify 2FA authentication</p>
-        
+
                 <div className={styles.qrSection}>
-                    
+
                     <div className={styles.manualEntry}>
                         <span className={styles.manualEntryLabel}>Enter your OTP code</span>
                         <div className={styles.secretRow}>
@@ -72,7 +72,7 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
                         </div>
                     </div>
                 </div>
-                <button 
+                <button
                 // onClick={onSetupComplete}
                  className={styles.continueBtn}>
                    Verify TOTP
@@ -81,7 +81,7 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
                  onClick={handleReset}
                  type="button" className={styles.resentbutton}>
                     Reset 2FA
-                </button>              
+                </button>
                 </div>
             </div>
         </form>
