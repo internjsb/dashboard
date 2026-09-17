@@ -35,11 +35,23 @@ interface AuthContextValue {
   status: UserStatus | null;
   department: Department | null;
   isSuperAdmin: boolean;
+  // Whether the account has 2FA turned on at all, vs. whether THIS session
+  // has already proven possession of the authenticator (see markTwoFactorVerified).
+  twoFactorEnabled: boolean | null;
+  twoFactorVerified: boolean;
   ready: boolean;
   waitUntilReady: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshRole: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  markTwoFactorVerified: () => void;
+}
+
+// A session that already proved its OTP once shouldn't be asked again on
+// every reload — remembered per tab (sessionStorage) and per account, so
+// switching accounts in the same tab always starts unverified again.
+function verifiedSessionKey(uid: string) {
+  return `2fa_verified:${uid}`;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -51,6 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<UserStatus | null>(null);
   const [department, setDepartment] = useState<Department | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null);
+  const [twoFactorVerified, setTwoFactorVerified] = useState(false);
   const [ready, setReady] = useState(false); // true once the first auth state has been resolved
 
   // A one-time promise that resolves when the first auth state is known.
@@ -76,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus(null);
     setDepartment(null);
     setIsSuperAdmin(false);
+    setTwoFactorEnabled(null);
+    setTwoFactorVerified(false);
   }, []);
 
   // Pull role + approval status from the backend (the source of truth). Falls
@@ -90,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus(null);
       setDepartment(null);
       setIsSuperAdmin(false);
+      setTwoFactorEnabled(null);
+      setTwoFactorVerified(false);
       return;
     }
 
@@ -116,6 +134,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus(data.status);
       setDepartment(data.department);
       setIsSuperAdmin(data.isSuperAdmin);
+      setTwoFactorEnabled(data.twoFactorEnabled);
+      let verifiedThisSession = false;
+      try {
+        verifiedThisSession = sessionStorage.getItem(verifiedSessionKey(firebaseUser.uid)) === "1";
+      } catch {
+        /* private mode — falls back to requiring verification */
+      }
+      setTwoFactorVerified(data.twoFactorEnabled && verifiedThisSession);
     } catch (err) {
       const code = axios.isAxiosError(err)
         ? (err.response?.data as { code?: string } | undefined)?.code
@@ -129,6 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("unknown");
       setDepartment(null);
       setIsSuperAdmin(false);
+      // Unknown 2FA state — fail closed (treat as enabled-but-unverified)
+      // rather than silently letting the session through unchecked.
+      setTwoFactorEnabled(true);
+      setTwoFactorVerified(false);
     }
   }, [endSession]);
 
@@ -165,6 +195,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
   }
 
+  // Called once the OTP step succeeds (fresh setup or a returning login).
+  // Session-scoped so re-verification is required again next time this
+  // account signs in from a new tab/browser session.
+  function markTwoFactorVerified() {
+    if (!auth.currentUser) return;
+    try {
+      sessionStorage.setItem(verifiedSessionKey(auth.currentUser.uid), "1");
+    } catch {
+      /* private mode — verification still holds for the rest of this render session */
+    }
+    setTwoFactorEnabled(true);
+    setTwoFactorVerified(true);
+  }
+
   // Force a fresh ID token + re-fetch role/status. Call after registering or
   // after an admin changes someone's access.
   async function refreshRole() {
@@ -188,11 +232,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     status,
     department,
     isSuperAdmin,
+    twoFactorEnabled,
+    twoFactorVerified,
     ready,
     waitUntilReady,
     signOut,
     refreshRole,
     refreshProfile,
+    markTwoFactorVerified,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

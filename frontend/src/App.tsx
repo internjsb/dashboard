@@ -23,7 +23,8 @@ const NotFound = lazy(() => import("./views/NotFound"));
 // "/" has no page of its own — send the signed-in user to the first business
 // page their role/department actually lets them see (Profile if none).
 function HomeRedirect() {
-  const { user, department, status, isSuperAdmin, waitUntilReady } = useAuth();
+  const { user, department, status, isSuperAdmin, twoFactorEnabled, twoFactorVerified, waitUntilReady } =
+    useAuth();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,8 @@ function HomeRedirect() {
   if (!user) return <Navigate to="/login" replace />;
   if (status === "pending") return <Navigate to="/pending" replace />;
   if (status === "denied") return <Navigate to="/forbidden" replace />;
+  if (twoFactorEnabled === false) return <Navigate to="/setup-2fa" replace />;
+  if (twoFactorEnabled === true && !twoFactorVerified) return <Navigate to="/verify-2fa" replace />;
   return <Navigate to={defaultPageFor(isSuperAdmin, department)} replace />;
 }
 

@@ -192,6 +192,7 @@ export interface MeResponse {
   status: UserStatus | null;
   department: Department | null;
   isSuperAdmin: boolean;
+  twoFactorEnabled: boolean;
 }
 
 export interface UserRecord {

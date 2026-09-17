@@ -16,7 +16,16 @@ interface ProtectedRouteProps {
 // role, or `page` for routes gated by department (mirrors the route `meta`
 // object in the old router config).
 export default function ProtectedRoute({ children, role, page }: ProtectedRouteProps) {
-  const { user, role: userRole, status, department, isSuperAdmin, waitUntilReady } = useAuth();
+  const {
+    user,
+    role: userRole,
+    status,
+    department,
+    isSuperAdmin,
+    twoFactorEnabled,
+    twoFactorVerified,
+    waitUntilReady,
+  } = useAuth();
   const [checked, setChecked] = useState(false);
   const location = useLocation();
 
@@ -50,6 +59,19 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
   // whichever page their role/department actually grants, not always /dashboard.
   if (location.pathname === "/pending") {
     return <Navigate to={defaultPageFor(isSuperAdmin, department)} replace />;
+  }
+
+  // Every account must clear 2FA before reaching anything else — regardless
+  // of how they arrived here (fresh login, a bookmarked URL, or a Firebase
+  // session that was already signed in from before). Not set up yet ->
+  // setup; set up but not proven this session -> verify.
+  if (location.pathname !== "/setup-2fa" && location.pathname !== "/verify-2fa") {
+    if (twoFactorEnabled === false) {
+      return <Navigate to="/setup-2fa" replace />;
+    }
+    if (twoFactorEnabled === true && !twoFactorVerified) {
+      return <Navigate to="/verify-2fa" replace />;
+    }
   }
 
   if (role && role !== userRole) {

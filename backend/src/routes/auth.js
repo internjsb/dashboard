@@ -47,6 +47,7 @@ router.get("/me", requireAuth, async (req, res) => {
     status: req.user.status,
     department: req.user.department,
     isSuperAdmin: req.user.isSuperAdmin,
+    twoFactorEnabled: req.user.twoFactorEnabled,
   });
 });
 

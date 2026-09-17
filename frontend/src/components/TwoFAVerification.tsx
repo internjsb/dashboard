@@ -32,7 +32,7 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
 
     const handleReset = async() => {
         try{
-            const {data} = await api.post("/2fa/setup");
+            const {data} = await api.post("/2fa/reset");
             onRestSuccess(data);
         }
         catch(err){
@@ -53,15 +53,13 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
                   <div className={styles.brandMark}>Jsb</div>
                   <span>Amazon Dashboard</span>
                 </div>
-                <h2 className={styles.title}>Validate TOP</h2>
+                <h2 className={styles.title}>Validate OTP</h2>
                 <p className={styles.subtitle}>Please enter 6-digit Time base OTP to verify 2FA authentication</p>
         
                 <div className={styles.qrSection}>
-                    <div className={styles.qrWrap}>
-                        <label>TOTP</label>
-                    </div>
+                    
                     <div className={styles.manualEntry}>
-                        <span className={styles.manualEntryLabel}>Or enter the code manually</span>
+                        <span className={styles.manualEntryLabel}>Enter your OTP code</span>
                         <div className={styles.secretRow}>
                             {error && <p className={styles.message}>{error}</p>}
                             <input
@@ -69,7 +67,7 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value)}
                                 className={styles.otpInput}
-                                placeholder="Enter your TOTP"
+                                placeholder="Enter your OTP"
                             />
                         </div>
                     </div>

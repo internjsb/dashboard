@@ -41,7 +41,9 @@ export default function Login() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       api.post("/events/login", { method: "password" }).catch(() => {}); // audit, fire-and-forget
-      navigate("/setup-2fa");
+      // ProtectedRoute/HomeRedirect decide where "/" actually goes — including
+      // routing through 2FA setup/verify when the account needs it.
+      navigate("/");
     } catch (err) {
       setError(mapError(err instanceof FirebaseError ? err.code : undefined));
     } finally {

@@ -2,7 +2,6 @@ import { Router } from "express";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import { db } from "../firebaseAdmin.js";
-import { audit } from "../audit.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = Router();
@@ -14,6 +13,11 @@ router.post("/setup", requireAuth, async (req, res) => {
     const secret = authenticator.generateSecret();
     const otpauth = authenticator.keyuri(req.user.email, ISSUER, secret);
     const qrCode = await QRCode.toDataURL(otpauth);
+    const existing = await db.get(`users/${req.user.uid}/twoFactor`);
+
+    if (existing?.enabled) {
+    return res.status(400).json({ error: "2FA is already set up for this account" });
+    }
 
     await db.update(`users/${req.user.uid}/twoFactor`, { secret, enabled: false });
 
@@ -24,8 +28,29 @@ router.post("/setup", requireAuth, async (req, res) => {
   }
 });
 
-// Confirms the 6-digit code from the authenticator app matches the secret
-// issued by /setup, then flips 2FA on for this account.
+router.get("/status", requireAuth, async (req, res) => {
+  try {
+    const record = await db.get(`users/${req.user.uid}/twoFactor`);
+    res.json({ enabled: !!record?.enabled });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to check 2FA status" });
+  }
+});
+
+// Lets a signed-in user who's locked out of their authenticator start over:
+// clears "enabled" so /setup will issue a fresh secret + QR instead of
+// bouncing with "2FA is already set up for this account".
+router.post("/reset", requireAuth, async (req, res) => {
+  try {
+    await db.update(`users/${req.user.uid}/twoFactor`, { enabled: false });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to reset 2FA" });
+  }
+});
+
 router.post("/verify", requireAuth, async (req, res) => {
   const token = (req.body?.token || "").trim();
   if (!token) {
@@ -44,7 +69,6 @@ router.post("/verify", requireAuth, async (req, res) => {
     }
 
     await db.update(`users/${req.user.uid}/twoFactor`, { enabled: true });
-    await audit(req, "user.2fa_enable", {});
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

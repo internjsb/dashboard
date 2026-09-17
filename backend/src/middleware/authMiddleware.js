@@ -65,6 +65,7 @@ export async function requireAuth(req, res, next) {
       status,
       department: record?.department || null,
       isSuperAdmin: superAdmin,
+      twoFactorEnabled: !!record?.twoFactor?.enabled,
     };
     next();
   } catch (err) {
