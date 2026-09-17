@@ -1,15 +1,21 @@
-import React, { useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { AxiosError } from "axios";
 import api from "../api/client";
 import styles from "./TwoFAVerification.module.css";
 
-const TwoFAVerification = ({onVerifySuccess, onRestSuccess}) => {
+type TwoFAVerificationProps = {
+    onVerifySuccess: (data: unknown) => void;
+    onRestSuccess: (data: unknown) => void;
+};
+
+const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationProps) => {
     const navigate = useNavigate();
     const [otp, setOtp] = useState ("");
     const [error, setError] = useState ("");
 
-    const handleTokenVerification = async(e) => {
+    const handleTokenVerification = async(e: React.FormEvent) => {
         e.preventDefault();
         try
         {
@@ -18,19 +24,21 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}) => {
         }
         catch(err){
             setOtp("");
-            console.log("The err is : ", err.message);
-            setError(err.response?.data?.error || "Invalid OTP");
+            const axiosErr = err as AxiosError<{ error?: string }>;
+            console.log("The err is : ", axiosErr.message);
+            setError(axiosErr.response?.data?.error || "Invalid OTP");
         }
     };
 
     const handleReset = async() => {
         try{
-            const {data} = await rest2FA;
+            const {data} = await api.post("/2fa/setup");
             onRestSuccess(data);
         }
-        catch(error){
-            console.log("The err is : ", error.message);
-            setError(error.message);
+        catch(err){
+            const axiosErr = err as AxiosError<{ error?: string }>;
+            console.log("The err is : ", axiosErr.message);
+            setError(axiosErr.response?.data?.error || axiosErr.message);
         }
     }
     return (

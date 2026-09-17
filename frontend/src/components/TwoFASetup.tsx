@@ -1,13 +1,21 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import api from "../api/client";
 import styles from "./TwoFASetup.module.css";
 
+type TwoFASetupProps = {
+    onSetupComplete: () => void;
+};
 
-const TwoFASetup = ({onSetupComplete}) => {
+type SetupResponse = {
+    qrCode?: string;
+    secret?: string;
+};
+
+const TwoFASetup = ({onSetupComplete}: TwoFASetupProps) => {
     const navigate = useNavigate();
-    const [response, setResponse] = useState({});
+    const [response, setResponse] = useState<SetupResponse>({});
     const [message, setMessage] = useState("");
 
     const fetchQRcode = async () => {
@@ -24,6 +32,7 @@ const TwoFASetup = ({onSetupComplete}) => {
         fetchQRcode();
     }, []);
     const copyClipBoard = async () => {
+        if (!response.secret) return;
         await navigator.clipboard.writeText(response.secret);
         setMessage("Secret copied to clipboard")
     }
