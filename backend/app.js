@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./src/routes/auth.js";
 import dashboardRoutes from "./src/routes/dashboard.js";
+import twoFactorRoutes from "./src/routes/twoFactor.js";
 
 // The Express app with no listener attached, so it can run two ways:
 //   - backend/server.js  -> app.listen() for local dev
@@ -37,6 +38,7 @@ app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/2fa", twoFactorRoutes);
 
 // Central error handler
 app.use((err, req, res, next) => {

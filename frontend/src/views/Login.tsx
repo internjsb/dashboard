@@ -1,11 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
 import api from "../api/client";
 import { AUTH_NOTICE_KEY } from "../context/AuthContext";
-import GoogleButton from "../components/GoogleButton";
 import PasswordField from "../components/PasswordField";
 import styles from "./Login.module.css";
 
@@ -22,7 +21,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   // Show why a session was ended (account removed / disabled), then clear it.
   useEffect(() => {
@@ -43,10 +41,7 @@ export default function Login() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       api.post("/events/login", { method: "password" }).catch(() => {}); // audit, fire-and-forget
-      // "/" hands off to HomeRedirect, which sends each user to the first
-      // page their role/department actually grants — not everyone can see
-      // /dashboard, so hardcoding it here would 403 them right after login.
-      navigate(searchParams.get("redirect") || "/");
+      navigate("/setup-2fa");
     } catch (err) {
       setError(mapError(err instanceof FirebaseError ? err.code : undefined));
     } finally {
@@ -112,8 +107,6 @@ export default function Login() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
-
-        <GoogleButton redirectTo={searchParams.get("redirect") || undefined} />
 
         <p className={styles.alt}>
           Don't have an account? <Link to="/register">Create one</Link>

@@ -17,8 +17,7 @@ const DEPARTMENTS = ["super_user", "sales", "supplychain", "finance"];
 // The client pings this right after a successful sign-in so the audit log
 // records who logged in, from where, and on what device.
 router.post("/events/login", requireAuth, async (req, res) => {
-  const method = ["password", "google"].includes(req.body?.method) ? req.body.method : "password";
-  await audit(req, "auth.login", { method });
+  await audit(req, "auth.login", { method: "password" });
   res.json({ ok: true });
 });
 

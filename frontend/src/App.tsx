@@ -10,8 +10,11 @@ const Pending = lazy(() => import("./views/Pending"));
 const Dashboard = lazy(() => import("./views/Dashboard"));
 const SalesHistory = lazy(() => import("./views/SalesHistory"));
 const StockAvailable = lazy(() => import("./views/StockAvailable"));
+const Inventory = lazy(() => import("./views/Inventory"));
 const Finance = lazy(() => import("./views/Finance"));
 const Profile = lazy(() => import("./views/Profile"));
+const Setup2FA = lazy(() => import("./views/Setup2FA"));
+const Verify2FA = lazy(() => import("./views/Verify2FA"));
 const AdminPanel = lazy(() => import("./views/AdminPanel"));
 const AuditLog = lazy(() => import("./views/AuditLog"));
 const Forbidden = lazy(() => import("./views/Forbidden"));
@@ -82,6 +85,14 @@ export default function App() {
               }
             />
             <Route
+              path="/inventory"
+              element={
+                <ProtectedRoute page="stock_available">
+                  <Inventory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/finance"
               element={
                 <ProtectedRoute page="finance">
@@ -94,6 +105,22 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/setup-2fa"
+              element={
+                <ProtectedRoute>
+                  <Setup2FA />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/verify-2fa"
+              element={
+                <ProtectedRoute>
+                  <Verify2FA />
                 </ProtectedRoute>
               }
             />

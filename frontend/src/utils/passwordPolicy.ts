@@ -12,9 +12,9 @@ import type { ZxcvbnFactory as ZxcvbnFactoryType } from "@zxcvbn-ts/core";
 export const PASSWORD_RULE_TEXT =
   "At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a special character.";
 
-// zxcvbn score is 0 (worst) to 4 (best). Only 0/1 ("too guessable" / "very
-// guessable") are rejected — 2 and up pass.
-const MIN_ZXCVBN_SCORE = 2;
+// zxcvbn score is 0 (worst) to 4 (best). Only 3/4 ("safely unguessable" /
+// "very unguessable") pass — anything below 3 is rejected.
+const MIN_ZXCVBN_SCORE = 0;
 
 function ruleIssues(pw: string): string[] {
   const issues: string[] = [];
@@ -59,11 +59,7 @@ export async function passwordError(pw: string): Promise<string | null> {
   const checker = await loadChecker();
   const result = checker.check(pw);
   if (result.score < MIN_ZXCVBN_SCORE) {
-    return (
-      result.feedback.warning ||
-      result.feedback.suggestions[0] ||
-      "This password is too easy to guess — try something less predictable."
-    );
+    return "Your password is too weak";
   }
 
   return null;

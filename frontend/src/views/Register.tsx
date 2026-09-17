@@ -6,7 +6,6 @@ import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import GoogleButton from "../components/GoogleButton";
 import PasswordField from "../components/PasswordField";
 import { PASSWORD_RULE_TEXT, passwordError } from "../utils/passwordPolicy";
 import type { UserStatus } from "../types";
@@ -159,8 +158,6 @@ export default function Register() {
             {loading ? "Creating..." : "Create account"}
           </button>
         </form>
-
-        <GoogleButton />
 
         <p className={styles.alt}>
           Already have an account? <Link to="/login">Sign in</Link>

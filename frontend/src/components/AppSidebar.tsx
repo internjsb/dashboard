@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   TrendingUp,
   Package,
+  Boxes,
   Wallet,
   CircleUserRound,
   Users,
@@ -107,6 +108,12 @@ export default function AppSidebar() {
                   {lowItems.length}
                 </span>
               )}
+            </NavLink>
+          )}
+          {canSeeStock && (
+            <NavLink to="/inventory" className={navItemClass}>
+              <Boxes className={styles.icon} size={18} />
+              Inventory
             </NavLink>
           )}
           {canSeeFinance && (

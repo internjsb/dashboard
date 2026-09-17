@@ -57,10 +57,8 @@ function describe(e: AuditEvent): string {
   const who = username(str(d, "email")) || str(d, "targetUid") || "this person";
 
   switch (e.action) {
-    case "auth.login": {
-      const method = str(d, "method");
-      return method === "google" ? "Signed in with Google" : "Signed in";
-    }
+    case "auth.login":
+      return "Signed in";
     case "auth.signup": {
       const name = username(str(d, "email")) || "a new account";
       const status = str(d, "status");

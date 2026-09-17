@@ -28,8 +28,6 @@ export default function Profile() {
 
   const email = user?.email ?? "";
   const initials = (displayName || email || "?").slice(0, 2).toUpperCase();
-  // Only email/password accounts can change a password here — Google accounts
-  // manage their credentials with Google.
   const hasPasswordLogin = user?.providerData.some((p) => p.providerId === "password") ?? false;
   const memberSince = user?.metadata.creationTime
     ? new Date(user.metadata.creationTime).toLocaleDateString(undefined, {
