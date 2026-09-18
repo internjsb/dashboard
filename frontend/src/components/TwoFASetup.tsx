@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import styles from "./TwoFASetup.module.css";
 
 type TwoFASetupProps = {
@@ -15,8 +16,17 @@ type SetupResponse = {
 
 const TwoFASetup = ({onSetupComplete}: TwoFASetupProps) => {
     const navigate = useNavigate();
+    const { signOut } = useAuth();
     const [response, setResponse] = useState<SetupResponse>({});
     const [message, setMessage] = useState("");
+
+    // Still fully signed in at this point (2FA not enabled yet, so this page
+    // is unavoidable), so a plain navigate back would get bounced right back
+    // here by the route guard. Sign out first so /login is actually usable.
+    const handleBack = async () => {
+        await signOut().catch(() => {});
+        navigate("/login", { replace: true });
+    };
 
     const fetchQRcode = async () => {
         try {
@@ -39,7 +49,7 @@ const TwoFASetup = ({onSetupComplete}: TwoFASetupProps) => {
     return <div className={styles.loginScreen}>
     
       <div className={styles.loginCard}>
-        <button type="button" onClick={() => navigate(-1)} className={styles.backBtn} aria-label="Go back">
+        <button type="button" onClick={handleBack} className={styles.backBtn} aria-label="Go back">
           <ArrowLeft size={18} />
         </button>
         <div className={styles.brand}>

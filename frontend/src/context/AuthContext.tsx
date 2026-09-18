@@ -39,6 +39,12 @@ interface AuthContextValue {
   // has already proven possession of the authenticator (see markTwoFactorVerified).
   twoFactorEnabled: boolean | null;
   twoFactorVerified: boolean;
+  // True for the full span of any hydrate() call, not just the first one.
+  // waitUntilReady()/ready only ever resolve once (on app boot), so without
+  // this a route guard mounting right after a fresh sign-in sees `checked`
+  // already true and renders off stale role/status/twoFactorEnabled — the
+  // "flash into the dashboard, then get kicked back out" glitch.
+  profileLoading: boolean;
   ready: boolean;
   waitUntilReady: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -65,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [ready, setReady] = useState(false); // true once the first auth state has been resolved
 
   // A one-time promise that resolves when the first auth state is known.
@@ -83,7 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Force the session closed and record why, so the login screen can say so.
   const endSession = useCallback(async (kind: "removed" | "disabled") => {
     setAuthNotice(kind);
+    const uid = auth.currentUser?.uid;
     await firebaseSignOut(auth).catch(() => {});
+    if (uid) {
+      try {
+        sessionStorage.removeItem(verifiedSessionKey(uid));
+      } catch {
+        /* private mode — nothing was persisted to begin with */
+      }
+    }
     setUser(null);
     setDisplayName(null);
     setRole(null);
@@ -92,12 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsSuperAdmin(false);
     setTwoFactorEnabled(null);
     setTwoFactorVerified(false);
+    setProfileLoading(false);
   }, []);
 
   // Pull role + approval status from the backend (the source of truth). Falls
   // back to token claims if the API is unreachable, and marks status
   // "unknown" so guards don't hand out access we couldn't verify.
   const hydrate = useCallback(async (firebaseUser: FirebaseUser | null) => {
+    setProfileLoading(true);
     setUser(firebaseUser);
 
     if (!firebaseUser) {
@@ -108,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsSuperAdmin(false);
       setTwoFactorEnabled(null);
       setTwoFactorVerified(false);
+      setProfileLoading(false);
       return;
     }
 
@@ -159,6 +177,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // rather than silently letting the session through unchecked.
       setTwoFactorEnabled(true);
       setTwoFactorVerified(false);
+    } finally {
+      setProfileLoading(false);
     }
   }, [endSession]);
 
@@ -192,7 +212,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    // Clear this account's "verified this session" marker so logging back in
+    // — even in the same tab — always asks for the OTP again. Without this,
+    // sessionStorage outlives sign-out and a re-login skips 2FA entirely.
+    const uid = auth.currentUser?.uid;
     await firebaseSignOut(auth);
+    if (uid) {
+      try {
+        sessionStorage.removeItem(verifiedSessionKey(uid));
+      } catch {
+        /* private mode — nothing was persisted to begin with */
+      }
+    }
   }
 
   // Called once the OTP step succeeds (fresh setup or a returning login).
@@ -234,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isSuperAdmin,
     twoFactorEnabled,
     twoFactorVerified,
+    profileLoading,
     ready,
     waitUntilReady,
     signOut,

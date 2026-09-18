@@ -23,8 +23,16 @@ const NotFound = lazy(() => import("./views/NotFound"));
 // "/" has no page of its own — send the signed-in user to the first business
 // page their role/department actually lets them see (Profile if none).
 function HomeRedirect() {
-  const { user, department, status, isSuperAdmin, twoFactorEnabled, twoFactorVerified, waitUntilReady } =
-    useAuth();
+  const {
+    user,
+    department,
+    status,
+    isSuperAdmin,
+    twoFactorEnabled,
+    twoFactorVerified,
+    profileLoading,
+    waitUntilReady,
+  } = useAuth();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
@@ -37,7 +45,11 @@ function HomeRedirect() {
     };
   }, [waitUntilReady]);
 
-  if (!checked) return null;
+  // waitUntilReady()/checked only ever resolve once, on app boot — they don't
+  // re-arm for a sign-in that happens later in the same tab. profileLoading
+  // covers that: it's true for the full span of every hydrate(), so a fresh
+  // login doesn't render a decision off stale role/status/twoFactorEnabled.
+  if (!checked || profileLoading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (status === "pending") return <Navigate to="/pending" replace />;
   if (status === "denied") return <Navigate to="/forbidden" replace />;

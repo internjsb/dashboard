@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { AxiosError } from "axios";
 import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import styles from "./TwoFAVerification.module.css";
 
 type TwoFAVerificationProps = {
@@ -12,8 +13,17 @@ type TwoFAVerificationProps = {
 
 const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationProps) => {
     const navigate = useNavigate();
+    const { signOut } = useAuth();
     const [otp, setOtp] = useState ("");
     const [error, setError] = useState ("");
+
+    // Still fully signed in at this point (just not 2FA-verified), so a plain
+    // navigate(-1)/"/login" would get bounced straight back here by the route
+    // guard. Sign out first so /login is actually usable.
+    const handleBack = async () => {
+        await signOut().catch(() => {});
+        navigate("/login", { replace: true });
+    };
 
     const handleTokenVerification = async(e: React.FormEvent) => {
         e.preventDefault();
@@ -46,7 +56,7 @@ const TwoFAVerification = ({onVerifySuccess, onRestSuccess}: TwoFAVerificationPr
           <div className={styles.loginScreen}>
 
               <div className={styles.loginCard}>
-                <button type="button" onClick={() => navigate(-1)} className={styles.backBtn} aria-label="Go back">
+                <button type="button" onClick={handleBack} className={styles.backBtn} aria-label="Go back">
                   <ArrowLeft size={18} />
                 </button>
                 <div className={styles.brand}>

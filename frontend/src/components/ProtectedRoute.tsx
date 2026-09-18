@@ -24,6 +24,7 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
     isSuperAdmin,
     twoFactorEnabled,
     twoFactorVerified,
+    profileLoading,
     waitUntilReady,
   } = useAuth();
   const [checked, setChecked] = useState(false);
@@ -41,7 +42,10 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
 
   // Wait for Firebase's first auth-state report (and its /me lookup) so a
   // page refresh doesn't wrongly look logged-out while that check is in flight.
-  if (!checked) return null;
+  // profileLoading also covers every LATER hydrate (e.g. a fresh sign-in) —
+  // checked alone only ever resolves once, on app boot, so without this a
+  // route mounting right after login would render off stale role/status/2FA.
+  if (!checked || profileLoading) return null;
 
   if (!user) {
     const redirect = encodeURIComponent(location.pathname + location.search);
