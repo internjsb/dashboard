@@ -76,6 +76,7 @@ export default function Products() {
   const [setInput, setSetInput] = useState(DEFAULT_SET);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     const q = query(ref(rtdb, PRODUCTS_PATH), orderByChild("sn"));
@@ -164,77 +165,90 @@ export default function Products() {
         <main className={styles.content}>
           <p className={styles.intro}>Product catalog.</p>
 
-          <section className={styles.card}>
-            <div className={styles.cardHead}>
-              <h3>Add product</h3>
-              <span className={styles.cardSub}>Enter a new row manually</span>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className={styles.formGrid}>
-                <label className={styles.field}>
-                  <span>S/N</span>
-                  <input
-                    type="number"
-                    min={1}
-                    placeholder={String(nextSn)}
-                    value={snInput}
-                    onChange={(e) => setSnInput(e.target.value)}
-                    aria-invalid={snDuplicate}
-                  />
-                  {snDuplicate && <span className={styles.error}>S/N {snInput} is already used.</span>}
-                </label>
-                <label className={styles.field}>
-                  <span>
-                    Set (per pack)
-                    <span className={styles.required}> *</span>
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    required
-                    value={setInput}
-                    onChange={(e) => setSetInput(e.target.value)}
-                  />
-                </label>
-                {FIELDS.map((f) => (
-                  <label key={f.key} className={styles.field}>
-                    <span>
-                      {f.label}
-                      {f.required && <span className={styles.required}> *</span>}
-                    </span>
-                    {f.options ? (
-                      <select
-                        required={f.required}
-                        value={form[f.key]}
-                        onChange={(e) => updateField(f.key, e.target.value)}
-                      >
-                        <option value="" disabled>
-                          Select {f.label.toLowerCase()}
-                        </option>
-                        {f.options.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        required={f.required}
-                        value={form[f.key]}
-                        onChange={(e) => updateField(f.key, e.target.value)}
-                      />
-                    )}
-                  </label>
-                ))}
+          {!showForm && (
+            <button type="button" className={`${styles.saveBtn} ${styles.addBtn}`} onClick={() => setShowForm(true)}>
+              Add product
+            </button>
+          )}
+
+          {showForm && (
+            <section className={styles.card}>
+              <div className={styles.cardHead}>
+                <div>
+                  <h3>Add product</h3>
+                  <span className={styles.cardSub}>Enter a new row manually</span>
+                </div>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowForm(false)}>
+                  Cancel
+                </button>
               </div>
-              {error && <p className={styles.error}>{error}</p>}
-              <button type="submit" className={styles.saveBtn} disabled={saving || snDuplicate}>
-                {saving ? "Saving…" : "Add row"}
-              </button>
-            </form>
-          </section>
+              <form onSubmit={handleSubmit}>
+                <div className={styles.formGrid}>
+                  <label className={styles.field}>
+                    <span>S/N</span>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder={String(nextSn)}
+                      value={snInput}
+                      onChange={(e) => setSnInput(e.target.value)}
+                      aria-invalid={snDuplicate}
+                    />
+                    {snDuplicate && <span className={styles.error}>S/N {snInput} is already used.</span>}
+                  </label>
+                  <label className={styles.field}>
+                    <span>
+                      Set (per pack)
+                      <span className={styles.required}> *</span>
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      required
+                      value={setInput}
+                      onChange={(e) => setSetInput(e.target.value)}
+                    />
+                  </label>
+                  {FIELDS.map((f) => (
+                    <label key={f.key} className={styles.field}>
+                      <span>
+                        {f.label}
+                        {f.required && <span className={styles.required}> *</span>}
+                      </span>
+                      {f.options ? (
+                        <select
+                          required={f.required}
+                          value={form[f.key]}
+                          onChange={(e) => updateField(f.key, e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select {f.label.toLowerCase()}
+                          </option>
+                          {f.options.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          required={f.required}
+                          value={form[f.key]}
+                          onChange={(e) => updateField(f.key, e.target.value)}
+                        />
+                      )}
+                    </label>
+                  ))}
+                </div>
+                {error && <p className={styles.error}>{error}</p>}
+                <button type="submit" className={styles.saveBtn} disabled={saving || snDuplicate}>
+                  {saving ? "Saving…" : "Add row"}
+                </button>
+              </form>
+            </section>
+          )}
 
           <section className={styles.card}>
             <div className={styles.cardHead}>

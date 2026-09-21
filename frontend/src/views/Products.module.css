@@ -24,6 +24,10 @@
 
 .cardHead {
   margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .cardHead h3 {
@@ -96,4 +100,23 @@
 
 .saveBtn:hover {
   background: var(--accent-strong);
+}
+
+.addBtn {
+  margin-bottom: 18px;
+}
+
+.cancelBtn {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.cancelBtn:hover {
+  background: var(--bg);
 }
