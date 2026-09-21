@@ -69,6 +69,7 @@ export default function Finance() {
   }, []);
 
   const transactionColumns: DataTableColumn<TransactionRow>[] = [
+    { key: "sku", header: "SKU", accessor: (t) => t.sku, render: (t) => t.sku || "—", className: styles.muted },
     { key: "date", header: "Date", accessor: (t) => t.date, render: (t) => formatDate(t.date) },
     {
       key: "type",
@@ -103,6 +104,7 @@ export default function Finance() {
   ];
 
   const taxColumns: DataTableColumn<TaxRow>[] = [
+    { key: "sku", header: "SKU", accessor: (t) => t.sku, render: (t) => t.sku || "—", className: styles.muted },
     { key: "jurisdiction", header: "Jurisdiction", accessor: (t) => t.jurisdiction },
     { key: "period", header: "Period", accessor: (t) => t.period, className: styles.muted },
     {
@@ -138,6 +140,7 @@ export default function Finance() {
   ];
 
   const reportColumns: DataTableColumn<FinanceReportRow>[] = [
+    { key: "sku", header: "SKU", accessor: (r) => r.sku, render: (r) => r.sku || "—", className: styles.muted },
     { key: "name", header: "Report", accessor: (r) => r.name },
     { key: "period", header: "Period", accessor: (r) => r.period, className: styles.muted },
     { key: "type", header: "Type", accessor: (r) => r.type },
@@ -192,6 +195,7 @@ export default function Finance() {
                     filename="transactions"
                     rows={data.transactions}
                     columns={[
+                      { header: "SKU", value: (t) => t.sku },
                       { header: "Date", value: (t) => t.date },
                       { header: "Type", value: (t) => TXN_TYPE_LABEL[t.type] },
                       { header: "Description", value: (t) => t.description },
@@ -220,6 +224,7 @@ export default function Finance() {
                     filename="taxes"
                     rows={data.taxes}
                     columns={[
+                      { header: "SKU", value: (t) => t.sku },
                       { header: "Jurisdiction", value: (t) => t.jurisdiction },
                       { header: "Period", value: (t) => t.period },
                       { header: "Taxable sales", value: (t) => t.taxableSales },
@@ -248,6 +253,7 @@ export default function Finance() {
                     filename="finance-reports"
                     rows={data.reports}
                     columns={[
+                      { header: "SKU", value: (r) => r.sku },
                       { header: "Report", value: (r) => r.name },
                       { header: "Period", value: (r) => r.period },
                       { header: "Type", value: (r) => r.type },

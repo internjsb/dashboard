@@ -78,12 +78,22 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
     }
   }
 
-  if (role && role !== userRole) {
-    return <Navigate to="/forbidden" replace />;
-  }
-
-  if (page && !canAccessPage(isSuperAdmin, department, page)) {
-    return <Navigate to="/forbidden" replace />;
+  // When both are given, either one satisfies the guard (e.g. a page that
+  // admins should see regardless of department, on top of the departments
+  // that already grant it). A single prop keeps its own strict check.
+  if (role && page) {
+    const roleOk = role === userRole;
+    const pageOk = canAccessPage(isSuperAdmin, department, page);
+    if (!roleOk && !pageOk) {
+      return <Navigate to="/forbidden" replace />;
+    }
+  } else {
+    if (role && role !== userRole) {
+      return <Navigate to="/forbidden" replace />;
+    }
+    if (page && !canAccessPage(isSuperAdmin, department, page)) {
+      return <Navigate to="/forbidden" replace />;
+    }
   }
 
   return <>{children}</>;

@@ -96,20 +96,20 @@ export const stockAvailable = {
   // Per-item, per-warehouse breakdown — on-hand stock, how much of it is
   // already reserved against open orders, and what's actually sellable.
   inventory: [
-    { finish: "Smart Luggage Lock", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 73, reserved: 9, available: 64 },
-    { finish: "Smart Luggage Lock", warehouse: "Leipzig · LEJ1", country: "Germany", onHand: 52, reserved: 8, available: 44 },
-    { finish: "Smart Luggage Lock", warehouse: "Rugeley · BHX4", country: "United Kingdom", onHand: 44, reserved: 4, available: 40 },
-    { finish: "Smart Luggage Lock", warehouse: "Toronto · YYZ4", country: "Canada", onHand: 22, reserved: 2, available: 20 },
-    { finish: "5th GEN Outdoor Smart Padlock", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 70, reserved: 9, available: 61 },
-    { finish: "5th GEN Outdoor Smart Padlock", warehouse: "Leipzig · LEJ1", country: "Germany", onHand: 40, reserved: 5, available: 35 },
-    { finish: "5th GEN Outdoor Smart Padlock", warehouse: "Toronto · YYZ4", country: "Canada", onHand: 40, reserved: 4, available: 36 },
-    { finish: "4th GEN. Outdoor Smart Padlock", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 16, reserved: 2, available: 14 },
-    { finish: "4th GEN. Outdoor Smart Padlock", warehouse: "Rugeley · BHX4", country: "United Kingdom", onHand: 12, reserved: 2, available: 10 },
-    { finish: "Smart Lockout Tagout Lock (RED)", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 0, reserved: 0, available: 0 },
-    { finish: "Smart Lockout Tagout Lock (RED)", warehouse: "Chiba · NRT5", country: "Japan", onHand: 0, reserved: 0, available: 0 },
-    { finish: "Smart Padlock Replacement Shackle", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 180, reserved: 20, available: 160 },
-    { finish: "Smart Padlock Replacement Shackle", warehouse: "Leipzig · LEJ1", country: "Germany", onHand: 90, reserved: 10, available: 80 },
-    { finish: "Smart Padlock Replacement Shackle", warehouse: "Sydney · SYD2", country: "Australia", onHand: 80, reserved: 8, available: 72 },
+    { sku: "SKU-LUG-001", dtiItemCode: "DTI-LUG-001", finish: "Smart Luggage Lock", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 73, reserved: 9, available: 64 },
+    { sku: "SKU-LUG-001", dtiItemCode: "DTI-LUG-001", finish: "Smart Luggage Lock", warehouse: "Leipzig · LEJ1", country: "Germany", onHand: 52, reserved: 8, available: 44 },
+    { sku: "SKU-LUG-001", dtiItemCode: "DTI-LUG-001", finish: "Smart Luggage Lock", warehouse: "Rugeley · BHX4", country: "United Kingdom", onHand: 44, reserved: 4, available: 40 },
+    { sku: "SKU-LUG-001", dtiItemCode: "DTI-LUG-001", finish: "Smart Luggage Lock", warehouse: "Toronto · YYZ4", country: "Canada", onHand: 22, reserved: 2, available: 20 },
+    { sku: "SKU-PAD-005", dtiItemCode: "DTI-PAD-005", finish: "5th GEN Outdoor Smart Padlock", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 70, reserved: 9, available: 61 },
+    { sku: "SKU-PAD-005", dtiItemCode: "DTI-PAD-005", finish: "5th GEN Outdoor Smart Padlock", warehouse: "Leipzig · LEJ1", country: "Germany", onHand: 40, reserved: 5, available: 35 },
+    { sku: "SKU-PAD-005", dtiItemCode: "DTI-PAD-005", finish: "5th GEN Outdoor Smart Padlock", warehouse: "Toronto · YYZ4", country: "Canada", onHand: 40, reserved: 4, available: 36 },
+    { sku: "SKU-PAD-004", dtiItemCode: "DTI-PAD-004", finish: "4th GEN. Outdoor Smart Padlock", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 16, reserved: 2, available: 14 },
+    { sku: "SKU-PAD-004", dtiItemCode: "DTI-PAD-004", finish: "4th GEN. Outdoor Smart Padlock", warehouse: "Rugeley · BHX4", country: "United Kingdom", onHand: 12, reserved: 2, available: 10 },
+    { sku: "SKU-LOTO-RED", dtiItemCode: "DTI-LOTO-RED", finish: "Smart Lockout Tagout Lock (RED)", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 0, reserved: 0, available: 0 },
+    { sku: "SKU-LOTO-RED", dtiItemCode: "DTI-LOTO-RED", finish: "Smart Lockout Tagout Lock (RED)", warehouse: "Chiba · NRT5", country: "Japan", onHand: 0, reserved: 0, available: 0 },
+    { sku: "SKU-SHACKLE-001", dtiItemCode: "DTI-SHACKLE-001", finish: "Smart Padlock Replacement Shackle", warehouse: "Phoenix, AZ · FTW1", country: "United States", onHand: 180, reserved: 20, available: 160 },
+    { sku: "SKU-SHACKLE-001", dtiItemCode: "DTI-SHACKLE-001", finish: "Smart Padlock Replacement Shackle", warehouse: "Leipzig · LEJ1", country: "Germany", onHand: 90, reserved: 10, available: 80 },
+    { sku: "SKU-SHACKLE-001", dtiItemCode: "DTI-SHACKLE-001", finish: "Smart Padlock Replacement Shackle", warehouse: "Sydney · SYD2", country: "Australia", onHand: 80, reserved: 8, available: 72 },
   ],
 
   // Inbound replenishment shipments — the individual shipments that make up
@@ -130,27 +130,27 @@ export const stockAvailable = {
 // --- Finance page ---------------------------------------------------------
 export const finance = {
   transactions: [
-    { id: "TXN-98213", date: "2026-09-10", type: "sale", description: "Order 111-2938471-0011", amount: 129.99, status: "completed" },
-    { id: "TXN-98214", date: "2026-09-10", type: "refund", description: "Return — order 113-9982004-1177", amount: -129.99, status: "completed" },
-    { id: "TXN-98215", date: "2026-09-09", type: "payout", description: "Amazon payout — weekly settlement", amount: -18420.5, status: "completed" },
-    { id: "TXN-98216", date: "2026-09-09", type: "fee", description: "Referral fee — September batch", amount: -2140.3, status: "completed" },
-    { id: "TXN-98217", date: "2026-09-08", type: "sale", description: "Order 112-8471920-4432", amount: 259.98, status: "pending" },
-    { id: "TXN-98218", date: "2026-09-07", type: "advertising", description: "Sponsored Products spend", amount: -640, status: "completed" },
+    { id: "TXN-98213", date: "2026-09-10", type: "sale", sku: "SKU-LUG-001", description: "Order 111-2938471-0011", amount: 129.99, status: "completed" },
+    { id: "TXN-98214", date: "2026-09-10", type: "refund", sku: "SKU-PAD-004", description: "Return — order 113-9982004-1177", amount: -129.99, status: "completed" },
+    { id: "TXN-98215", date: "2026-09-09", type: "payout", sku: "SKU-LUG-001", description: "Amazon payout — weekly settlement", amount: -18420.5, status: "completed" },
+    { id: "TXN-98216", date: "2026-09-09", type: "fee", sku: "SKU-PAD-005", description: "Referral fee — September batch", amount: -2140.3, status: "completed" },
+    { id: "TXN-98217", date: "2026-09-08", type: "sale", sku: "SKU-PAD-005", description: "Order 112-8471920-4432", amount: 259.98, status: "pending" },
+    { id: "TXN-98218", date: "2026-09-07", type: "advertising", sku: "SKU-LUG-001", description: "Sponsored Products spend", amount: -640, status: "completed" },
   ],
 
   taxes: [
-    { id: "TAX-US-2026-08", jurisdiction: "United States — Federal", period: "Aug 2026", taxableSales: 168400, taxCollected: 11788, status: "filed" },
-    { id: "TAX-US-CA-2026-08", jurisdiction: "California, US", period: "Aug 2026", taxableSales: 42300, taxCollected: 3596, status: "filed" },
-    { id: "TAX-UK-2026-08", jurisdiction: "United Kingdom — VAT", period: "Aug 2026", taxableSales: 31890, taxCollected: 6378, status: "filed" },
-    { id: "TAX-DE-2026-08", jurisdiction: "Germany — VAT", period: "Aug 2026", taxableSales: 25430, taxCollected: 4832, status: "pending" },
-    { id: "TAX-US-2026-09", jurisdiction: "United States — Federal", period: "Sep 2026", taxableSales: 96200, taxCollected: 6734, status: "pending" },
+    { id: "TAX-US-2026-08", sku: "SKU-LUG-001", jurisdiction: "United States — Federal", period: "Aug 2026", taxableSales: 168400, taxCollected: 11788, status: "filed" },
+    { id: "TAX-US-CA-2026-08", sku: "SKU-PAD-005", jurisdiction: "California, US", period: "Aug 2026", taxableSales: 42300, taxCollected: 3596, status: "filed" },
+    { id: "TAX-UK-2026-08", sku: "SKU-PAD-004", jurisdiction: "United Kingdom — VAT", period: "Aug 2026", taxableSales: 31890, taxCollected: 6378, status: "filed" },
+    { id: "TAX-DE-2026-08", sku: "SKU-SHACKLE-001", jurisdiction: "Germany — VAT", period: "Aug 2026", taxableSales: 25430, taxCollected: 4832, status: "pending" },
+    { id: "TAX-US-2026-09", sku: "SKU-LUG-001", jurisdiction: "United States — Federal", period: "Sep 2026", taxableSales: 96200, taxCollected: 6734, status: "pending" },
   ],
 
   reports: [
-    { id: "RPT-2026-Q2", name: "Q2 2026 Income Statement", period: "Apr–Jun 2026", type: "Income statement", generatedOn: "2026-07-05", status: "final" },
-    { id: "RPT-2026-08", name: "August 2026 P&L", period: "Aug 2026", type: "Profit & loss", generatedOn: "2026-09-02", status: "final" },
-    { id: "RPT-2026-09", name: "September 2026 P&L", period: "Sep 2026", type: "Profit & loss", generatedOn: "2026-09-14", status: "draft" },
-    { id: "RPT-2026-CF-Q2", name: "Q2 2026 Cash Flow", period: "Apr–Jun 2026", type: "Cash flow", generatedOn: "2026-07-06", status: "final" },
+    { id: "RPT-2026-Q2", sku: "SKU-LUG-001", name: "Q2 2026 Income Statement", period: "Apr–Jun 2026", type: "Income statement", generatedOn: "2026-07-05", status: "final" },
+    { id: "RPT-2026-08", sku: "SKU-PAD-005", name: "August 2026 P&L", period: "Aug 2026", type: "Profit & loss", generatedOn: "2026-09-02", status: "final" },
+    { id: "RPT-2026-09", sku: "SKU-PAD-004", name: "September 2026 P&L", period: "Sep 2026", type: "Profit & loss", generatedOn: "2026-09-14", status: "draft" },
+    { id: "RPT-2026-CF-Q2", sku: "SKU-SHACKLE-001", name: "Q2 2026 Cash Flow", period: "Apr–Jun 2026", type: "Cash flow", generatedOn: "2026-07-06", status: "final" },
   ],
 };
 

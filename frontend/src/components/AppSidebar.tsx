@@ -6,6 +6,7 @@ import {
   Package,
   Boxes,
   Wallet,
+  Tag,
   CircleUserRound,
   Users,
   ScrollText,
@@ -25,6 +26,7 @@ export default function AppSidebar() {
   const canSeeSalesHistory = canAccessPage(isSuperAdmin, department, "sales_history");
   const canSeeStock = canAccessPage(isSuperAdmin, department, "stock_available");
   const canSeeFinance = canAccessPage(isSuperAdmin, department, "finance");
+  const canSeeProducts = canAccessPage(isSuperAdmin, department, "products") || role === "admin";
 
   const { lowItems } = useStock(canSeeStock);
   const navigate = useNavigate();
@@ -120,6 +122,12 @@ export default function AppSidebar() {
             <NavLink to="/finance" className={navItemClass}>
               <Wallet className={styles.icon} size={18} />
               Finance
+            </NavLink>
+          )}
+          {canSeeProducts && (
+            <NavLink to="/products" className={navItemClass}>
+              <Tag className={styles.icon} size={18} />
+              Products
             </NavLink>
           )}
           <NavLink to="/profile" className={navItemClass}>

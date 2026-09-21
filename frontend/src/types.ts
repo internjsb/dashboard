@@ -118,6 +118,8 @@ export interface StockCountry {
 }
 
 export interface InventoryRow {
+  sku: string;
+  dtiItemCode: string;
   finish: string;
   warehouse: string;
   country: string;
@@ -154,6 +156,7 @@ export interface TransactionRow {
   id: string;
   date: string;
   type: TransactionType;
+  sku: string;
   description: string;
   amount: number;
   status: TransactionStatus;
@@ -163,6 +166,7 @@ export type TaxStatus = "filed" | "pending";
 
 export interface TaxRow {
   id: string;
+  sku: string;
   jurisdiction: string;
   period: string;
   taxableSales: number;
@@ -174,6 +178,7 @@ export type ReportStatus = "final" | "draft";
 
 export interface FinanceReportRow {
   id: string;
+  sku: string;
   name: string;
   period: string;
   type: string;

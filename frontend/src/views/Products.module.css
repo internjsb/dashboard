@@ -1,0 +1,99 @@
+.content {
+  padding: 28px 32px 48px;
+  max-width: 1100px;
+}
+
+@media (max-width: 700px) {
+  .content {
+    padding: 20px 16px 40px;
+  }
+}
+
+.intro {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin: 0 0 18px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+}
+
+.cardHead {
+  margin-bottom: 14px;
+}
+
+.cardHead h3 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.cardSub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.field {
+  display: block;
+}
+
+.field span {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.required {
+  color: var(--danger);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.saveBtn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.saveBtn:hover {
+  background: var(--accent-strong);
+}

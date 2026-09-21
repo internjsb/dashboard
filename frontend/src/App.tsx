@@ -12,6 +12,7 @@ const SalesHistory = lazy(() => import("./views/SalesHistory"));
 const StockAvailable = lazy(() => import("./views/StockAvailable"));
 const Inventory = lazy(() => import("./views/Inventory"));
 const Finance = lazy(() => import("./views/Finance"));
+const Products = lazy(() => import("./views/Products"));
 const Profile = lazy(() => import("./views/Profile"));
 const Setup2FA = lazy(() => import("./views/Setup2FA"));
 const Verify2FA = lazy(() => import("./views/Verify2FA"));
@@ -112,6 +113,14 @@ export default function App() {
               element={
                 <ProtectedRoute page="finance">
                   <Finance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products"
+              element={
+                <ProtectedRoute page="products" role="admin">
+                  <Products />
                 </ProtectedRoute>
               }
             />

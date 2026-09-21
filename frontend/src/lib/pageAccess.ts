@@ -4,13 +4,14 @@
 // rule independently on every request.
 import type { Department } from "../types";
 
-export type PageKey = "dashboard" | "sales_history" | "stock_available" | "finance";
+export type PageKey = "dashboard" | "sales_history" | "stock_available" | "finance" | "products";
 
 const PAGE_DEPARTMENTS: Record<PageKey, Department[]> = {
   dashboard: ["super_user", "sales"],
   sales_history: ["super_user", "sales"],
   stock_available: ["super_user", "supplychain"],
   finance: ["super_user", "finance"],
+  products: ["super_user", "supplychain"],
 };
 
 const PAGE_PATH: Record<PageKey, string> = {
@@ -18,6 +19,7 @@ const PAGE_PATH: Record<PageKey, string> = {
   sales_history: "/sales-history",
   stock_available: "/stock-available",
   finance: "/finance",
+  products: "/products",
 };
 
 // Only the one true super admin (isSuperAdmin) bypasses everything. Being

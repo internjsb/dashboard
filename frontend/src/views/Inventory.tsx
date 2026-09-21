@@ -33,6 +33,8 @@ export default function Inventory() {
   const shipments = data?.shipments ?? [];
 
   const inventoryColumns: DataTableColumn<InventoryRow>[] = [
+    { key: "sku", header: "SKU", accessor: (i) => i.sku },
+    { key: "dtiItemCode", header: "DTI Item Code", accessor: (i) => i.dtiItemCode },
     { key: "finish", header: "Item", accessor: (i) => i.finish },
     { key: "warehouse", header: "Warehouse", accessor: (i) => i.warehouse, className: styles.muted },
     { key: "country", header: "Country", accessor: (i) => i.country },
@@ -127,6 +129,8 @@ export default function Inventory() {
                     filename="inventory"
                     rows={inventory}
                     columns={[
+                      { header: "SKU", value: (i) => i.sku },
+                      { header: "DTI Item Code", value: (i) => i.dtiItemCode },
                       { header: "Item", value: (i) => i.finish },
                       { header: "Warehouse", value: (i) => i.warehouse },
                       { header: "Country", value: (i) => i.country },
@@ -139,7 +143,7 @@ export default function Inventory() {
                 <DataTable
                   columns={inventoryColumns}
                   rows={inventory}
-                  rowKey={(i) => `${i.finish}-${i.warehouse}`}
+                  rowKey={(i) => `${i.sku}-${i.warehouse}`}
                   searchPlaceholder="Search items, warehouses, or countries…"
                   emptyMessage="No inventory records match your search."
                 />
