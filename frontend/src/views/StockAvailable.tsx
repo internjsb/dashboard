@@ -26,6 +26,7 @@ export default function StockAvailable() {
   const totalOnHand = byCountry.reduce((s, c) => s + c.available, 0);
 
   const itemColumns: DataTableColumn<StockItem>[] = [
+    { key: "sku", header: "SKU", accessor: (i) => i.sku },
     { key: "finish", header: "Item", accessor: (i) => i.finish },
     {
       key: "available",
@@ -62,6 +63,7 @@ export default function StockAvailable() {
   ];
 
   const countryColumns: DataTableColumn<StockCountry>[] = [
+    { key: "sku", header: "SKU", accessor: (c) => c.sku },
     { key: "country", header: "Country", accessor: (c) => c.country },
     { key: "warehouse", header: "Warehouse", accessor: (c) => c.warehouse, className: styles.muted },
     {
@@ -132,6 +134,7 @@ export default function StockAvailable() {
                     filename="stock-by-item"
                     rows={byItem}
                     columns={[
+                      { header: "SKU", value: (i) => i.sku },
                       { header: "Item", value: (i) => i.finish },
                       { header: "Available", value: (i) => i.available },
                       { header: "Inbound", value: (i) => i.inbound },
@@ -163,6 +166,7 @@ export default function StockAvailable() {
                     filename="stock-by-country"
                     rows={byCountry}
                     columns={[
+                      { header: "SKU", value: (c) => c.sku },
                       { header: "Country", value: (c) => c.country },
                       { header: "Warehouse", value: (c) => c.warehouse },
                       { header: "Available", value: (c) => c.available },
@@ -172,7 +176,7 @@ export default function StockAvailable() {
                 <DataTable
                   columns={countryColumns}
                   rows={byCountry}
-                  rowKey={(c) => c.country}
+                  rowKey={(c) => `${c.sku}-${c.warehouse}`}
                   searchPlaceholder="Search countries or warehouses…"
                   emptyMessage="No countries match your search."
                 />

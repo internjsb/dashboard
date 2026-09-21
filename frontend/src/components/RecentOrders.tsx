@@ -10,7 +10,7 @@ interface Props {
 
 export default function RecentOrders({ orders }: Props) {
   const [query, setQuery] = useState("");
-  const filtered = orders.filter((o) => matches(`${o.id} ${o.finish}`, query));
+  const filtered = orders.filter((o) => matches(`${o.id} ${o.sku} ${o.finish}`, query));
 
   return (
     <div className={styles.card}>
@@ -20,6 +20,7 @@ export default function RecentOrders({ orders }: Props) {
           filename="recent-orders"
           rows={orders}
           columns={[
+            { header: "SKU", value: (o) => o.sku },
             { header: "Order ID", value: (o) => o.id },
             { header: "Item", value: (o) => o.finish },
             { header: "Qty", value: (o) => o.qty },
@@ -46,7 +47,7 @@ export default function RecentOrders({ orders }: Props) {
             <li key={o.id}>
               <div className={styles.line}>
                 <span className={styles.product}>
-                  {o.finish} <span className={styles.orderId}>· {o.id}</span>
+                  {o.finish} <span className={styles.orderId}>· {o.sku} · {o.id}</span>
                 </span>
                 <span className={styles.total}>${o.total.toFixed(2)}</span>
               </div>

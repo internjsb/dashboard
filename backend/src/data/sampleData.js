@@ -78,19 +78,27 @@ export const variants = variantsByPeriod.monthly;
 // "low" when available stock is at or below its reorder level.
 export const stockAvailable = {
   byItem: [
-    { finish: "Smart Luggage Lock", available: 168, inbound: 105, reorderLevel: 80 },
-    { finish: "5th GEN Outdoor Smart Padlock", available: 132, inbound: 55, reorderLevel: 90 },
-    { finish: "4th GEN. Outdoor Smart Padlock", available: 24, inbound: 0, reorderLevel: 60 },
-    { finish: "Smart Lockout Tagout Lock (RED)", available: 0, inbound: 150, reorderLevel: 40 },
-    { finish: "Smart Padlock Replacement Shackle", available: 312, inbound: 0, reorderLevel: 100 },
+    { sku: "SKU-LUG-001", finish: "Smart Luggage Lock", available: 168, inbound: 105, reorderLevel: 80 },
+    { sku: "SKU-PAD-005", finish: "5th GEN Outdoor Smart Padlock", available: 132, inbound: 55, reorderLevel: 90 },
+    { sku: "SKU-PAD-004", finish: "4th GEN. Outdoor Smart Padlock", available: 24, inbound: 0, reorderLevel: 60 },
+    { sku: "SKU-LOTO-RED", finish: "Smart Lockout Tagout Lock (RED)", available: 0, inbound: 150, reorderLevel: 40 },
+    { sku: "SKU-SHACKLE-001", finish: "Smart Padlock Replacement Shackle", available: 312, inbound: 0, reorderLevel: 100 },
   ],
   byCountry: [
-    { country: "United States", warehouse: "Phoenix, AZ · FTW1", available: 214 },
-    { country: "Germany", warehouse: "Leipzig · LEJ1", available: 96 },
-    { country: "United Kingdom", warehouse: "Rugeley · BHX4", available: 63 },
-    { country: "Canada", warehouse: "Toronto · YYZ4", available: 41 },
-    { country: "Australia", warehouse: "Sydney · SYD2", available: 12 },
-    { country: "Japan", warehouse: "Chiba · NRT5", available: 0 },
+    { sku: "SKU-LUG-001", country: "United States", warehouse: "Phoenix, AZ · FTW1", available: 64 },
+    { sku: "SKU-PAD-005", country: "United States", warehouse: "Phoenix, AZ · FTW1", available: 61 },
+    { sku: "SKU-PAD-004", country: "United States", warehouse: "Phoenix, AZ · FTW1", available: 14 },
+    { sku: "SKU-LOTO-RED", country: "United States", warehouse: "Phoenix, AZ · FTW1", available: 0 },
+    { sku: "SKU-SHACKLE-001", country: "United States", warehouse: "Phoenix, AZ · FTW1", available: 160 },
+    { sku: "SKU-LUG-001", country: "Germany", warehouse: "Leipzig · LEJ1", available: 44 },
+    { sku: "SKU-PAD-005", country: "Germany", warehouse: "Leipzig · LEJ1", available: 35 },
+    { sku: "SKU-SHACKLE-001", country: "Germany", warehouse: "Leipzig · LEJ1", available: 80 },
+    { sku: "SKU-LUG-001", country: "United Kingdom", warehouse: "Rugeley · BHX4", available: 40 },
+    { sku: "SKU-PAD-004", country: "United Kingdom", warehouse: "Rugeley · BHX4", available: 10 },
+    { sku: "SKU-LUG-001", country: "Canada", warehouse: "Toronto · YYZ4", available: 20 },
+    { sku: "SKU-PAD-005", country: "Canada", warehouse: "Toronto · YYZ4", available: 36 },
+    { sku: "SKU-SHACKLE-001", country: "Australia", warehouse: "Sydney · SYD2", available: 72 },
+    { sku: "SKU-LOTO-RED", country: "Japan", warehouse: "Chiba · NRT5", available: 0 },
   ],
 
   // Per-item, per-warehouse breakdown — on-hand stock, how much of it is
@@ -116,14 +124,14 @@ export const stockAvailable = {
   // each item's "inbound" total above (in-transit/customs/delayed only —
   // "arrived" shipments are historical and already counted in on-hand stock).
   shipments: [
-    { id: "SHIP-10199", finish: "Smart Luggage Lock", quantity: 25, origin: "Shenzhen, CN", destination: "Rugeley · BHX4", carrier: "Ocean freight", eta: "2026-09-05", status: "arrived" },
-    { id: "SHIP-10231", finish: "Smart Luggage Lock", quantity: 60, origin: "Shenzhen, CN", destination: "Phoenix, AZ · FTW1", carrier: "Ocean freight", eta: "2026-09-22", status: "in_transit" },
-    { id: "SHIP-10232", finish: "Smart Luggage Lock", quantity: 30, origin: "Shenzhen, CN", destination: "Leipzig · LEJ1", carrier: "Air freight", eta: "2026-09-18", status: "customs" },
-    { id: "SHIP-10233", finish: "Smart Luggage Lock", quantity: 15, origin: "Shenzhen, CN", destination: "Sydney · SYD2", carrier: "Ocean freight", eta: "2026-09-30", status: "delayed" },
-    { id: "SHIP-10240", finish: "5th GEN Outdoor Smart Padlock", quantity: 40, origin: "Ningbo, CN", destination: "Phoenix, AZ · FTW1", carrier: "Ocean freight", eta: "2026-09-25", status: "in_transit" },
-    { id: "SHIP-10241", finish: "5th GEN Outdoor Smart Padlock", quantity: 15, origin: "Ningbo, CN", destination: "Toronto · YYZ4", carrier: "Air freight", eta: "2026-09-19", status: "customs" },
-    { id: "SHIP-10255", finish: "Smart Lockout Tagout Lock (RED)", quantity: 90, origin: "Ningbo, CN", destination: "Phoenix, AZ · FTW1", carrier: "Ocean freight", eta: "2026-09-20", status: "in_transit" },
-    { id: "SHIP-10256", finish: "Smart Lockout Tagout Lock (RED)", quantity: 60, origin: "Ningbo, CN", destination: "Rugeley · BHX4", carrier: "Air freight", eta: "2026-09-17", status: "delayed" },
+    { id: "SHIP-10199", sku: "SKU-LUG-001", finish: "Smart Luggage Lock", quantity: 25, origin: "Shenzhen, CN", destination: "Rugeley · BHX4", carrier: "Ocean freight", eta: "2026-09-05", status: "arrived" },
+    { id: "SHIP-10231", sku: "SKU-LUG-001", finish: "Smart Luggage Lock", quantity: 60, origin: "Shenzhen, CN", destination: "Phoenix, AZ · FTW1", carrier: "Ocean freight", eta: "2026-09-22", status: "in_transit" },
+    { id: "SHIP-10232", sku: "SKU-LUG-001", finish: "Smart Luggage Lock", quantity: 30, origin: "Shenzhen, CN", destination: "Leipzig · LEJ1", carrier: "Air freight", eta: "2026-09-18", status: "customs" },
+    { id: "SHIP-10233", sku: "SKU-LUG-001", finish: "Smart Luggage Lock", quantity: 15, origin: "Shenzhen, CN", destination: "Sydney · SYD2", carrier: "Ocean freight", eta: "2026-09-30", status: "delayed" },
+    { id: "SHIP-10240", sku: "SKU-PAD-005", finish: "5th GEN Outdoor Smart Padlock", quantity: 40, origin: "Ningbo, CN", destination: "Phoenix, AZ · FTW1", carrier: "Ocean freight", eta: "2026-09-25", status: "in_transit" },
+    { id: "SHIP-10241", sku: "SKU-PAD-005", finish: "5th GEN Outdoor Smart Padlock", quantity: 15, origin: "Ningbo, CN", destination: "Toronto · YYZ4", carrier: "Air freight", eta: "2026-09-19", status: "customs" },
+    { id: "SHIP-10255", sku: "SKU-LOTO-RED", finish: "Smart Lockout Tagout Lock (RED)", quantity: 90, origin: "Ningbo, CN", destination: "Phoenix, AZ · FTW1", carrier: "Ocean freight", eta: "2026-09-20", status: "in_transit" },
+    { id: "SHIP-10256", sku: "SKU-LOTO-RED", finish: "Smart Lockout Tagout Lock (RED)", quantity: 60, origin: "Ningbo, CN", destination: "Rugeley · BHX4", carrier: "Air freight", eta: "2026-09-17", status: "delayed" },
   ],
 };
 
@@ -156,12 +164,12 @@ export const finance = {
 
 // --- Recent orders (activity feed) ------------------------------
 export const recentOrders = [
-  { id: "111-2938471-0011", finish: "Smart Luggage Lock", qty: 1, total: 129.99, status: "shipped", time: "9 min ago" },
-  { id: "112-8471920-4432", finish: "5th GEN Outdoor Smart Padlock", qty: 2, total: 259.98, status: "pending", time: "31 min ago" },
-  { id: "114-5563011-9910", finish: "Smart Luggage Lock with Patented Dual Access Tech, NFC + Bluetooth, Vicinity Tracking", qty: 1, total: 129.99, status: "delivered", time: "1 hr ago" },
-  { id: "113-9982004-1177", finish: "4th GEN. Outdoor Smart Padlock", qty: 1, total: 129.99, status: "returned", time: "3 hr ago" },
-  { id: "111-7741200-3388", finish: "Smart Luggage Lock with Patented Dual Access Tech, NFC + Bluetooth, Vicinity Tracking", qty: 1, total: 129.99, status: "shipped", time: "4 hr ago" },
-  { id: "112-3300561-7742", finish: "4th GEN. Smart Padlock, Weatherproof,", qty: 1, total: 129.99, status: "delivered", time: "Yesterday" },
+  { id: "111-2938471-0011", sku: "SKU-LUG-001", finish: "Smart Luggage Lock", qty: 1, total: 129.99, status: "shipped", time: "9 min ago" },
+  { id: "112-8471920-4432", sku: "SKU-PAD-005", finish: "5th GEN Outdoor Smart Padlock", qty: 2, total: 259.98, status: "pending", time: "31 min ago" },
+  { id: "114-5563011-9910", sku: "SKU-LUG-001", finish: "Smart Luggage Lock with Patented Dual Access Tech, NFC + Bluetooth, Vicinity Tracking", qty: 1, total: 129.99, status: "delivered", time: "1 hr ago" },
+  { id: "113-9982004-1177", sku: "SKU-PAD-004", finish: "4th GEN. Outdoor Smart Padlock", qty: 1, total: 129.99, status: "returned", time: "3 hr ago" },
+  { id: "111-7741200-3388", sku: "SKU-LUG-001", finish: "Smart Luggage Lock with Patented Dual Access Tech, NFC + Bluetooth, Vicinity Tracking", qty: 1, total: 129.99, status: "shipped", time: "4 hr ago" },
+  { id: "112-3300561-7742", sku: "SKU-PAD-004", finish: "4th GEN. Smart Padlock, Weatherproof,", qty: 1, total: 129.99, status: "delivered", time: "Yesterday" },
 ];
 
 
@@ -197,11 +205,11 @@ export const salesHistory = {
 
   // Storefront engagement per item, most-visited first.
   topItems: [
-    { name: "Smart Luggage Lock", views: 48210, clicks: 15940, addToCart: 4120, purchases: 2210 },
-    { name: "5th GEN Outdoor Smart Padlock", views: 39880, clicks: 12470, addToCart: 3180, purchases: 1648 },
-    { name: "4th GEN. Outdoor Smart Padlock", views: 24560, clicks: 6890, addToCart: 1490, purchases: 812 },
-    { name: "Smart Lockout Tagout Lock (RED)", views: 11230, clicks: 2980, addToCart: 640, purchases: 301 },
-    { name: "Smart Padlock Replacement Shackle", views: 7620, clicks: 1510, addToCart: 410, purchases: 188 },
+    { sku: "SKU-LUG-001", name: "Smart Luggage Lock", views: 48210, clicks: 15940, addToCart: 4120, purchases: 2210 },
+    { sku: "SKU-PAD-005", name: "5th GEN Outdoor Smart Padlock", views: 39880, clicks: 12470, addToCart: 3180, purchases: 1648 },
+    { sku: "SKU-PAD-004", name: "4th GEN. Outdoor Smart Padlock", views: 24560, clicks: 6890, addToCart: 1490, purchases: 812 },
+    { sku: "SKU-LOTO-RED", name: "Smart Lockout Tagout Lock (RED)", views: 11230, clicks: 2980, addToCart: 640, purchases: 301 },
+    { sku: "SKU-SHACKLE-001", name: "Smart Padlock Replacement Shackle", views: 7620, clicks: 1510, addToCart: 410, purchases: 188 },
   ],
 
   // Sales by ship-to country, highest revenue first.

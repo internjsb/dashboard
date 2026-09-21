@@ -50,6 +50,7 @@ export type OrderStatus = "pending" | "shipped" | "delivered" | "returned";
 
 export interface OrderRow {
   id: string;
+  sku: string;
   finish: string;
   qty: number;
   total: number;
@@ -74,6 +75,7 @@ export interface MonthlySalesPoint {
 }
 
 export interface TopItemRow {
+  sku: string;
   name: string;
   views: number;
   clicks: number;
@@ -104,6 +106,7 @@ export interface SalesHistoryData {
 export type StockStatus = "ok" | "low" | "out";
 
 export interface StockItem {
+  sku: string;
   finish: string;
   available: number;
   inbound: number;
@@ -112,6 +115,7 @@ export interface StockItem {
 }
 
 export interface StockCountry {
+  sku: string;
   country: string;
   warehouse: string;
   available: number;
@@ -132,6 +136,7 @@ export type ShipmentStatus = "in_transit" | "customs" | "delayed" | "arrived";
 
 export interface ShipmentRow {
   id: string;
+  sku: string;
   finish: string;
   quantity: number;
   origin: string;

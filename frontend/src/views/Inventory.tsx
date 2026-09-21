@@ -65,6 +65,7 @@ export default function Inventory() {
   ];
 
   const shipmentColumns: DataTableColumn<ShipmentRow>[] = [
+    { key: "sku", header: "SKU", accessor: (s) => s.sku },
     { key: "id", header: "Shipment", accessor: (s) => s.id },
     { key: "finish", header: "Item", accessor: (s) => s.finish },
     {
@@ -159,6 +160,7 @@ export default function Inventory() {
                     filename="shipments"
                     rows={shipments}
                     columns={[
+                      { header: "SKU", value: (s) => s.sku },
                       { header: "Shipment", value: (s) => s.id },
                       { header: "Item", value: (s) => s.finish },
                       { header: "Qty", value: (s) => s.quantity },

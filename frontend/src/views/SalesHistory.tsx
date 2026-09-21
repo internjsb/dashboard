@@ -91,6 +91,7 @@ export default function SalesHistory() {
     !show.topItems;
 
   const itemColumns: DataTableColumn<TopItemRow>[] = [
+    { key: "sku", header: "SKU", accessor: (i) => i.sku },
     {
       key: "name",
       header: "Item",
@@ -264,6 +265,7 @@ export default function SalesHistory() {
                       filename="most-visited-items"
                       rows={data.topItems}
                       columns={[
+                        { header: "SKU", value: (i) => i.sku },
                         { header: "Item", value: (i) => i.name },
                         { header: "Views", value: (i) => i.views },
                         { header: "Clicks", value: (i) => i.clicks },
