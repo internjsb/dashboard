@@ -62,6 +62,7 @@ export default function Dashboard() {
   // or searching "return" would wrongly pull in Recent Orders.
   const sectionText = {
     hero: `${overview.product.name} ${overview.product.asin}`,
+    sku: "product sku",
     revenue: "revenue trend",
     finishDonut: "sales by finish",
     variantCards: "sales by finish variant cards",
@@ -70,6 +71,7 @@ export default function Dashboard() {
 
   const show = {
     hero: !isSearching || matches(sectionText.hero, query),
+    sku: !isSearching || matches(sectionText.hero, query),
     revenue: !isSearching || matches(sectionText.revenue, query),
     finishDonut: !isSearching || matches(sectionText.finishDonut, query),
     variantCards: !isSearching || matches(sectionText.variantCards, query),

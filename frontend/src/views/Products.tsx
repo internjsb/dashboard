@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
 import { onValue, orderByChild, push, query, ref, serverTimestamp } from "firebase/database";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
@@ -31,7 +31,7 @@ const STATUS_OPTIONS = ["Active", "Inactive"];
 
 const DEFAULT_SET = "1";
 
-// Every field is required except "fnsku". "Set" is a number (qty per pack), required, defaults to 1.
+// Every field is required except "fnsku" and "ean". "Set" is a number (qty per pack), required, defaults to 1.
 const FIELDS: { key: FieldKey; label: string; required: boolean; options?: string[] }[] = [
   { key: "sku", label: "SKU", required: true },
   { key: "division", label: "Division", required: true },
@@ -41,7 +41,7 @@ const FIELDS: { key: FieldKey; label: string; required: boolean; options?: strin
   { key: "country", label: "Country", required: true },
   { key: "asin", label: "ASIN", required: true },
   { key: "fnsku", label: "FNSKU", required: false },
-  { key: "ean", label: "EAN", required: true },
+  { key: "ean", label: "EAN", required: false },
   { key: "description", label: "Description", required: true },
   { key: "status", label: "Status", required: true, options: STATUS_OPTIONS },
 ];
@@ -196,50 +196,54 @@ export default function Products() {
                     />
                     {snDuplicate && <span className={styles.error}>S/N {snInput} is already used.</span>}
                   </label>
-                  <label className={styles.field}>
-                    <span>
-                      Set (per pack)
-                      <span className={styles.required}> *</span>
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      required
-                      value={setInput}
-                      onChange={(e) => setSetInput(e.target.value)}
-                    />
-                  </label>
                   {FIELDS.map((f) => (
-                    <label key={f.key} className={styles.field}>
-                      <span>
-                        {f.label}
-                        {f.required && <span className={styles.required}> *</span>}
-                      </span>
-                      {f.options ? (
-                        <select
-                          required={f.required}
-                          value={form[f.key]}
-                          onChange={(e) => updateField(f.key, e.target.value)}
-                        >
-                          <option value="" disabled>
-                            Select {f.label.toLowerCase()}
-                          </option>
-                          {f.options.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
+                    <Fragment key={f.key}>
+                      <label className={styles.field}>
+                        <span>
+                          {f.label}
+                          {f.required && <span className={styles.required}> *</span>}
+                        </span>
+                        {f.options ? (
+                          <select
+                            required={f.required}
+                            value={form[f.key]}
+                            onChange={(e) => updateField(f.key, e.target.value)}
+                          >
+                            <option value="" disabled>
+                              Select {f.label.toLowerCase()}
                             </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          required={f.required}
-                          value={form[f.key]}
-                          onChange={(e) => updateField(f.key, e.target.value)}
-                        />
+                            {f.options.map((o) => (
+                              <option key={o} value={o}>
+                                {o}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            required={f.required}
+                            value={form[f.key]}
+                            onChange={(e) => updateField(f.key, e.target.value)}
+                          />
+                        )}
+                      </label>
+                      {f.key === "dtiItemCode" && (
+                        <label className={styles.field}>
+                          <span>
+                            Set (per pack)
+                            <span className={styles.required}> *</span>
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            required
+                            value={setInput}
+                            onChange={(e) => setSetInput(e.target.value)}
+                          />
+                        </label>
                       )}
-                    </label>
+                    </Fragment>
                   ))}
                 </div>
                 {error && <p className={styles.error}>{error}</p>}

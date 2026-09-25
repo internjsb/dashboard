@@ -14,7 +14,7 @@ export const PASSWORD_RULE_TEXT =
 
 // zxcvbn score is 0 (worst) to 4 (best). Only 3/4 ("safely unguessable" /
 // "very unguessable") pass — anything below 3 is rejected.
-const MIN_ZXCVBN_SCORE = 0;
+const MIN_ZXCVBN_SCORE = 3;
 
 function ruleIssues(pw: string): string[] {
   const issues: string[] = [];

@@ -4,6 +4,7 @@
 
 // --- The product ------------------------------------------------------
 export const product = {
+  sku: "SKU-00086",
   name: "Egeetounch 5th GEN Outdoor Smart Padlock",
   asin: "B0CSMARTLK",
   price: 129.99,
@@ -189,18 +190,18 @@ export const salesHistory = {
 
   // Revenue + units per month, oldest first.
   monthlySales: [
-    { month: "Oct", revenue: 168400, units: 1296 },
-    { month: "Nov", revenue: 201900, units: 1554 },
-    { month: "Dec", revenue: 244600, units: 1882 },
-    { month: "Jan", revenue: 178200, units: 1371 },
-    { month: "Feb", revenue: 183500, units: 1412 },
-    { month: "Mar", revenue: 196700, units: 1513 },
-    { month: "Apr", revenue: 205300, units: 1579 },
-    { month: "May", revenue: 214800, units: 1652 },
-    { month: "Jun", revenue: 208100, units: 1601 },
-    { month: "Jul", revenue: 223400, units: 1719 },
-    { month: "Aug", revenue: 231600, units: 1782 },
-    { month: "Sep", revenue: 228400, units: 1757 },
+    { sku: "SKU-LUG-001", month: "Oct", revenue: 168400, units: 1296 },
+    { sku: "SKU-LUG-001", month: "Nov", revenue: 201900, units: 1554 },
+    { sku: "SKU-LUG-001", month: "Dec", revenue: 244600, units: 1882 },
+    { sku: "SKU-LUG-001", month: "Jan", revenue: 178200, units: 1371 },
+    { sku: "SKU-LUG-001", month: "Feb", revenue: 183500, units: 1412 },
+    { sku: "SKU-LUG-001", month: "Mar", revenue: 196700, units: 1513 },
+    { sku: "SKU-LUG-001", month: "Apr", revenue: 205300, units: 1579 },
+    { sku: "SKU-LUG-001", month: "May", revenue: 214800, units: 1652 },
+    { sku: "SKU-LUG-001", month: "Jun", revenue: 208100, units: 1601 },
+    { sku: "SKU-LUG-001", month: "Jul", revenue: 223400, units: 1719 },
+    { sku: "SKU-LUG-001", month: "Aug", revenue: 231600, units: 1782 },
+    { sku: "SKU-LUG-001", month: "Sep", revenue: 228400, units: 1757 },
   ],
 
   // Storefront engagement per item, most-visited first.
@@ -224,7 +225,7 @@ export const salesHistory = {
 
   // Total registered users at each month end, plus how many were new that month.
   userGrowth: [
-    { month: "Oct", total: 6120, added: 180 },
+    {month: "Oct", total: 6120, added: 180 },
     { month: "Nov", total: 6360, added: 240 },
     { month: "Dec", total: 6690, added: 330 },
     { month: "Jan", total: 6980, added: 290 },
