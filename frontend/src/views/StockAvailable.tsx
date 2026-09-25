@@ -27,6 +27,7 @@ export default function StockAvailable() {
 
   const itemColumns: DataTableColumn<StockItem>[] = [
     { key: "sku", header: "SKU", accessor: (i) => i.sku },
+    { key: "dtiItemCode", header: "DTI Item Code", accessor: (i) => i.dtiItemCode },
     { key: "finish", header: "Item", accessor: (i) => i.finish },
     {
       key: "available",
@@ -60,10 +61,30 @@ export default function StockAvailable() {
 
   const itemFilters: DataTableFilter<StockItem>[] = [
     { key: "status", label: "Status", accessor: (i) => i.status, options: STATUS_FILTER_OPTIONS },
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (i) => i.dtiItemCode,
+      options: Array.from(new Set(byItem.map((i) => i.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
+  ];
+
+  const countryFilters: DataTableFilter<StockCountry>[] = [
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (c) => c.dtiItemCode,
+      options: Array.from(new Set(byCountry.map((c) => c.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
   ];
 
   const countryColumns: DataTableColumn<StockCountry>[] = [
     { key: "sku", header: "SKU", accessor: (c) => c.sku },
+    { key: "dtiItemCode", header: "DTI Item Code", accessor: (c) => c.dtiItemCode },
     { key: "country", header: "Country", accessor: (c) => c.country },
     { key: "warehouse", header: "Warehouse", accessor: (c) => c.warehouse, className: styles.muted },
     {
@@ -135,6 +156,7 @@ export default function StockAvailable() {
                     rows={byItem}
                     columns={[
                       { header: "SKU", value: (i) => i.sku },
+                      { header: "DTI Item Code", value: (i) => i.dtiItemCode },
                       { header: "Item", value: (i) => i.finish },
                       { header: "Available", value: (i) => i.available },
                       { header: "Inbound", value: (i) => i.inbound },
@@ -167,6 +189,7 @@ export default function StockAvailable() {
                     rows={byCountry}
                     columns={[
                       { header: "SKU", value: (c) => c.sku },
+                      { header: "DTI Item Code", value: (c) => c.dtiItemCode },
                       { header: "Country", value: (c) => c.country },
                       { header: "Warehouse", value: (c) => c.warehouse },
                       { header: "Available", value: (c) => c.available },
@@ -177,6 +200,7 @@ export default function StockAvailable() {
                   columns={countryColumns}
                   rows={byCountry}
                   rowKey={(c) => `${c.sku}-${c.warehouse}`}
+                  filters={countryFilters}
                   searchPlaceholder="Search countries or warehouses…"
                   emptyMessage="No countries match your search."
                 />

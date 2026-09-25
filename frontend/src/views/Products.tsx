@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
-import { onValue, orderByChild, push, query, ref, serverTimestamp } from "firebase/database";
+import { onValue, orderByChild, push, query, ref, remove, serverTimestamp, update } from "firebase/database";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
-import DataTable, { type DataTableColumn } from "../components/DataTable";
+import DataTable, { type DataTableColumn, type DataTableFilter } from "../components/DataTable";
 import { rtdb } from "../firebase";
 import styles from "./Products.module.css";
 
@@ -51,22 +51,6 @@ const EMPTY_FORM: Record<FieldKey, string> = FIELDS.reduce(
   {} as Record<FieldKey, string>,
 );
 
-const columns: DataTableColumn<ProductRow>[] = [
-  { key: "sku", header: "SKU", accessor: (p) => p.sku },
-  { key: "sn", header: "S/N", accessor: (p) => p.sn },
-  { key: "division", header: "Division", accessor: (p) => p.division },
-  { key: "dtiItemCode", header: "DTI Item Code", accessor: (p) => p.dtiItemCode },
-  { key: "set", header: "Set", accessor: (p) => p.set },
-  { key: "dtiItemDescription", header: "DTI Item Description", accessor: (p) => p.dtiItemDescription },
-  { key: "type", header: "Type", accessor: (p) => p.type },
-  { key: "country", header: "Country", accessor: (p) => p.country },
-  { key: "asin", header: "ASIN", accessor: (p) => p.asin },
-  { key: "fnsku", header: "FNSKU", accessor: (p) => p.fnsku },
-  { key: "ean", header: "EAN", accessor: (p) => p.ean },
-  { key: "description", header: "Description", accessor: (p) => p.description },
-  { key: "status", header: "Status", accessor: (p) => p.status },
-];
-
 export default function Products() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +61,9 @@ export default function Products() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(ref(rtdb, PRODUCTS_PATH), orderByChild("sn"));
@@ -104,12 +91,51 @@ export default function Products() {
     [products],
   );
 
-  const existingSns = useMemo(() => new Set(products.map((p) => p.sn)), [products]);
+  const existingSns = useMemo(
+    () => new Set(products.filter((p) => p.id !== editingId).map((p) => p.sn)),
+    [products, editingId],
+  );
 
   const snDuplicate = snInput.trim() !== "" && existingSns.has(Number(snInput));
 
   function updateField(key: FieldKey, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function resetForm() {
+    setForm(EMPTY_FORM);
+    setSnInput("");
+    setSetInput(DEFAULT_SET);
+    setEditingId(null);
+    setError(null);
+    setShowForm(false);
+  }
+
+  function startEdit(product: ProductRow) {
+    const nextForm = { ...EMPTY_FORM };
+    for (const f of FIELDS) {
+      nextForm[f.key] = product[f.key] != null ? String(product[f.key]) : "";
+    }
+    setForm(nextForm);
+    setSnInput(String(product.sn));
+    setSetInput(String(product.set));
+    setEditingId(product.id);
+    setError(null);
+    setShowForm(true);
+  }
+
+  async function handleDelete(product: ProductRow) {
+    if (!window.confirm(`Delete ${product.sku || "this product"}? This cannot be undone.`)) return;
+    setDeleteError(null);
+    setDeletingId(product.id);
+    try {
+      await remove(ref(rtdb, `${PRODUCTS_PATH}/${product.id}`));
+      if (editingId === product.id) resetForm();
+    } catch {
+      setDeleteError("Couldn't delete product. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -140,22 +166,82 @@ export default function Products() {
 
     setSaving(true);
     try {
-      await push(ref(rtdb, PRODUCTS_PATH), {
-        sn,
-        ...form,
-        set,
-        createdAt: serverTimestamp(),
-      });
-      setForm(EMPTY_FORM);
-      setSnInput("");
-      setSetInput(DEFAULT_SET);
-      setError(null);
+      if (editingId) {
+        await update(ref(rtdb, `${PRODUCTS_PATH}/${editingId}`), {
+          sn,
+          ...form,
+          set,
+          updatedAt: serverTimestamp(),
+        });
+        // Editing a single row is a one-off change, so close the form after saving.
+        resetForm();
+      } else {
+        await push(ref(rtdb, PRODUCTS_PATH), {
+          sn,
+          ...form,
+          set,
+          createdAt: serverTimestamp(),
+        });
+        // Adding is often done row after row, so clear the fields but keep the form open.
+        setForm(EMPTY_FORM);
+        setSnInput("");
+        setSetInput(DEFAULT_SET);
+        setError(null);
+      }
     } catch {
       setError("Couldn't save product. Please try again.");
     } finally {
       setSaving(false);
     }
   }
+
+  const columns: DataTableColumn<ProductRow>[] = [
+    { key: "sku", header: "SKU", accessor: (p) => p.sku },
+    { key: "sn", header: "S/N", accessor: (p) => p.sn },
+    { key: "division", header: "Division", accessor: (p) => p.division },
+    { key: "dtiItemCode", header: "DTI Item Code", accessor: (p) => p.dtiItemCode },
+    { key: "set", header: "Set", accessor: (p) => p.set },
+    { key: "dtiItemDescription", header: "DTI Item Description", accessor: (p) => p.dtiItemDescription },
+    { key: "type", header: "Type", accessor: (p) => p.type },
+    { key: "country", header: "Country", accessor: (p) => p.country },
+    { key: "asin", header: "ASIN", accessor: (p) => p.asin },
+    { key: "fnsku", header: "FNSKU", accessor: (p) => p.fnsku },
+    { key: "ean", header: "EAN", accessor: (p) => p.ean },
+    { key: "description", header: "Description", accessor: (p) => p.description },
+    { key: "status", header: "Status", accessor: (p) => p.status },
+    {
+      key: "actions",
+      header: "Actions",
+      sortable: false,
+      searchable: false,
+      render: (p) => (
+        <div className={styles.rowActions}>
+          <button type="button" className={styles.editBtn} onClick={() => startEdit(p)}>
+            Edit
+          </button>
+          <button
+            type="button"
+            className={styles.deleteBtn}
+            disabled={deletingId === p.id}
+            onClick={() => handleDelete(p)}
+          >
+            {deletingId === p.id ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const productFilters: DataTableFilter<ProductRow>[] = [
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (p) => p.dtiItemCode,
+      options: Array.from(new Set(products.map((p) => p.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
+  ];
 
   return (
     <div className="app-shell">
@@ -175,10 +261,12 @@ export default function Products() {
             <section className={styles.card}>
               <div className={styles.cardHead}>
                 <div>
-                  <h3>Add product</h3>
-                  <span className={styles.cardSub}>Enter a new row manually</span>
+                  <h3>{editingId ? "Edit product" : "Add product"}</h3>
+                  <span className={styles.cardSub}>
+                    {editingId ? "Update this row" : "Enter a new row manually"}
+                  </span>
                 </div>
-                <button type="button" className={styles.cancelBtn} onClick={() => setShowForm(false)}>
+                <button type="button" className={styles.cancelBtn} onClick={resetForm}>
                   Cancel
                 </button>
               </div>
@@ -248,7 +336,7 @@ export default function Products() {
                 </div>
                 {error && <p className={styles.error}>{error}</p>}
                 <button type="submit" className={styles.saveBtn} disabled={saving || snDuplicate}>
-                  {saving ? "Saving…" : "Add row"}
+                  {saving ? "Saving…" : editingId ? "Save changes" : "Add row"}
                 </button>
               </form>
             </section>
@@ -259,6 +347,7 @@ export default function Products() {
               <h3>Products</h3>
               <span className={styles.cardSub}>Product master list</span>
             </div>
+            {deleteError && <p className={styles.error}>{deleteError}</p>}
             {loadError ? (
               <p className={styles.error}>{loadError}</p>
             ) : (
@@ -266,7 +355,8 @@ export default function Products() {
                 columns={columns}
                 rows={products}
                 rowKey={(p) => p.id}
-                showSearch={false}
+                filters={productFilters}
+                searchPlaceholder="Search products…"
                 emptyMessage={loading ? "Loading…" : "No products yet."}
               />
             )}

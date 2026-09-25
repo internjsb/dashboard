@@ -70,6 +70,13 @@ export default function Finance() {
 
   const transactionColumns: DataTableColumn<TransactionRow>[] = [
     { key: "sku", header: "SKU", accessor: (t) => t.sku, render: (t) => t.sku || "—", className: styles.muted },
+    {
+      key: "dtiItemCode",
+      header: "DTI Item Code",
+      accessor: (t) => t.dtiItemCode,
+      render: (t) => t.dtiItemCode || "—",
+      className: styles.muted,
+    },
     { key: "date", header: "Date", accessor: (t) => t.date, render: (t) => formatDate(t.date) },
     {
       key: "type",
@@ -101,10 +108,25 @@ export default function Finance() {
   const transactionFilters: DataTableFilter<TransactionRow>[] = [
     { key: "type", label: "Type", accessor: (t) => t.type, options: TXN_TYPE_OPTIONS },
     { key: "status", label: "Status", accessor: (t) => t.status, options: TXN_STATUS_OPTIONS },
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (t) => t.dtiItemCode,
+      options: Array.from(new Set(data.transactions.map((t) => t.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
   ];
 
   const taxColumns: DataTableColumn<TaxRow>[] = [
     { key: "sku", header: "SKU", accessor: (t) => t.sku, render: (t) => t.sku || "—", className: styles.muted },
+    {
+      key: "dtiItemCode",
+      header: "DTI Item Code",
+      accessor: (t) => t.dtiItemCode,
+      render: (t) => t.dtiItemCode || "—",
+      className: styles.muted,
+    },
     { key: "jurisdiction", header: "Jurisdiction", accessor: (t) => t.jurisdiction },
     { key: "period", header: "Period", accessor: (t) => t.period, className: styles.muted },
     {
@@ -137,10 +159,25 @@ export default function Finance() {
 
   const taxFilters: DataTableFilter<TaxRow>[] = [
     { key: "status", label: "Status", accessor: (t) => t.status, options: TAX_STATUS_OPTIONS },
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (t) => t.dtiItemCode,
+      options: Array.from(new Set(data.taxes.map((t) => t.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
   ];
 
   const reportColumns: DataTableColumn<FinanceReportRow>[] = [
     { key: "sku", header: "SKU", accessor: (r) => r.sku, render: (r) => r.sku || "—", className: styles.muted },
+    {
+      key: "dtiItemCode",
+      header: "DTI Item Code",
+      accessor: (r) => r.dtiItemCode,
+      render: (r) => r.dtiItemCode || "—",
+      className: styles.muted,
+    },
     { key: "name", header: "Report", accessor: (r) => r.name },
     { key: "period", header: "Period", accessor: (r) => r.period, className: styles.muted },
     { key: "type", header: "Type", accessor: (r) => r.type },
@@ -164,6 +201,14 @@ export default function Finance() {
 
   const reportFilters: DataTableFilter<FinanceReportRow>[] = [
     { key: "status", label: "Status", accessor: (r) => r.status, options: REPORT_STATUS_OPTIONS },
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (r) => r.dtiItemCode,
+      options: Array.from(new Set(data.reports.map((r) => r.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
   ];
 
   return (
@@ -196,6 +241,7 @@ export default function Finance() {
                     rows={data.transactions}
                     columns={[
                       { header: "SKU", value: (t) => t.sku },
+                      { header: "DTI Item Code", value: (t) => t.dtiItemCode },
                       { header: "Date", value: (t) => t.date },
                       { header: "Type", value: (t) => TXN_TYPE_LABEL[t.type] },
                       { header: "Description", value: (t) => t.description },
@@ -225,6 +271,7 @@ export default function Finance() {
                     rows={data.taxes}
                     columns={[
                       { header: "SKU", value: (t) => t.sku },
+                      { header: "DTI Item Code", value: (t) => t.dtiItemCode },
                       { header: "Jurisdiction", value: (t) => t.jurisdiction },
                       { header: "Period", value: (t) => t.period },
                       { header: "Taxable sales", value: (t) => t.taxableSales },
@@ -254,6 +301,7 @@ export default function Finance() {
                     rows={data.reports}
                     columns={[
                       { header: "SKU", value: (r) => r.sku },
+                      { header: "DTI Item Code", value: (r) => r.dtiItemCode },
                       { header: "Report", value: (r) => r.name },
                       { header: "Period", value: (r) => r.period },
                       { header: "Type", value: (r) => r.type },

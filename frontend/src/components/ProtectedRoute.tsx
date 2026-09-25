@@ -65,14 +65,11 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
     return <Navigate to={defaultPageFor(isSuperAdmin, department)} replace />;
   }
 
-  // Every account must clear 2FA before reaching anything else — regardless
-  // of how they arrived here (fresh login, a bookmarked URL, or a Firebase
-  // session that was already signed in from before). Not set up yet ->
-  // setup; set up but not proven this session -> verify.
+  // 2FA is opt-in (toggled from Profile), not forced on every account. An
+  // account that has turned it on still has to prove it each new session
+  // before reaching anything else — regardless of how they arrived here
+  // (fresh login, a bookmarked URL, or an already-signed-in Firebase session).
   if (location.pathname !== "/setup-2fa" && location.pathname !== "/verify-2fa") {
-    if (twoFactorEnabled === false) {
-      return <Navigate to="/setup-2fa" replace />;
-    }
     if (twoFactorEnabled === true && !twoFactorVerified) {
       return <Navigate to="/verify-2fa" replace />;
     }

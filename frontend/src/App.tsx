@@ -54,7 +54,9 @@ function HomeRedirect() {
   if (!user) return <Navigate to="/login" replace />;
   if (status === "pending") return <Navigate to="/pending" replace />;
   if (status === "denied") return <Navigate to="/forbidden" replace />;
-  if (twoFactorEnabled === false) return <Navigate to="/setup-2fa" replace />;
+  // 2FA is opt-in (toggled from Profile) rather than forced at login — only a
+  // session that hasn't proven possession of an *already-enabled* authenticator
+  // gets routed to the OTP check.
   if (twoFactorEnabled === true && !twoFactorVerified) return <Navigate to="/verify-2fa" replace />;
   return <Navigate to={defaultPageFor(isSuperAdmin, department)} replace />;
 }

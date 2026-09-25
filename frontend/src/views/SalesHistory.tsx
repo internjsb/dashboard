@@ -4,7 +4,7 @@ import AppTopbar from "../components/AppTopbar";
 import StatCard from "../components/StatCard";
 import RevenueChart from "../components/RevenueChart";
 import CategoryDonut from "../components/CategoryDonut";
-import DataTable, { type DataTableColumn } from "../components/DataTable";
+import DataTable, { type DataTableColumn, type DataTableFilter } from "../components/DataTable";
 import ExportCsvButton from "../components/ExportCsvButton";
 import SegmentSearchBar from "../components/SegmentSearchBar";
 import api from "../api/client";
@@ -92,6 +92,7 @@ export default function SalesHistory() {
 
   const itemColumns: DataTableColumn<TopItemRow>[] = [
     { key: "sku", header: "SKU", accessor: (i) => i.sku },
+    { key: "dtiItemCode", header: "DTI Item Code", accessor: (i) => i.dtiItemCode },
     {
       key: "name",
       header: "Item",
@@ -130,6 +131,17 @@ export default function SalesHistory() {
       align: "right",
       className: styles.numCol,
       render: (i) => `${(i.views ? (i.purchases / i.views) * 100 : 0).toFixed(1)}%`,
+    },
+  ];
+
+  const itemFilters: DataTableFilter<TopItemRow>[] = [
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (i) => i.dtiItemCode,
+      options: Array.from(new Set(data.topItems.map((i) => i.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
     },
   ];
 
@@ -266,6 +278,7 @@ export default function SalesHistory() {
                       rows={data.topItems}
                       columns={[
                         { header: "SKU", value: (i) => i.sku },
+                        { header: "DTI Item Code", value: (i) => i.dtiItemCode },
                         { header: "Item", value: (i) => i.name },
                         { header: "Views", value: (i) => i.views },
                         { header: "Clicks", value: (i) => i.clicks },
@@ -283,6 +296,7 @@ export default function SalesHistory() {
                     rows={data.topItems}
                     rowKey={(i) => i.name}
                     searchPlaceholder="Search items…"
+                    filters={itemFilters}
                     emptyMessage="No items match your search."
                   />
                 </section>

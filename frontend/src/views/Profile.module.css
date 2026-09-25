@@ -159,6 +159,74 @@
 .saveBtn:hover { background: var(--accent-strong); }
 .saveBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.cancelBtn {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.cancelBtn:hover { background: var(--bg); }
+
+.dangerBtn {
+  padding: 10px 18px;
+  border: 1px solid var(--danger-tint);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.dangerBtn:hover { background: var(--danger-tint); }
+.dangerBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btnRow {
+  display: flex;
+  gap: 10px;
+}
+
+/* --- two-factor authentication ------------------------------------------ */
+
+.twoFaStatus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.twoFaPanel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.qrImage {
+  width: 160px;
+  height: 160px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: white;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.secretText {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+.secretText code {
+  font-size: 12.5px;
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
 @media (max-width: 640px) {
   .content { padding: 24px 20px 40px; }
   .rows { grid-template-columns: 1fr; gap: 4px 0; }

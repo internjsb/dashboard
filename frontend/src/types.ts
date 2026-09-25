@@ -51,6 +51,7 @@ export type OrderStatus = "pending" | "shipped" | "delivered" | "returned";
 export interface OrderRow {
   id: string;
   sku: string;
+  dtiItemCode: string;
   finish: string;
   qty: number;
   total: number;
@@ -76,6 +77,7 @@ export interface MonthlySalesPoint {
 
 export interface TopItemRow {
   sku: string;
+  dtiItemCode: string;
   name: string;
   views: number;
   clicks: number;
@@ -107,6 +109,7 @@ export type StockStatus = "ok" | "low" | "out";
 
 export interface StockItem {
   sku: string;
+  dtiItemCode: string;
   finish: string;
   available: number;
   inbound: number;
@@ -116,6 +119,7 @@ export interface StockItem {
 
 export interface StockCountry {
   sku: string;
+  dtiItemCode: string;
   country: string;
   warehouse: string;
   available: number;
@@ -137,6 +141,7 @@ export type ShipmentStatus = "in_transit" | "customs" | "delayed" | "arrived";
 export interface ShipmentRow {
   id: string;
   sku: string;
+  dtiItemCode: string;
   finish: string;
   quantity: number;
   origin: string;
@@ -162,6 +167,7 @@ export interface TransactionRow {
   date: string;
   type: TransactionType;
   sku: string;
+  dtiItemCode: string;
   description: string;
   amount: number;
   status: TransactionStatus;
@@ -172,6 +178,7 @@ export type TaxStatus = "filed" | "pending";
 export interface TaxRow {
   id: string;
   sku: string;
+  dtiItemCode: string;
   jurisdiction: string;
   period: string;
   taxableSales: number;
@@ -184,6 +191,7 @@ export type ReportStatus = "final" | "draft";
 export interface FinanceReportRow {
   id: string;
   sku: string;
+  dtiItemCode: string;
   name: string;
   period: string;
   type: string;

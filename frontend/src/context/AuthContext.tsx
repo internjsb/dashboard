@@ -51,6 +51,7 @@ interface AuthContextValue {
   refreshRole: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   markTwoFactorVerified: () => void;
+  markTwoFactorDisabled: () => void;
 }
 
 // A session that already proved its OTP once shouldn't be asked again on
@@ -240,6 +241,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTwoFactorVerified(true);
   }
 
+  // Called once the account owner turns 2FA off from Profile. Clears the
+  // "verified this session" marker too, so turning it back on later starts
+  // from a clean state instead of a stale flag from before it was disabled.
+  function markTwoFactorDisabled() {
+    if (auth.currentUser) {
+      try {
+        sessionStorage.removeItem(verifiedSessionKey(auth.currentUser.uid));
+      } catch {
+        /* private mode — nothing was persisted to begin with */
+      }
+    }
+    setTwoFactorEnabled(false);
+    setTwoFactorVerified(false);
+  }
+
   // Force a fresh ID token + re-fetch role/status. Call after registering or
   // after an admin changes someone's access.
   async function refreshRole() {
@@ -272,6 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshRole,
     refreshProfile,
     markTwoFactorVerified,
+    markTwoFactorDisabled,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

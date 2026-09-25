@@ -51,6 +51,34 @@ router.post("/reset", requireAuth, async (req, res) => {
   }
 });
 
+// Turns 2FA off for an account that already has it enabled. Requires a valid
+// current code (not just the session) so a hijacked but not-yet-2FA-verified
+// session can't silently strip the protection.
+router.post("/disable", requireAuth, async (req, res) => {
+  const token = (req.body?.token || "").trim();
+  if (!token) {
+    return res.status(400).json({ error: "Enter your current 6-digit code" });
+  }
+
+  try {
+    const record = await db.get(`users/${req.user.uid}/twoFactor`);
+    if (!record?.enabled || !record?.secret) {
+      return res.status(400).json({ error: "2FA is not enabled" });
+    }
+
+    const valid = authenticator.verify({ token, secret: record.secret });
+    if (!valid) {
+      return res.status(400).json({ error: "Incorrect or expired code" });
+    }
+
+    await db.update(`users/${req.user.uid}/twoFactor`, { enabled: false });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to disable 2FA" });
+  }
+});
+
 router.post("/verify", requireAuth, async (req, res) => {
   const token = (req.body?.token || "").trim();
   if (!token) {

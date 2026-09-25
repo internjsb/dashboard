@@ -64,8 +64,20 @@ export default function Inventory() {
     },
   ];
 
+  const inventoryFilters: DataTableFilter<InventoryRow>[] = [
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (i) => i.dtiItemCode,
+      options: Array.from(new Set(inventory.map((i) => i.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
+  ];
+
   const shipmentColumns: DataTableColumn<ShipmentRow>[] = [
     { key: "sku", header: "SKU", accessor: (s) => s.sku },
+    { key: "dtiItemCode", header: "DTI Item Code", accessor: (s) => s.dtiItemCode },
     { key: "id", header: "Shipment", accessor: (s) => s.id },
     { key: "finish", header: "Item", accessor: (s) => s.finish },
     {
@@ -99,6 +111,14 @@ export default function Inventory() {
 
   const shipmentFilters: DataTableFilter<ShipmentRow>[] = [
     { key: "status", label: "Status", accessor: (s) => s.status, options: SHIPMENT_STATUS_FILTER_OPTIONS },
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (s) => s.dtiItemCode,
+      options: Array.from(new Set(shipments.map((s) => s.dtiItemCode)))
+        .sort()
+        .map((code) => ({ value: code, label: code })),
+    },
   ];
 
   return (
@@ -145,6 +165,7 @@ export default function Inventory() {
                   columns={inventoryColumns}
                   rows={inventory}
                   rowKey={(i) => `${i.sku}-${i.warehouse}`}
+                  filters={inventoryFilters}
                   searchPlaceholder="Search items, warehouses, or countries…"
                   emptyMessage="No inventory records match your search."
                 />
@@ -161,6 +182,7 @@ export default function Inventory() {
                     rows={shipments}
                     columns={[
                       { header: "SKU", value: (s) => s.sku },
+                      { header: "DTI Item Code", value: (s) => s.dtiItemCode },
                       { header: "Shipment", value: (s) => s.id },
                       { header: "Item", value: (s) => s.finish },
                       { header: "Qty", value: (s) => s.quantity },

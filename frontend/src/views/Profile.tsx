@@ -23,8 +23,22 @@ function apiError(err: unknown, fallback: string): string {
   return fallback;
 }
 
+interface TwoFASetupResponse {
+  qrCode?: string;
+  secret?: string;
+}
+
 export default function Profile() {
-  const { user, displayName, role, isSuperAdmin, refreshProfile } = useAuth();
+  const {
+    user,
+    displayName,
+    role,
+    isSuperAdmin,
+    refreshProfile,
+    twoFactorEnabled,
+    markTwoFactorVerified,
+    markTwoFactorDisabled,
+  } = useAuth();
 
   const email = user?.email ?? "";
   const initials = (displayName || email || "?").slice(0, 2).toUpperCase();
@@ -112,6 +126,87 @@ export default function Profile() {
         return "Please sign out and back in, then try again.";
       default:
         return "Couldn't change your password.";
+    }
+  }
+
+  // --- two-factor authentication --------------------------------------
+  const [twoFaMsg, setTwoFaMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [showEnable2FA, setShowEnable2FA] = useState(false);
+  const [setupData, setSetupData] = useState<TwoFASetupResponse | null>(null);
+  const [setupCode, setSetupCode] = useState("");
+  const [setupSaving, setSetupSaving] = useState(false);
+  const [setupMsg, setSetupMsg] = useState<string | null>(null);
+
+  const [showDisable2FA, setShowDisable2FA] = useState(false);
+  const [disableCode, setDisableCode] = useState("");
+  const [disableSaving, setDisableSaving] = useState(false);
+  const [disableMsg, setDisableMsg] = useState<string | null>(null);
+
+  async function startEnable2FA() {
+    setTwoFaMsg(null);
+    setSetupMsg(null);
+    setSetupCode("");
+    setShowEnable2FA(true);
+    setSetupData(null);
+    try {
+      const { data } = await api.post<TwoFASetupResponse>("/2fa/setup");
+      setSetupData(data);
+    } catch (err) {
+      setSetupMsg(apiError(err, "Couldn't start 2FA setup."));
+    }
+  }
+
+  function cancelEnable2FA() {
+    setShowEnable2FA(false);
+    setSetupData(null);
+    setSetupCode("");
+    setSetupMsg(null);
+  }
+
+  async function handleVerifyEnable(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSetupMsg(null);
+    if (!setupCode.trim()) {
+      setSetupMsg("Enter the 6-digit code.");
+      return;
+    }
+    setSetupSaving(true);
+    try {
+      await api.post("/2fa/verify", { token: setupCode.trim() });
+      markTwoFactorVerified();
+      cancelEnable2FA();
+      setTwoFaMsg({ ok: true, text: "Two-factor authentication is on." });
+    } catch (err) {
+      setSetupMsg(apiError(err, "Couldn't verify that code."));
+    } finally {
+      setSetupSaving(false);
+    }
+  }
+
+  function cancelDisable2FA() {
+    setShowDisable2FA(false);
+    setDisableCode("");
+    setDisableMsg(null);
+  }
+
+  async function handleDisable(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setDisableMsg(null);
+    if (!disableCode.trim()) {
+      setDisableMsg("Enter your current 6-digit code.");
+      return;
+    }
+    setDisableSaving(true);
+    try {
+      await api.post("/2fa/disable", { token: disableCode.trim() });
+      markTwoFactorDisabled();
+      cancelDisable2FA();
+      setTwoFaMsg({ ok: true, text: "Two-factor authentication is off." });
+    } catch (err) {
+      setDisableMsg(apiError(err, "Couldn't turn off 2FA."));
+    } finally {
+      setDisableSaving(false);
     }
   }
 
@@ -212,6 +307,97 @@ export default function Profile() {
             </form>
           </section>
           )}
+
+          <section className={styles.section}>
+            <h3>Two-factor authentication</h3>
+            <p className={styles.hint}>
+              Require a 6-digit code from an authenticator app when signing in.
+            </p>
+
+            <div className={styles.twoFaStatus}>
+              <span className={`${styles.pill} ${twoFactorEnabled ? styles.active : ""}`}>
+                {twoFactorEnabled === null ? "Checking…" : twoFactorEnabled ? "On" : "Off"}
+              </span>
+              {twoFactorEnabled === false && !showEnable2FA && (
+                <button type="button" className={styles.saveBtn} onClick={startEnable2FA}>
+                  Turn on 2FA
+                </button>
+              )}
+              {twoFactorEnabled === true && !showDisable2FA && (
+                <button type="button" className={styles.dangerBtn} onClick={() => setShowDisable2FA(true)}>
+                  Turn off 2FA
+                </button>
+              )}
+            </div>
+
+            {twoFaMsg && <p className={twoFaMsg.ok ? styles.ok : styles.error}>{twoFaMsg.text}</p>}
+
+            {showEnable2FA && (
+              <div className={styles.twoFaPanel}>
+                <p className={styles.hint}>
+                  Scan this QR code with your authenticator app, then enter the 6-digit code it shows.
+                </p>
+                {setupData?.qrCode && (
+                  <img src={setupData.qrCode} alt="2FA setup QR code" className={styles.qrImage} />
+                )}
+                {setupData?.secret && (
+                  <p className={styles.secretText}>
+                    Or enter manually: <code>{setupData.secret}</code>
+                  </p>
+                )}
+                <form onSubmit={handleVerifyEnable}>
+                  <label className={styles.field}>
+                    <span>6-digit code</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={setupCode}
+                      onChange={(e) => setSetupCode(e.target.value)}
+                    />
+                  </label>
+                  {setupMsg && <p className={styles.error}>{setupMsg}</p>}
+                  <div className={styles.btnRow}>
+                    <button type="submit" className={styles.saveBtn} disabled={setupSaving}>
+                      {setupSaving ? "Verifying…" : "Verify & turn on"}
+                    </button>
+                    <button type="button" className={styles.cancelBtn} onClick={cancelEnable2FA}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {showDisable2FA && (
+              <div className={styles.twoFaPanel}>
+                <p className={styles.hint}>Enter your current 6-digit code to confirm turning 2FA off.</p>
+                <form onSubmit={handleDisable}>
+                  <label className={styles.field}>
+                    <span>6-digit code</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={disableCode}
+                      onChange={(e) => setDisableCode(e.target.value)}
+                    />
+                  </label>
+                  {disableMsg && <p className={styles.error}>{disableMsg}</p>}
+                  <div className={styles.btnRow}>
+                    <button type="submit" className={styles.dangerBtn} disabled={disableSaving}>
+                      {disableSaving ? "Turning off…" : "Turn off 2FA"}
+                    </button>
+                    <button type="button" className={styles.cancelBtn} onClick={cancelDisable2FA}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </section>
         </main>
       </div>
     </div>

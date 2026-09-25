@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import styles from "./DataTable.module.css";
 
 export type SortDir = "asc" | "desc";
@@ -41,6 +41,8 @@ interface DataTableProps<T> {
   toolbarExtra?: ReactNode;
   rowClassName?: (row: T) => string;
   defaultSort?: { key: string; dir: SortDir };
+  /** Rows per page. Set to 0 to disable pagination entirely. Default 10. */
+  pageSize?: number;
 }
 
 export default function DataTable<T>({
@@ -54,10 +56,18 @@ export default function DataTable<T>({
   toolbarExtra,
   rowClassName,
   defaultSort,
+  pageSize = 10,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(defaultSort ?? null);
+  const [page, setPage] = useState(1);
+
+  // A new search term or filter selection changes which rows match, so
+  // whatever page we were on no longer means the same thing — back to 1.
+  useEffect(() => {
+    setPage(1);
+  }, [search, JSON.stringify(filterValues)]);
 
   function toggleSort(col: DataTableColumn<T>) {
     if (col.sortable === false || !col.accessor) return;
@@ -102,10 +112,19 @@ export default function DataTable<T>({
     });
   }, [filtered, sort, columns]);
 
+  const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+  const currentPage = Math.min(page, totalPages);
+  const paged = useMemo(() => {
+    if (pageSize <= 0) return sorted;
+    const start = (currentPage - 1) * pageSize;
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, currentPage, pageSize]);
+
   const showToolbar =
     (showSearch && columns.some((c) => c.searchable !== false && c.accessor)) ||
     !!filters?.length ||
     !!toolbarExtra;
+  const showPagination = pageSize > 0 && sorted.length > pageSize;
 
   return (
     <div className={styles.wrap}>
@@ -178,7 +197,7 @@ export default function DataTable<T>({
                 </td>
               </tr>
             ) : (
-              sorted.map((row) => (
+              paged.map((row) => (
                 <tr key={rowKey(row)} className={rowClassName?.(row) ?? ""}>
                   {columns.map((c) => (
                     <td
@@ -194,6 +213,35 @@ export default function DataTable<T>({
           </tbody>
         </table>
       </div>
+
+      {showPagination && (
+        <div className={styles.pagination}>
+          <span className={styles.pageInfo}>
+            {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sorted.length)} of {sorted.length}
+          </span>
+          <div className={styles.pageBtns}>
+            <button
+              type="button"
+              className={styles.pageBtn}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+            >
+              Prev
+            </button>
+            <span className={styles.pageCount}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              className={styles.pageBtn}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
