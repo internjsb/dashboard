@@ -45,6 +45,42 @@
   --sidebar-rail: 68px;
   --sidebar-w: 200px;          /* live drag width — useSidebar.ts updates this */
   --topbar-height: 64px;
+
+  color-scheme: light;
+}
+
+/* Dark theme — toggled via hooks/useTheme.ts, which sets data-theme on
+   <html> (and index.html sets it once, inline, before first paint so there's
+   no flash of the light palette). Sidebar hue and accent stay the same
+   family as light, just deepened, so switching themes doesn't feel like a
+   different app. */
+:root[data-theme="dark"] {
+  --bg: #10121C;
+  --surface: #181B29;
+  --sidebar-bg: #3D1F27;
+  --sidebar-bg-hover: #32191F;
+  --sidebar-text: #C9A9AF;
+  --sidebar-text-active: #FFFFFF;
+  --border: #2B2F42;
+  --text-primary: #EDEFF5;
+  --text-secondary: #A7ADC0;
+  --text-muted: #767C90;
+
+  --accent: #DD9494;
+  --accent-strong: #E5ACAC;
+  --accent-tint: #2E1E20;
+
+  --success: #34C98C;
+  --success-tint: #123024;
+  --danger: #F0637A;
+  --danger-tint: #3A1620;
+  --warning: #E0A24A;
+  --warning-tint: #3A2C12;
+
+  --chart-grid: #262B3D;
+  --chart-axis: #454B63;
+
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }

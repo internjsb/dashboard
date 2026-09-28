@@ -188,7 +188,6 @@ export default function AdminPanel() {
             disabled={busyUid === u.uid}
             onChange={(e) => setDepartment(u, e.target.value as Department | "")}
           >
-            <option value="">Unassigned</option>
             {DEPARTMENT_OPTIONS.map((d) => (
               <option key={d.value} value={d.value}>
                 {d.label}

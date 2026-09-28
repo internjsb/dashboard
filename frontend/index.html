@@ -10,6 +10,24 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Set the theme before first paint so there's no flash of the wrong
+      // theme while React boots. Kept in sync with hooks/useTheme.ts.
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          /* private mode / no window — CSS falls back to the light palette */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
