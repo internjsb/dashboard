@@ -128,7 +128,7 @@ input:focus-visible {
    CSS-module chunk) so they can never lose a cascade race with a lazily loaded
    view stylesheet. Components add `app-sidebar` / `app-content` alongside their
    module classes; `useSidebar.ts` only toggles the body-state classes and the
-   --sidebar-w drag width. */
+   --sidebar -w drag width. */
 
 .app-shell { display: flex; min-height: 100vh; }
 
