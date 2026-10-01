@@ -51,6 +51,10 @@ export default function RevenueChart({
     };
   }, [data]);
 
+  // Dense series (e.g. 30 daily points) would overflow a label row sized for
+  // ~12 months, so thin them out past that point; short series are unaffected.
+  const labelStep = data.length > 12 ? Math.ceil(data.length / 8) : 1;
+
   const linePoints = plotted.map((p) => `${p.x},${p.y}`).join(" ");
   const areaPoints =
     plotted.length > 0
@@ -130,8 +134,10 @@ export default function RevenueChart({
       </div>
 
       <div className={styles.chartLabels}>
-        {data.map((d) => (
-          <span key={d.month}>{d.month}</span>
+        {data.map((d, i) => (
+          <span key={d.month}>
+            {i % labelStep === 0 || i === data.length - 1 ? d.month : ""}
+          </span>
         ))}
       </div>
     </div>

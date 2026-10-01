@@ -26,7 +26,7 @@ export default function AppSidebar() {
   const canSeeSalesHistory = canAccessPage(isSuperAdmin, department, "sales_history");
   const canSeeStock = canAccessPage(isSuperAdmin, department, "stock_available");
   const canSeeFinance = canAccessPage(isSuperAdmin, department, "finance");
-  const canSeeProducts = canAccessPage(isSuperAdmin, department, "products") || role === "admin";
+  const canSeeProducts = canAccessPage(isSuperAdmin, department, "products");
 
   const { lowItems } = useStock(canSeeStock);
   const navigate = useNavigate();

@@ -15,10 +15,15 @@ import styles from "./SalesHistory.module.css";
 const EMPTY: SalesHistoryData = {
   summary: {},
   monthlySales: [],
+  last30Days: [],
   topItems: [],
   topCountries: [],
   userGrowth: [],
 };
+
+function shortDay(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 function money(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
@@ -66,7 +71,7 @@ export default function SalesHistory() {
   );
 
   const sectionText = {
-    monthlySales: "monthly sales",
+    last30Days: "last 30 days sales units sold",
     salesByCountry: "sales by country",
     userGrowth: "userbase growth",
     topCountry: "top country",
@@ -74,7 +79,7 @@ export default function SalesHistory() {
   };
 
   const show = {
-    monthlySales: !isSearching || matches(sectionText.monthlySales, query),
+    last30Days: !isSearching || matches(sectionText.last30Days, query),
     salesByCountry: !isSearching || matches(sectionText.salesByCountry, query),
     userGrowth: !isSearching || matches(sectionText.userGrowth, query),
     topCountry: !isSearching || matches(sectionText.topCountry, query),
@@ -84,7 +89,7 @@ export default function SalesHistory() {
   const nothingFound =
     isSearching &&
     matchedStats.length === 0 &&
-    !show.monthlySales &&
+    !show.last30Days &&
     !show.salesByCountry &&
     !show.userGrowth &&
     !show.topCountry &&
@@ -173,15 +178,30 @@ export default function SalesHistory() {
                 </section>
               )}
 
-              {(!isSearching || show.monthlySales || show.salesByCountry) && (
+              {(!isSearching || show.last30Days) && (
                 <section className={isSearching ? undefined : styles.chartGrid}>
-                  {show.monthlySales && (
+                  {show.last30Days && (
                     <RevenueChart
-                      data={data.monthlySales.map((m) => ({ month: m.month, value: m.revenue }))}
-                      title="Monthly sales"
-                      subtitle="Revenue · last 12 months"
+                      data={data.last30Days.map((d) => ({ month: shortDay(d.date), value: d.revenue }))}
+                      title="Sales — last 30 days"
+                      subtitle="Revenue · last 30 days"
+                      deltaSuffix="DoD"
                     />
                   )}
+                  {show.last30Days && (
+                    <RevenueChart
+                      data={data.last30Days.map((d) => ({ month: shortDay(d.date), value: d.units }))}
+                      title="Units sold — last 30 days"
+                      subtitle="Units · last 30 days"
+                      format="number"
+                      deltaSuffix="DoD"
+                    />
+                  )}
+                </section>
+              )}
+
+              {(!isSearching || show.salesByCountry) && (
+                <section className={isSearching ? undefined : styles.chartGrid}>
                   {show.salesByCountry && (
                     <CategoryDonut
                       data={data.topCountries.map((c) => ({ category: c.country, value: c.revenue }))}
@@ -194,6 +214,7 @@ export default function SalesHistory() {
                           rows={data.topCountries}
                           columns={[
                             { header: "Country", value: (c) => c.country },
+                            { header: "Currency", value: (c) => c.currencyCode },
                             { header: "Revenue", value: (c) => c.revenue },
                             { header: "Orders", value: (c) => c.orders },
                           ]}
@@ -234,7 +255,9 @@ export default function SalesHistory() {
                       </div>
                       {topCountry && (
                         <div className={styles.bigStat}>
-                          <span className={styles.bigStatValue}>{topCountry.country}</span>
+                          <span className={styles.bigStatValue}>
+                            {topCountry.country} <span className={styles.countryCode}>{topCountry.currencyCode}</span>
+                          </span>
                           <span className={styles.bigStatMeta}>
                             {money(topCountry.revenue)} · {num(topCountry.orders)} orders
                           </span>
@@ -254,7 +277,9 @@ export default function SalesHistory() {
                         <ul className={styles.countryList}>
                           {filteredCountries.map((c) => (
                             <li key={c.country}>
-                              <span className={styles.countryName}>{c.country}</span>
+                              <span className={styles.countryName}>
+                                {c.country} <span className={styles.countryCode}>{c.currencyCode}</span>
+                              </span>
                               <span className={styles.countryValue}>{money(c.revenue)}</span>
                               <span className={styles.countryOrders}>{num(c.orders)} orders</span>
                             </li>

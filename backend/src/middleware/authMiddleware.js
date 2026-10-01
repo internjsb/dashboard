@@ -112,6 +112,7 @@ const PAGE_DEPARTMENTS = {
   sales_history: ["super_user", "sales"],
   stock_available: ["super_user", "supplychain"],
   finance: ["super_user", "finance"],
+  products: ["super_user", "supplychain"],
 };
 
 // Gate a route to the departments allowed to see `page`. Must run after

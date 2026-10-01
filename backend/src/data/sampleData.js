@@ -204,6 +204,40 @@ export const salesHistory = {
     { sku: "SKU-LUG-001", month: "Sep", revenue: 228400, units: 1757 },
   ],
 
+  // Revenue + units per day, trailing 30 days (sums to the Sep row above).
+  last30Days: [
+    { date: "2026-09-01", revenue: 6883, units: 53 },
+    { date: "2026-09-02", revenue: 7358, units: 56 },
+    { date: "2026-09-03", revenue: 7379, units: 56 },
+    { date: "2026-09-04", revenue: 6796, units: 52 },
+    { date: "2026-09-05", revenue: 6708, units: 52 },
+    { date: "2026-09-06", revenue: 5886, units: 46 },
+    { date: "2026-09-07", revenue: 6290, units: 49 },
+    { date: "2026-09-08", revenue: 7534, units: 58 },
+    { date: "2026-09-09", revenue: 7228, units: 55 },
+    { date: "2026-09-10", revenue: 7378, units: 56 },
+    { date: "2026-09-11", revenue: 7840, units: 60 },
+    { date: "2026-09-12", revenue: 8125, units: 63 },
+    { date: "2026-09-13", revenue: 6398, units: 50 },
+    { date: "2026-09-14", revenue: 6034, units: 47 },
+    { date: "2026-09-15", revenue: 7666, units: 59 },
+    { date: "2026-09-16", revenue: 8412, units: 64 },
+    { date: "2026-09-17", revenue: 8695, units: 66 },
+    { date: "2026-09-18", revenue: 8230, units: 63 },
+    { date: "2026-09-19", revenue: 7737, units: 60 },
+    { date: "2026-09-20", revenue: 6525, units: 51 },
+    { date: "2026-09-21", revenue: 7191, units: 56 },
+    { date: "2026-09-22", revenue: 8968, units: 69 },
+    { date: "2026-09-23", revenue: 8544, units: 65 },
+    { date: "2026-09-24", revenue: 8299, units: 63 },
+    { date: "2026-09-25", revenue: 8751, units: 67 },
+    { date: "2026-09-26", revenue: 9282, units: 72 },
+    { date: "2026-09-27", revenue: 7549, units: 59 },
+    { date: "2026-09-28", revenue: 7063, units: 55 },
+    { date: "2026-09-29", revenue: 8580, units: 66 },
+    { date: "2026-09-30", revenue: 9071, units: 69 },
+  ],
+
   // Storefront engagement per item, most-visited first.
   topItems: [
     { sku: "SKU-LUG-001", dtiItemCode: "DTI-LUG-001", name: "Smart Luggage Lock", views: 48210, clicks: 15940, addToCart: 4120, purchases: 2210 },
@@ -215,12 +249,12 @@ export const salesHistory = {
 
   // Sales by ship-to country, highest revenue first.
   topCountries: [
-    { country: "United States", revenue: 1465000, orders: 11240 },
-    { country: "United Kingdom", revenue: 318900, orders: 2470 },
-    { country: "Germany", revenue: 254300, orders: 1980 },
-    { country: "Canada", revenue: 201700, orders: 1560 },
-    { country: "Australia", revenue: 133200, orders: 1010 },
-    { country: "France", revenue: 65400, orders: 480 },
+    { country: "United States", currencyCode: "USD", revenue: 1465000, orders: 11240 },
+    { country: "United Kingdom", currencyCode: "GBP", revenue: 318900, orders: 2470 },
+    { country: "Germany", currencyCode: "EUR", revenue: 254300, orders: 1980 },
+    { country: "Canada", currencyCode: "CAD", revenue: 201700, orders: 1560 },
+    { country: "Australia", currencyCode: "AUD", revenue: 133200, orders: 1010 },
+    { country: "France", currencyCode: "EUR", revenue: 65400, orders: 480 },
   ],
 
   // Total registered users at each month end, plus how many were new that month.

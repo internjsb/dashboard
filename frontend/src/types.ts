@@ -75,6 +75,12 @@ export interface MonthlySalesPoint {
   units: number;
 }
 
+export interface DailySalesPoint {
+  date: string;
+  revenue: number;
+  units: number;
+}
+
 export interface TopItemRow {
   sku: string;
   dtiItemCode: string;
@@ -87,6 +93,7 @@ export interface TopItemRow {
 
 export interface CountrySalesRow {
   country: string;
+  currencyCode: string;
   revenue: number;
   orders: number;
 }
@@ -100,6 +107,7 @@ export interface UserGrowthPoint {
 export interface SalesHistoryData {
   summary: Record<string, StatItem>;
   monthlySales: MonthlySalesPoint[];
+  last30Days: DailySalesPoint[];
   topItems: TopItemRow[];
   topCountries: CountrySalesRow[];
   userGrowth: UserGrowthPoint[];
