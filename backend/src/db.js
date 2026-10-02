@@ -1,5 +1,5 @@
-// server/db.js
-// Connects the Heroku Node backend to Cloud SQL for PostgreSQL using the
+// backend/src/db.js  (ES module)
+// Connects the Heroku backend to Cloud SQL for PostgreSQL using the
 // Cloud SQL Node.js Connector (IAM-authorized, TLS-encrypted, no IP allowlist).
 //
 // Required Heroku config vars:
@@ -9,18 +9,18 @@
 // Optional:
 //   DB_POOL_MAX               max connections per dyno (default 5)
 
-'use strict';
+import { Connector, IpAddressTypes } from "@google-cloud/cloud-sql-connector";
+import { GoogleAuth } from "google-auth-library";
+import pg from "pg"; // pg is CommonJS: import the default, then destructure
 
-const { Connector, IpAddressTypes } = require('@google-cloud/cloud-sql-connector');
-const { GoogleAuth } = require('google-auth-library');
-const { Pool } = require('pg');
+const { Pool } = pg;
 
 const REQUIRED_VARS = [
-  'GOOGLE_CREDENTIALS_JSON',
-  'INSTANCE_CONNECTION_NAME',
-  'DB_USER',
-  'DB_PASS',
-  'DB_NAME',
+  "GOOGLE_CREDENTIALS_JSON",
+  "INSTANCE_CONNECTION_NAME",
+  "DB_USER",
+  "DB_PASS",
+  "DB_NAME",
 ];
 
 let connector;    // Cloud SQL connector (one per process)
@@ -31,26 +31,25 @@ function readCredentials() {
     return JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
   } catch {
     // Never log the variable itself: it contains a private key.
-    throw new Error('GOOGLE_CREDENTIALS_JSON is not valid JSON');
+    throw new Error("GOOGLE_CREDENTIALS_JSON is not valid JSON");
   }
 }
 
 async function createPool() {
   const missing = REQUIRED_VARS.filter((name) => !process.env[name]);
   if (missing.length) {
-    throw new Error(`Missing config vars: ${missing.join(', ')}`);
+    throw new Error(`Missing config vars: ${missing.join(", ")}`);
   }
 
-  // Authenticate to the Cloud SQL Admin API with the service account key
-  // instead of a key file on disk (Heroku's filesystem is ephemeral).
+  // Authenticate with the key held in a config var (Heroku's disk is ephemeral).
   const auth = new GoogleAuth({
     credentials: readCredentials(),
-    scopes: ['https://www.googleapis.com/auth/sqlservice.admin'],
+    scopes: ["https://www.googleapis.com/auth/sqlservice.admin"],
   });
 
   connector = new Connector({ auth });
 
-  // Returns a socket factory + TLS settings that pg uses to open connections.
+  // Socket factory + TLS settings that pg uses to open connections.
   const clientOpts = await connector.getOptions({
     instanceConnectionName: process.env.INSTANCE_CONNECTION_NAME,
     ipType: IpAddressTypes.PUBLIC,
@@ -61,21 +60,20 @@ async function createPool() {
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
-    // Total connections = dynos x max. Keep this under the Cloud SQL
-    // instance's max_connections, leaving room for Cloud Functions.
+    // Total connections = dynos x max. Keep under Cloud SQL max_connections,
+    // leaving room for the Cloud Functions sync jobs.
     max: Number(process.env.DB_POOL_MAX || 5),
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
   });
 
-  // An idle client dropping (e.g. Cloud SQL maintenance) must not crash the dyno.
-  pool.on('error', (err) => console.error('[db] idle client error:', err.message));
+  // A dropped idle connection (e.g. Cloud SQL maintenance) must not crash the dyno.
+  pool.on("error", (err) => console.error("[db] idle client error:", err.message));
 
   return pool;
 }
 
-// Lazy singleton. If creation fails, reset so the next request retries
-// instead of the app being stuck with a rejected promise.
+// Lazy singleton; resets on failure so the next request retries.
 function getPool() {
   if (!poolPromise) {
     poolPromise = createPool().catch((err) => {
@@ -86,19 +84,19 @@ function getPool() {
   return poolPromise;
 }
 
-// Always use parameterized queries: query('SELECT ... WHERE id = $1', [id])
-async function query(text, params) {
+// Always parameterize: query("SELECT ... WHERE id = $1", [id])
+export async function query(text, params) {
   const pool = await getPool();
   return pool.query(text, params);
 }
 
-// For multi-statement transactions: const client = await getClient(); ... client.release()
-async function getClient() {
+// For transactions: const client = await getClient(); try {...} finally { client.release(); }
+export async function getClient() {
   const pool = await getPool();
   return pool.connect();
 }
 
-async function close() {
+export async function closeDb() {
   if (poolPromise) {
     const pool = await poolPromise.catch(() => null);
     if (pool) await pool.end();
@@ -110,4 +108,4 @@ async function close() {
   }
 }
 
-module.exports = { query, getClient, close };
+export default { query, getClient, closeDb };

@@ -3,6 +3,7 @@ import cors from "cors";
 import authRoutes from "./src/routes/auth.js";
 import dashboardRoutes from "./src/routes/dashboard.js";
 import twoFactorRoutes from "./src/routes/twoFactor.js";
+import healthRoutes from "./src/routes/health.js"; //to test the gloud sql connectivity
 
 // The Express app with no listener attached, so it can run two ways:
 //   - backend/server.js  -> app.listen() for local dev
@@ -34,11 +35,11 @@ app.use(
   })
 );
 app.use(express.json());
-
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/2fa", twoFactorRoutes);
+app.use("/api/health", healthRoutes);   // ← add: GET /api/health/db tests Cloud SQL
 
 // Central error handler
 app.use((err, req, res, next) => {
