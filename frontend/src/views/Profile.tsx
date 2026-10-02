@@ -12,7 +12,6 @@ import PasswordField from "../components/PasswordField";
 import api from "../api/client";
 import { auth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../hooks/useTheme";
 import { PASSWORD_RULE_TEXT, passwordError } from "../utils/passwordPolicy";
 import styles from "./Profile.module.css";
 
@@ -40,7 +39,6 @@ export default function Profile() {
     markTwoFactorVerified,
     markTwoFactorDisabled,
   } = useAuth();
-  const { theme, setTheme } = useTheme();
 
   const email = user?.email ?? "";
   const initials = (displayName || email || "?").slice(0, 2).toUpperCase();
@@ -265,31 +263,6 @@ export default function Profile() {
                 {nameSaving ? "Saving…" : "Save name"}
               </button>
             </form>
-          </section>
-
-          <section className={styles.section}>
-            <h3>Theme</h3>
-            <p className={styles.hint}>Choose how the dashboard looks on this device.</p>
-            <div className={styles.themeOptions}>
-              <button
-                type="button"
-                className={`${styles.themeOption} ${theme === "light" ? styles.themeOptionActive : ""}`}
-                onClick={() => setTheme("light")}
-                aria-pressed={theme === "light"}
-              >
-                <span className={styles.themeSwatch} data-swatch="light" aria-hidden="true" />
-                Light
-              </button>
-              <button
-                type="button"
-                className={`${styles.themeOption} ${theme === "dark" ? styles.themeOptionActive : ""}`}
-                onClick={() => setTheme("dark")}
-                aria-pressed={theme === "dark"}
-              >
-                <span className={styles.themeSwatch} data-swatch="dark" aria-hidden="true" />
-                Dark
-              </button>
-            </div>
           </section>
 
           {hasPasswordLogin && (

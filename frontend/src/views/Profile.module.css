@@ -189,48 +189,6 @@
   gap: 10px;
 }
 
-/* --- theme --------------------------------------------------------------- */
-
-.themeOptions {
-  display: flex;
-  gap: 10px;
-}
-
-.themeOption {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-weight: 600;
-  font-size: 13.5px;
-}
-
-.themeOption:hover {
-  background: var(--bg);
-  color: var(--text-primary);
-}
-
-.themeOptionActive {
-  border-color: var(--accent);
-  color: var(--text-primary);
-  background: var(--accent-tint);
-}
-
-.themeSwatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.themeSwatch[data-swatch="light"] { background: linear-gradient(135deg, #FFFFFF 50%, #EEF1F6 50%); }
-.themeSwatch[data-swatch="dark"] { background: linear-gradient(135deg, #181B29 50%, #10121C 50%); }
-
 /* --- two-factor authentication ------------------------------------------ */
 
 .twoFaStatus {
