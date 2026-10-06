@@ -14,6 +14,33 @@ const router = Router();
 // informational for now (who's on which team), editable by any admin.
 const DEPARTMENTS = ["super_user", "sales", "supplychain", "finance"];
 
+// Business pages a user can be individually granted access to from the
+// "Page management" admin screen — see requirePageAccess in authMiddleware.js.
+const PAGES = [
+  "dashboard",
+  "sales_history",
+  "sale_report",
+  "stock_available",
+  "inventory",
+  "finance",
+  "products",
+  "product_listings",
+];
+
+// Every page checked — only the "super_user" department defaults to this.
+const ALL_PAGE_ACCESS = Object.fromEntries(PAGES.map((p) => [p, true]));
+
+// Starting point only — approving a user into a department (or promoting them
+// to admin) pre-checks the pages that obviously need, so they're not stuck
+// with zero access until an admin separately visits Page management. Still
+// fully editable per-user afterward from that screen; this is just the default.
+const DEFAULT_PAGE_ACCESS = {
+  sales: { dashboard: true, sales_history: true, sale_report: true },
+  supplychain: { stock_available: true, inventory: true, products: true , product_listings: true},
+  finance: { finance: true },
+  super_user: ALL_PAGE_ACCESS,
+};
+
 // The client pings this right after a successful sign-in so the audit log
 // records who logged in, from where, and on what device.
 router.post("/events/login", requireAuth, async (req, res) => {
@@ -46,6 +73,7 @@ router.get("/me", requireAuth, async (req, res) => {
     role: req.user.role,
     status: req.user.status,
     department: req.user.department,
+    pageAccess: req.user.pageAccess,
     isSuperAdmin: req.user.isSuperAdmin,
     twoFactorEnabled: req.user.twoFactorEnabled,
   });
@@ -131,7 +159,9 @@ async function authUserExists(uid) {
   }
 }
 
-// Approve a pending signup -> grants standard "user" access. The approving
+// Approve a pending signup -> grants standard "user" access and pre-checks
+// that department's default pages (see DEFAULT_PAGE_ACCESS) so they aren't
+// stuck with zero access until someone visits Page management. The approving
 // admin must tag the new account with a department in the same request —
 // there's no "approve now, assign later" path.
 router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res) => {
@@ -152,11 +182,13 @@ router.post("/requests/:uid/approve", requireAuth, requireAdmin, async (req, res
       return res.status(410).json({ error: "That Firebase account no longer exists — request removed" });
     }
 
+    const pageAccess = DEFAULT_PAGE_ACCESS[department] || {};
+
     await auth.setCustomUserClaims(uid, { role: "user" });
     await auth.updateUser(uid, { disabled: false });
-    await db.update(`users/${uid}`, { role: "user", status: "active", department });
-    await audit(req, "user.approve", { targetUid: uid, email: record.email, department });
-    res.json({ uid, role: "user", status: "active", department });
+    await db.update(`users/${uid}`, { role: "user", status: "active", department, pageAccess });
+    await audit(req, "user.approve", { targetUid: uid, email: record.email, department, pageAccess });
+    res.json({ uid, role: "user", status: "active", department, pageAccess });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to approve" });
@@ -204,6 +236,7 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
       role: records[u.uid]?.role || "user",
       status: records[u.uid]?.status || "active",
       department: records[u.uid]?.department || null,
+      pageAccess: records[u.uid]?.pageAccess || {},
       isSuperAdmin: isSuperAdminEmail(u.email),
       disabled: u.disabled,
       createdAt: u.metadata.creationTime,
@@ -216,7 +249,12 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-// SUPER ADMIN ONLY: promote/demote between "admin" and "user".
+// SUPER ADMIN ONLY: promote/demote between "admin" and "user". Being admin
+// only adds the role-gated admin pages (Manage users / Audit log / Page
+// management) — it does NOT grant every business page. Promoting resets their
+// page grants to their department's defaults (e.g. a finance admin gets the
+// admin pages + Finance). Demoting back to "user" leaves their existing page
+// grants as-is; it doesn't strip access.
 // The super admin's own role is locked and can't be targeted.
 router.patch("/users/:uid/role", requireAuth, requireSuperAdmin, async (req, res) => {
   const { uid } = req.params;
@@ -237,6 +275,10 @@ router.patch("/users/:uid/role", requireAuth, requireSuperAdmin, async (req, res
 
     await auth.setCustomUserClaims(uid, { role });
     await db.set(`users/${uid}/role`, role);
+    if (role === "admin") {
+      const department = (await db.get(`users/${uid}/department`)) || null;
+      await db.set(`users/${uid}/pageAccess`, DEFAULT_PAGE_ACCESS[department] || {});
+    }
     await audit(req, "user.role_change", { targetUid: uid, email: target.email, role });
     res.json({ uid, role });
   } catch (err) {
@@ -245,9 +287,12 @@ router.patch("/users/:uid/role", requireAuth, requireSuperAdmin, async (req, res
   }
 });
 
-// Any admin: assign or clear a user's department tag — this is now the sole
-// access-control tag driving the business pages (see requirePageAccess).
-// Pass department: null (or omit it) to unassign.
+// Any admin: assign or clear a user's department tag. Resets that user's
+// Page management grants to the new department's defaults (see
+// DEFAULT_PAGE_ACCESS) — the Page management screen always starts from
+// whatever's set here, then an admin can still fine-tune individual pages
+// from that screen afterward. Pass department: null (or omit it) to unassign
+// (clears all page grants too).
 router.patch("/users/:uid/department", requireAuth, requireAdmin, async (req, res) => {
   const { uid } = req.params;
   const rawDept = req.body?.department;
@@ -266,12 +311,48 @@ router.patch("/users/:uid/department", requireAuth, requireAdmin, async (req, re
       return res.status(403).json({ error: "The super admin doesn't need a department" });
     }
 
-    await db.update(`users/${uid}`, { department });
-    await audit(req, "user.department_change", { targetUid: uid, email: target.email, department });
-    res.json({ uid, department });
+    const pageAccess = DEFAULT_PAGE_ACCESS[department] || {};
+
+    await db.update(`users/${uid}`, { department, pageAccess });
+    await audit(req, "user.department_change", { targetUid: uid, email: target.email, department, pageAccess });
+    res.json({ uid, department, pageAccess });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to update department" });
+  }
+});
+
+// Any admin: grant or revoke one page for one user — the "Page management"
+// screen's checkbox grid calls this once per click. The super admin always
+// has every page (see requirePageAccess) and can't be targeted; you also
+// can't edit your own grants, so an admin can't accidentally lock themself
+// out.
+router.patch("/users/:uid/page-access", requireAuth, requireAdmin, async (req, res) => {
+  const { uid } = req.params;
+  const { page, allowed } = req.body || {};
+
+  if (!PAGES.includes(page)) {
+    return res.status(400).json({ error: "Unknown page" });
+  }
+  if (typeof allowed !== "boolean") {
+    return res.status(400).json({ error: "allowed must be true or false" });
+  }
+  if (uid === req.user.uid) {
+    return res.status(400).json({ error: "You can't change your own page access" });
+  }
+
+  try {
+    const target = await auth.getUser(uid);
+    if (isSuperAdminEmail(target.email)) {
+      return res.status(403).json({ error: "The super admin already has access to every page" });
+    }
+
+    await db.set(`users/${uid}/pageAccess/${page}`, allowed);
+    await audit(req, "user.page_access_change", { targetUid: uid, email: target.email, page, allowed });
+    res.json({ uid, page, allowed });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update page access" });
   }
 });
 

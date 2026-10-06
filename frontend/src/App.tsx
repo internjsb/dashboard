@@ -13,20 +13,23 @@ const StockAvailable = lazy(() => import("./views/StockAvailable"));
 const Inventory = lazy(() => import("./views/Inventory"));
 const Finance = lazy(() => import("./views/Finance"));
 const Products = lazy(() => import("./views/Products"));
+const ProductListings = lazy(() => import("./views/ProductListings"));
+const SaleReport = lazy(() => import("./views/SaleReport"));
 const Profile = lazy(() => import("./views/Profile"));
 const Setup2FA = lazy(() => import("./views/Setup2FA"));
 const Verify2FA = lazy(() => import("./views/Verify2FA"));
 const AdminPanel = lazy(() => import("./views/AdminPanel"));
 const AuditLog = lazy(() => import("./views/AuditLog"));
+const PageManagement = lazy(() => import("./views/PageManagement"));
 const Forbidden = lazy(() => import("./views/Forbidden"));
 const NotFound = lazy(() => import("./views/NotFound"));
 
 // "/" has no page of its own — send the signed-in user to the first business
-// page their role/department actually lets them see (Profile if none).
+// page they're actually granted (Profile if none).
 function HomeRedirect() {
   const {
     user,
-    department,
+    pageAccess,
     status,
     isSuperAdmin,
     twoFactorEnabled,
@@ -58,7 +61,7 @@ function HomeRedirect() {
   // session that hasn't proven possession of an *already-enabled* authenticator
   // gets routed to the OTP check.
   if (twoFactorEnabled === true && !twoFactorVerified) return <Navigate to="/verify-2fa" replace />;
-  return <Navigate to={defaultPageFor(isSuperAdmin, department)} replace />;
+  return <Navigate to={defaultPageFor(isSuperAdmin, pageAccess)} replace />;
 }
 
 export default function App() {
@@ -105,7 +108,7 @@ export default function App() {
             <Route
               path="/inventory"
               element={
-                <ProtectedRoute page="stock_available">
+                <ProtectedRoute page="inventory">
                   <Inventory />
                 </ProtectedRoute>
               }
@@ -123,6 +126,22 @@ export default function App() {
               element={
                 <ProtectedRoute page="products">
                   <Products />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/product-listings"
+              element={
+                <ProtectedRoute page="product_listings">
+                  <ProductListings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sale-report"
+              element={
+                <ProtectedRoute page="sale_report">
+                  <SaleReport />
                 </ProtectedRoute>
               }
             />
@@ -163,6 +182,14 @@ export default function App() {
               element={
                 <ProtectedRoute role="admin">
                   <AuditLog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/page-management"
+              element={
+                <ProtectedRoute role="admin">
+                  <PageManagement />
                 </ProtectedRoute>
               }
             />

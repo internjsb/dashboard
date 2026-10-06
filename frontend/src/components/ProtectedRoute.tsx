@@ -7,7 +7,7 @@ import type { Role } from "../types";
 interface ProtectedRouteProps {
   children: ReactNode;
   role?: Role;
-  /** For business pages gated by department (see lib/pageAccess.ts). */
+  /** For business pages gated by per-user grants (see lib/pageAccess.ts). */
   page?: PageKey;
 }
 
@@ -20,7 +20,7 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
     user,
     role: userRole,
     status,
-    department,
+    pageAccess,
     isSuperAdmin,
     twoFactorEnabled,
     twoFactorVerified,
@@ -60,9 +60,9 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
     return <Navigate to="/forbidden" replace />;
   }
   // Approved — don't leave them stranded on the waiting screen. Send them to
-  // whichever page their role/department actually grants, not always /dashboard.
+  // whichever page they're actually granted, not always /dashboard.
   if (location.pathname === "/pending") {
-    return <Navigate to={defaultPageFor(isSuperAdmin, department)} replace />;
+    return <Navigate to={defaultPageFor(isSuperAdmin, pageAccess)} replace />;
   }
 
   // 2FA is opt-in (toggled from Profile), not forced on every account. An
@@ -76,11 +76,11 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
   }
 
   // When both are given, either one satisfies the guard (e.g. a page that
-  // admins should see regardless of department, on top of the departments
-  // that already grant it). A single prop keeps its own strict check.
+  // admins should see regardless of their own per-page grants, on top of
+  // whatever already grants it). A single prop keeps its own strict check.
   if (role && page) {
     const roleOk = role === userRole;
-    const pageOk = canAccessPage(isSuperAdmin, department, page);
+    const pageOk = canAccessPage(isSuperAdmin, pageAccess, page);
     if (!roleOk && !pageOk) {
       return <Navigate to="/forbidden" replace />;
     }
@@ -88,7 +88,7 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
     if (role && role !== userRole) {
       return <Navigate to="/forbidden" replace />;
     }
-    if (page && !canAccessPage(isSuperAdmin, department, page)) {
+    if (page && !canAccessPage(isSuperAdmin, pageAccess, page)) {
       return <Navigate to="/forbidden" replace />;
     }
   }

@@ -9,15 +9,18 @@ export function isSuperAdminEmail(email) {
 
 /**
  * Verifies "Authorization: Bearer <idToken>" and attaches
- * req.user = { uid, email, role, status, department, isSuperAdmin }.
+ * req.user = { uid, email, role, status, department, pageAccess, isSuperAdmin }.
  *
  * - role       — "admin" | "user", from the token claim, falling back to the RTDB mirror.
  * - status     — "pending" | "active" | "denied". New self-registered accounts start
  *                "pending" and get no access until an admin approves them. Records that
  *                predate the approval system (no status field) are treated as "active".
- * - department — "super_user" | "sales" | "supplychain" | "finance" | null. Purely a
- *                tag set by an admin; drives which pages a non-admin can see (see
- *                requirePageAccess below).
+ * - department — "super_user" | "sales" | "supplychain" | "finance" | null. Purely an
+ *                informational tag now (who's on which team) — it no longer drives page
+ *                access on its own.
+ * - pageAccess — { [pageKey]: true }, set per-user from the "Page management" admin
+ *                screen. Drives which pages a non-admin can see (see requirePageAccess
+ *                below).
  * - The super admin (matched by email) is always role "admin" + status "active",
  *   regardless of what the token or database say.
  */
@@ -64,6 +67,7 @@ export async function requireAuth(req, res, next) {
       role,
       status,
       department: record?.department || null,
+      pageAccess: record?.pageAccess || {},
       isSuperAdmin: superAdmin,
       twoFactorEnabled: !!record?.twoFactor?.enabled,
     };
@@ -101,28 +105,20 @@ export function requireSuperAdmin(req, res, next) {
   next();
 }
 
-// Which departments can see which business page. Only the one true super
-// admin bypasses this. Being "admin" role does NOT grant blanket access on
-// its own — a promoted admin sees only what their own department grants
-// here, same as anyone else, and keeps Manage users / Audit log separately
-// (those stay gated on role, not department). The "super_user" department
-// grants every page. No department at all means no access to any of them.
-const PAGE_DEPARTMENTS = {
-  dashboard: ["super_user", "sales"],
-  sales_history: ["super_user", "sales"],
-  stock_available: ["super_user", "supplychain"],
-  finance: ["super_user", "finance"],
-  products: ["super_user", "supplychain"],
-};
-
-// Gate a route to the departments allowed to see `page`. Must run after
-// requireAuth (and typically requireActive).
+// Gate a route to users with a per-user grant for `page` (or `page` being an
+// array — passes if ANY of them is granted; some endpoints back more than
+// one frontend page). Only the one true super admin bypasses this. Being
+// "admin" role does NOT grant blanket access on its own — a promoted admin
+// sees only whatever's checked for them on the Page management screen, same
+// as anyone else (Manage users / Audit log / Page management stay gated on
+// role, not per-page grants). Must run after requireAuth (and typically
+// requireActive).
 export function requirePageAccess(page) {
-  const allowed = PAGE_DEPARTMENTS[page] || [];
+  const pages = Array.isArray(page) ? page : [page];
   return function (req, res, next) {
     if (!req.user) return res.status(401).json({ error: "Not authenticated" });
     if (req.user.isSuperAdmin) return next();
-    if (req.user.department && allowed.includes(req.user.department)) return next();
+    if (pages.some((p) => req.user.pageAccess?.[p])) return next();
     return res.status(403).json({ error: "You don't have access to this page" });
   };
 }

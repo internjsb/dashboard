@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
-import { onValue, orderByChild, push, query, ref, remove, serverTimestamp, update } from "firebase/database";
+import { onValue, orderByChild, query, ref } from "firebase/database";
+import axios from "axios";
+import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import DataTable, { type DataTableColumn, type DataTableFilter } from "../components/DataTable";
@@ -7,6 +9,13 @@ import { rtdb } from "../firebase";
 import styles from "./Products.module.css";
 
 const PRODUCTS_PATH = "products";
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    return (err.response?.data as { error?: string } | undefined)?.error || fallback;
+  }
+  return fallback;
+}
 
 interface ProductRow {
   id: string;
@@ -129,10 +138,11 @@ export default function Products() {
     setDeleteError(null);
     setDeletingId(product.id);
     try {
-      await remove(ref(rtdb, `${PRODUCTS_PATH}/${product.id}`));
+      // Writes go through the backend — RTDB rules block client writes to products/.
+      await api.delete(`/dashboard/products/${product.id}`);
       if (editingId === product.id) resetForm();
-    } catch {
-      setDeleteError("Couldn't delete product. Please try again.");
+    } catch (err) {
+      setDeleteError(errorMessage(err, "Couldn't delete product. Please try again."));
     } finally {
       setDeletingId(null);
     }
@@ -167,37 +177,27 @@ export default function Products() {
     setSaving(true);
     try {
       if (editingId) {
-        await update(ref(rtdb, `${PRODUCTS_PATH}/${editingId}`), {
-          sn,
-          ...form,
-          set,
-          updatedAt: serverTimestamp(),
-        });
+        await api.patch(`/dashboard/products/${editingId}`, { sn, ...form, set });
         // Editing a single row is a one-off change, so close the form after saving.
         resetForm();
       } else {
-        await push(ref(rtdb, PRODUCTS_PATH), {
-          sn,
-          ...form,
-          set,
-          createdAt: serverTimestamp(),
-        });
+        await api.post("/dashboard/products", { sn, ...form, set });
         // Adding is often done row after row, so clear the fields but keep the form open.
         setForm(EMPTY_FORM);
         setSnInput("");
         setSetInput(DEFAULT_SET);
         setError(null);
       }
-    } catch {
-      setError("Couldn't save product. Please try again.");
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't save product. Please try again."));
     } finally {
       setSaving(false);
     }
   }
 
   const columns: DataTableColumn<ProductRow>[] = [
-    { key: "sku", header: "SKU", accessor: (p) => p.sku },
     { key: "sn", header: "S/N", accessor: (p) => p.sn },
+    { key: "sku", header: "SKU", accessor: (p) => p.sku },
     { key: "division", header: "Division", accessor: (p) => p.division },
     { key: "dtiItemCode", header: "DTI Item Code", accessor: (p) => p.dtiItemCode },
     { key: "set", header: "Set", accessor: (p) => p.set },
@@ -258,88 +258,93 @@ export default function Products() {
           )}
 
           {showForm && (
-            <section className={styles.card}>
-              <div className={styles.cardHead}>
-                <div>
-                  <h3>{editingId ? "Edit product" : "Add product"}</h3>
-                  <span className={styles.cardSub}>
-                    {editingId ? "Update this row" : "Enter a new row manually"}
-                  </span>
-                </div>
-                <button type="button" className={styles.cancelBtn} onClick={resetForm}>
-                  Cancel
-                </button>
-              </div>
-              <form onSubmit={handleSubmit}>
-                <div className={styles.formGrid}>
-                  <label className={styles.field}>
-                    <span>S/N</span>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder={String(nextSn)}
-                      value={snInput}
-                      onChange={(e) => setSnInput(e.target.value)}
-                      aria-invalid={snDuplicate}
-                    />
-                    {snDuplicate && <span className={styles.error}>S/N {snInput} is already used.</span>}
-                  </label>
-                  {FIELDS.map((f) => (
-                    <Fragment key={f.key}>
-                      <label className={styles.field}>
-                        <span>
-                          {f.label}
-                          {f.required && <span className={styles.required}> *</span>}
-                        </span>
-                        {f.options ? (
-                          <select
-                            required={f.required}
-                            value={form[f.key]}
-                            onChange={(e) => updateField(f.key, e.target.value)}
-                          >
-                            <option value="" disabled>
-                              Select {f.label.toLowerCase()}
-                            </option>
-                            {f.options.map((o) => (
-                              <option key={o} value={o}>
-                                {o}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            required={f.required}
-                            value={form[f.key]}
-                            onChange={(e) => updateField(f.key, e.target.value)}
-                          />
-                        )}
-                      </label>
-                      {f.key === "dtiItemCode" && (
+            <div
+              className={styles.modalOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="product-form-title"
+              onClick={() => !saving && resetForm()}
+            >
+              <section className={`${styles.card} ${styles.modal}`} onClick={(e) => e.stopPropagation()}>
+                <h3 id="product-form-title" className={styles.modalTitle}>
+                  {editingId ? "Edit product" : "Add product"}
+                </h3>
+                <form onSubmit={handleSubmit}>
+                  <div className={styles.formGrid}>
+                    <label className={styles.field}>
+                      <span>S/N</span>
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder={String(nextSn)}
+                        value={snInput}
+                        onChange={(e) => setSnInput(e.target.value)}
+                        aria-invalid={snDuplicate}
+                      />
+                      {snDuplicate && <span className={styles.error}>S/N {snInput} is already used.</span>}
+                    </label>
+                    {FIELDS.map((f) => (
+                      <Fragment key={f.key}>
                         <label className={styles.field}>
                           <span>
-                            Set (per pack)
-                            <span className={styles.required}> *</span>
+                            {f.label}
+                            {f.required && <span className={styles.required}> *</span>}
                           </span>
-                          <input
-                            type="number"
-                            min={1}
-                            step={1}
-                            required
-                            value={setInput}
-                            onChange={(e) => setSetInput(e.target.value)}
-                          />
+                          {f.options ? (
+                            <select
+                              required={f.required}
+                              value={form[f.key]}
+                              onChange={(e) => updateField(f.key, e.target.value)}
+                            >
+                              <option value="" disabled>
+                                Select {f.label.toLowerCase()}
+                              </option>
+                              {f.options.map((o) => (
+                                <option key={o} value={o}>
+                                  {o}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              required={f.required}
+                              value={form[f.key]}
+                              onChange={(e) => updateField(f.key, e.target.value)}
+                            />
+                          )}
                         </label>
-                      )}
-                    </Fragment>
-                  ))}
-                </div>
-                {error && <p className={styles.error}>{error}</p>}
-                <button type="submit" className={styles.saveBtn} disabled={saving || snDuplicate}>
-                  {saving ? "Saving…" : editingId ? "Save changes" : "Add row"}
-                </button>
-              </form>
-            </section>
+                        {f.key === "dtiItemCode" && (
+                          <label className={styles.field}>
+                            <span>
+                              Set (per pack)
+                              <span className={styles.required}> *</span>
+                            </span>
+                            <input
+                              type="number"
+                              min={1}
+                              step={1}
+                              required
+                              value={setInput}
+                              onChange={(e) => setSetInput(e.target.value)}
+                            />
+                          </label>
+                        )}
+                      </Fragment>
+                    ))}
+                  </div>
+                  {error && <p className={styles.error}>{error}</p>}
+                  <div className={styles.modalActions}>
+                    <button type="button" className={styles.cancelBtn} onClick={resetForm} disabled={saving}>
+                      Cancel
+                    </button>
+                    <button type="submit" className={styles.saveBtn} disabled={saving || snDuplicate}>
+                      {saving ? "Saving…" : editingId ? "Save changes" : "Add product"}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
           )}
 
           <section className={styles.card}>

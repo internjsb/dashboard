@@ -1,0 +1,105 @@
+.content {
+  padding: 28px 32px 48px;
+}
+
+@media (max-width: 700px) {
+  .content {
+    padding: 20px 16px 40px;
+  }
+}
+
+.state {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.table thead th {
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.usersHead,
+.rolesHead {
+  vertical-align: middle;
+}
+
+.pagesHead {
+  text-align: center;
+}
+
+.pageCol {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.userCell {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.roleCell {
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.roleCellInner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adminBadge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  background: var(--danger-tint);
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+.pageCol input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.pageCol input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px 12px !important;
+}

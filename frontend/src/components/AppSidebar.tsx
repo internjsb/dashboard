@@ -7,9 +7,12 @@ import {
   Boxes,
   Wallet,
   Tag,
+  ListChecks,
+  FileText,
   CircleUserRound,
   Users,
   ScrollText,
+  Table2,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -19,16 +22,19 @@ import { canAccessPage } from "../lib/pageAccess";
 import styles from "./AppSidebar.module.css";
 
 export default function AppSidebar() {
-  const { user, displayName, role, department, isSuperAdmin, signOut } = useAuth();
+  const { user, displayName, role, pageAccess, isSuperAdmin, signOut } = useAuth();
   const { isMobile, collapsed, mobileOpen, closeMobile, setWidth, resetWidth } = useSidebar();
 
-  const canSeeDashboard = canAccessPage(isSuperAdmin, department, "dashboard");
-  const canSeeSalesHistory = canAccessPage(isSuperAdmin, department, "sales_history");
-  const canSeeStock = canAccessPage(isSuperAdmin, department, "stock_available");
-  const canSeeFinance = canAccessPage(isSuperAdmin, department, "finance");
-  const canSeeProducts = canAccessPage(isSuperAdmin, department, "products");
+  const canSeeDashboard = canAccessPage(isSuperAdmin, pageAccess, "dashboard");
+  const canSeeSalesHistory = canAccessPage(isSuperAdmin, pageAccess, "sales_history");
+  const canSeeStockAvailable = canAccessPage(isSuperAdmin, pageAccess, "stock_available");
+  const canSeeInventory = canAccessPage(isSuperAdmin, pageAccess, "inventory");
+  const canSeeFinance = canAccessPage(isSuperAdmin, pageAccess, "finance");
+  const canSeeProducts = canAccessPage(isSuperAdmin, pageAccess, "products");
+  const canSeeProductListings = canAccessPage(isSuperAdmin, pageAccess, "product_listings");
+  const canSeeSaleReport = canAccessPage(isSuperAdmin, pageAccess, "sale_report");
 
-  const { lowItems } = useStock(canSeeStock);
+  const { lowItems } = useStock(canSeeStockAvailable || canSeeInventory);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,7 +107,13 @@ export default function AppSidebar() {
               Sales history
             </NavLink>
           )}
-          {canSeeStock && (
+          {canSeeSaleReport && (
+            <NavLink to="/sale-report" className={navItemClass}>
+              <FileText className={styles.icon} size={18} />
+              Sale report
+            </NavLink>
+          )}
+          {canSeeStockAvailable && (
             <NavLink to="/stock-available" className={navItemClass}>
               <Package className={styles.icon} size={18} />
               Stock available
@@ -112,7 +124,7 @@ export default function AppSidebar() {
               )}
             </NavLink>
           )}
-          {canSeeStock && (
+          {canSeeInventory && (
             <NavLink to="/inventory" className={navItemClass}>
               <Boxes className={styles.icon} size={18} />
               Inventory
@@ -130,6 +142,12 @@ export default function AppSidebar() {
               Products
             </NavLink>
           )}
+          {canSeeProductListings && (
+            <NavLink to="/product-listings" className={navItemClass}>
+              <ListChecks className={styles.icon} size={18} />
+              Products listings
+            </NavLink>
+          )}
           <NavLink to="/profile" className={navItemClass}>
             <CircleUserRound className={styles.icon} size={18} />
             Profile
@@ -138,6 +156,12 @@ export default function AppSidebar() {
             <NavLink to="/admin" className={navItemClass}>
               <Users className={styles.icon} size={18} />
               Manage users
+            </NavLink>
+          )}
+          {role === "admin" && (
+            <NavLink to="/page-management" className={navItemClass}>
+              <Table2 className={styles.icon} size={18} />
+              Page management
             </NavLink>
           )}
           {role === "admin" && (

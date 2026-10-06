@@ -274,6 +274,32 @@ export const salesHistory = {
   ],
 };
 
+// --- Sales reports page ----------------------------------------------------
+// Per-order line items, most recent first. Filtered by shipped date on the
+// Sales report page.
+export const saleReport = [
+  { id: "SR-0001", category: "Order", itemCode: "LUG-001", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "111-2938471-0011", fulfillment: "Amazon", shippedDate: "2026-09-29" },
+  { id: "SR-0002", category: "Order", itemCode: "PAD-005", set: 2, qty: 2, productSalesPrice: 259.98, unitPrice: 129.99, orderId: "112-8471920-4432", fulfillment: "Amazon", shippedDate: "2026-09-28" },
+  { id: "SR-0003", category: "Order", itemCode: "LUG-001", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "114-5563011-9910", fulfillment: "Amazon", shippedDate: "2026-09-28" },
+  { id: "SR-0004", category: "Order", itemCode: "PAD-004", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "113-9982004-1177", fulfillment: "Amazon", shippedDate: "2026-09-27" },
+  { id: "SR-0005", category: "Order", itemCode: "LUG-001", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "111-7741200-3388", fulfillment: "Amazon", shippedDate: "2026-09-26" },
+  { id: "SR-0006", category: "Order", itemCode: "PAD-004", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "112-3300561-7742", fulfillment: "Amazon", shippedDate: "2026-09-25" },
+  { id: "SR-0007", category: "Order", itemCode: "SHACKLE-001", set: 1, qty: 3, productSalesPrice: 44.97, unitPrice: 14.99, orderId: "111-4432109-8821", fulfillment: "Amazon", shippedDate: "2026-09-24" },
+  { id: "SR-0008", category: "Order", itemCode: "LOTO-RED", set: 1, qty: 1, productSalesPrice: 34.99, unitPrice: 34.99, orderId: "113-2201984-5567", fulfillment: "Amazon", shippedDate: "2026-09-23" },
+  { id: "SR-0009", category: "Order", itemCode: "PAD-005", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "112-9087654-3321", fulfillment: "Amazon", shippedDate: "2026-09-21" },
+  { id: "SR-0010", category: "Order", itemCode: "LUG-001", set: 2, qty: 2, productSalesPrice: 259.98, unitPrice: 129.99, orderId: "111-5567834-1290", fulfillment: "Amazon", shippedDate: "2026-09-20" },
+  { id: "SR-0011", category: "Order", itemCode: "SHACKLE-001", set: 1, qty: 1, productSalesPrice: 14.99, unitPrice: 14.99, orderId: "114-6678234-7765", fulfillment: "Amazon", shippedDate: "2026-09-18" },
+  { id: "SR-0012", category: "Order", itemCode: "PAD-004", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "113-1123456-9988", fulfillment: "Amazon", shippedDate: "2026-09-17" },
+  { id: "SR-0013", category: "Order", itemCode: "LUG-001", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "111-9988776-2341", fulfillment: "Amazon", shippedDate: "2026-09-15" },
+  { id: "SR-0014", category: "Order", itemCode: "LOTO-RED", set: 1, qty: 2, productSalesPrice: 69.98, unitPrice: 34.99, orderId: "112-2345678-1029", fulfillment: "Amazon", shippedDate: "2026-09-12" },
+  { id: "SR-0015", category: "Order", itemCode: "PAD-005", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "113-8871234-5543", fulfillment: "Amazon", shippedDate: "2026-09-10" },
+  { id: "SR-0016", category: "Order", itemCode: "SHACKLE-001", set: 1, qty: 2, productSalesPrice: 29.98, unitPrice: 14.99, orderId: "111-3321987-6612", fulfillment: "Amazon", shippedDate: "2026-09-08" },
+  { id: "SR-0017", category: "Order", itemCode: "LUG-001", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "114-7789012-3345", fulfillment: "Amazon", shippedDate: "2026-09-05" },
+  { id: "SR-0018", category: "Order", itemCode: "PAD-004", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "112-4456789-0123", fulfillment: "Amazon", shippedDate: "2026-09-03" },
+  { id: "SR-0019", category: "Order", itemCode: "LOTO-RED", set: 1, qty: 1, productSalesPrice: 34.99, unitPrice: 34.99, orderId: "113-5567890-1234", fulfillment: "Amazon", shippedDate: "2026-09-02" },
+  { id: "SR-0020", category: "Order", itemCode: "LUG-001", set: 1, qty: 1, productSalesPrice: 129.99, unitPrice: 129.99, orderId: "111-6678901-2345", fulfillment: "Amazon", shippedDate: "2026-09-01" },
+];
+
 // Used by the seed script to create two sample logins.
 export const sampleUsers = [
   { email: "admin@example.com", password: "Password", role: "admin", displayName: "intern the Admin" },

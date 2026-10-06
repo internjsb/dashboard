@@ -12,6 +12,7 @@ import { onAuthStateChanged, signOut as firebaseSignOut, type User as FirebaseUs
 import { auth } from "../firebase";
 import api from "../api/client";
 import type { Role, UserStatus, Department, MeResponse } from "../types";
+import type { PageAccessMap } from "../lib/pageAccess";
 
 // Left in sessionStorage when a session is force-ended (account removed or
 // disabled) so the login screen can explain why. Login reads and clears it.
@@ -34,6 +35,7 @@ interface AuthContextValue {
   role: Role | null;
   status: UserStatus | null;
   department: Department | null;
+  pageAccess: PageAccessMap;
   isSuperAdmin: boolean;
   // Whether the account has 2FA turned on at all, vs. whether THIS session
   // has already proven possession of the authenticator (see markTwoFactorVerified).
@@ -69,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role | null>(null);
   const [status, setStatus] = useState<UserStatus | null>(null);
   const [department, setDepartment] = useState<Department | null>(null);
+  const [pageAccess, setPageAccess] = useState<PageAccessMap>({});
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
@@ -105,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
     setStatus(null);
     setDepartment(null);
+    setPageAccess({});
     setIsSuperAdmin(false);
     setTwoFactorEnabled(null);
     setTwoFactorVerified(false);
@@ -123,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(null);
       setStatus(null);
       setDepartment(null);
+      setPageAccess({});
       setIsSuperAdmin(false);
       setTwoFactorEnabled(null);
       setTwoFactorVerified(false);
@@ -152,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(data.role);
       setStatus(data.status);
       setDepartment(data.department);
+      setPageAccess(data.pageAccess || {});
       setIsSuperAdmin(data.isSuperAdmin);
       setTwoFactorEnabled(data.twoFactorEnabled);
       let verifiedThisSession = false;
@@ -173,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole((t?.claims.role as Role) || null);
       setStatus("unknown");
       setDepartment(null);
+      setPageAccess({});
       setIsSuperAdmin(false);
       // Unknown 2FA state — fail closed (treat as enabled-but-unverified)
       // rather than silently letting the session through unchecked.
@@ -278,6 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role,
     status,
     department,
+    pageAccess,
     isSuperAdmin,
     twoFactorEnabled,
     twoFactorVerified,

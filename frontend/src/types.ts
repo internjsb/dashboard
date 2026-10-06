@@ -217,6 +217,7 @@ export interface MeResponse {
   role: Role | null;
   status: UserStatus | null;
   department: Department | null;
+  pageAccess: Record<string, boolean>;
   isSuperAdmin: boolean;
   twoFactorEnabled: boolean;
 }
@@ -227,6 +228,7 @@ export interface UserRecord {
   role: Role;
   status: UserStatus;
   department?: Department | null;
+  pageAccess?: Record<string, boolean>;
   isSuperAdmin: boolean;
   disabled?: boolean;
   createdAt: string | null;
@@ -247,4 +249,17 @@ export interface AuditEvent {
   action: string;
   detail?: Record<string, unknown> | null;
   userAgent: string;
+}
+
+export interface SaleReportRow {
+  id: string;
+  category: string;
+  itemCode: string;
+  set: number;
+  qty: number;
+  productSalesPrice: number;
+  unitPrice: number;
+  orderId: string;
+  fulfillment: string;
+  shippedDate: string;
 }
