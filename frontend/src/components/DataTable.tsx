@@ -17,6 +17,8 @@ export interface DataTableColumn<T> {
   /** Default: true whenever accessor is set. */
   searchable?: boolean;
   align?: "left" | "right";
+  /** Pin this column to the table's right edge while the rest scrolls sideways (e.g. an actions column). */
+  sticky?: "right";
   /** Extra class applied to both the <th> and every <td> in this column. */
   className?: string;
 }
@@ -172,7 +174,7 @@ export default function DataTable<T>({
                     key={c.key}
                     className={`${c.className ?? ""} ${c.align === "right" ? styles.right : ""} ${
                       canSort ? styles.sortableTh : ""
-                    }`}
+                    } ${c.sticky === "right" ? styles.stickyRight : ""}`}
                     onClick={canSort ? () => toggleSort(c) : undefined}
                     aria-sort={active ? (sort!.dir === "asc" ? "ascending" : "descending") : undefined}
                   >
@@ -202,7 +204,9 @@ export default function DataTable<T>({
                   {columns.map((c) => (
                     <td
                       key={c.key}
-                      className={`${c.className ?? ""} ${c.align === "right" ? styles.right : ""}`}
+                      className={`${c.className ?? ""} ${c.align === "right" ? styles.right : ""} ${
+                        c.sticky === "right" ? styles.stickyRight : ""
+                      }`}
                     >
                       {c.render ? c.render(row) : (c.accessor?.(row) ?? "—")}
                     </td>

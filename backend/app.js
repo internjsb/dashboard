@@ -10,6 +10,11 @@ import healthRoutes from "./src/routes/health.js"; //to test the gloud sql conne
 //   - api/index.js        -> exported as a Vercel serverless function
 const app = express();
 
+// Heroku (and Vercel) sit one proxy hop in front of the app. Trusting exactly
+// that one hop makes req.ip the real client address (used by the audit log's
+// IP + location) while ignoring any X-Forwarded-For a client tries to forge.
+app.set("trust proxy", 1);
+
 // CORS only matters for cross-origin calls (local dev: Vite :5173 -> API :4000,
 // or a split deploy). On Vercel the frontend and API share an origin, so no
 // CORS headers are needed there. CLIENT_ORIGIN may be a comma-separated list of

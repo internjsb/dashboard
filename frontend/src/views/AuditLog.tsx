@@ -18,6 +18,16 @@ const ACTION_LABEL: Record<string, string> = {
   "user.remove": "Removed user",
   "user.remove_orphan": "Removed orphaned request",
   "user.department_change": "Changed department",
+  "user.create": "Added user manually",
+  "user.page_access_change": "Changed page access",
+  "product.create": "Added product",
+  "product.update": "Edited product",
+  "product.delete": "Deleted product",
+  "listing.create": "Added listing",
+  "listing.update": "Edited listing",
+  "listing.delete": "Deleted listing",
+  "sale_report.update": "Edited sales report row",
+  "sale_report.delete": "Deleted sales report row",
 };
 
 function label(action: string): string {
@@ -72,6 +82,8 @@ function describe(e: AuditEvent): string {
         ? `Approved ${who} for access (${DEPARTMENT_NAME[dept] || dept})`
         : `Approved ${who} for access`;
     }
+    case "user.create":
+      return `Added ${who} manually`;
     case "user.deny":
       return `Denied ${who} access`;
     case "user.disable":
@@ -124,6 +136,83 @@ function deviceFromUA(ua: string): string {
   return `${browser} · ${device}`;
 }
 
+// Which page each kind of action happens on. Matched by action prefix first,
+// then by exact action for the few that live on a different screen.
+const PAGE_BY_ACTION: Record<string, string> = {
+  "auth.login": "Sign in",
+  "auth.signup": "Register",
+  "profile.update": "Profile",
+  "user.page_access_change": "User page management",
+};
+const PAGE_BY_PREFIX: Record<string, string> = {
+  listing: "AMAZON Listing",
+  product: "Products",
+  sale_report: "Sales report",
+  user: "Manage users",
+};
+
+const PAGE_NAME: Record<string, string> = {
+  dashboard: "Dashboard",
+  sales_history: "Sales history",
+  stock_available: "Stock availability",
+  inventory: "Inventory",
+  finance: "Finance",
+  products: "Products",
+  product_listings: "AMAZON Listing",
+  sale_report: "Sales report",
+};
+
+function pageOf(action: string): string {
+  return PAGE_BY_ACTION[action] ?? PAGE_BY_PREFIX[action.split(".")[0]] ?? "—";
+}
+
+// The specific thing the action touched, pulled from the stored detail.
+function subjectOf(e: AuditEvent): string | null {
+  const d = e.detail;
+  const join = (...parts: (string | null)[]) => parts.filter(Boolean).join(" · ") || null;
+  const [prefix] = e.action.split(".");
+  switch (prefix) {
+    case "listing":
+      return join(str(d, "dtiItemCode") && `DTI item ${str(d, "dtiItemCode")}`, str(d, "dtiItemDescription"));
+    case "product":
+      return join(str(d, "sku") && `SKU ${str(d, "sku")}`, str(d, "dtiItemDescription"));
+    case "sale_report":
+      return join(str(d, "orderId") && `Order ${str(d, "orderId")}`, str(d, "itemCode"));
+    case "user": {
+      const who = str(d, "email");
+      if (e.action === "user.page_access_change") {
+        const page = str(d, "page");
+        const allowed = d?.allowed === true ? "granted" : d?.allowed === false ? "revoked" : null;
+        return join(who, page && `${PAGE_NAME[page] || page}${allowed ? ` ${allowed}` : ""}`);
+      }
+      return who;
+    }
+    case "profile":
+      return str(d, "displayName") && `Name: ${str(d, "displayName")}`;
+    default:
+      return null;
+  }
+}
+
+const countryNames = (() => {
+  try {
+    return new Intl.DisplayNames(undefined, { type: "region" });
+  } catch {
+    return null;
+  }
+})();
+
+// "Singapore", "Kuala Lumpur, Malaysia", "Local network", or "—" for entries
+// recorded before location tracking existed.
+function placeOf(e: AuditEvent): string {
+  const loc = e.location;
+  if (!loc) return "—";
+  if (loc.local) return "Local network";
+  const country = loc.country ? (countryNames?.of(loc.country) ?? loc.country) : null;
+  const parts = [loc.city, country].filter(Boolean);
+  return parts.length ? Array.from(new Set(parts)).join(", ") : "Unknown";
+}
+
 function when(ts: number): { date: string; time: string; rel: string } {
   const d = new Date(ts);
   const date = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -141,12 +230,14 @@ export default function AuditLog() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [scope, setScope] = useState<"all" | "own">("own");
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.get<{ events: AuditEvent[] }>("/audit");
+      const { data } = await api.get<{ events: AuditEvent[]; scope: "all" | "own" }>("/audit");
+      setScope(data.scope);
       // Orphan-cleanup events are internal housekeeping — not worth showing.
       setEvents(data.events.filter((e) => e.action !== "user.remove_orphan"));
     } catch (err) {
@@ -191,6 +282,32 @@ export default function AuditLog() {
       render: (e) => <span className={styles.action}>{describe(e)}</span>,
     },
     {
+      key: "details",
+      header: "Details",
+      accessor: (e) => `${pageOf(e.action)} ${subjectOf(e) ?? ""}`,
+      render: (e) => {
+        const subject = subjectOf(e);
+        return (
+          <span className={styles.details}>
+            <span className={styles.pageTag}>{pageOf(e.action)}</span>
+            {subject && <span className={styles.subject}>{subject}</span>}
+          </span>
+        );
+      },
+    },
+    {
+      key: "location",
+      header: "Location",
+      accessor: (e) => placeOf(e),
+      className: styles.device,
+      render: (e) => (
+        <span className={styles.location} title={e.ip ? `IP ${e.ip}` : undefined}>
+          <span>{placeOf(e)}</span>
+          {e.ip && <span className={styles.ip}>{e.ip}</span>}
+        </span>
+      ),
+    },
+    {
       key: "device",
       header: "Device",
       accessor: (e) => deviceFromUA(e.userAgent),
@@ -206,7 +323,11 @@ export default function AuditLog() {
         <AppTopbar title="Audit log" />
         <main className={styles.content}>
           <div className={styles.head}>
-            <p className={styles.intro}>Every sign-in and admin action. Most recent first (last 300).</p>
+            <p className={styles.intro}>
+              {scope === "all"
+                ? "Every user's sign-ins and actions. Most recent first (last 300)."
+                : "Your own sign-ins and actions. Most recent first (last 300)."}
+            </p>
             <button className={styles.refresh} onClick={load} disabled={loading}>
               Refresh
             </button>

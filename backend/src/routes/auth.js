@@ -3,6 +3,7 @@ import { auth, db } from "../firebaseAdmin.js";
 import { audit } from "../audit.js";
 import {
   requireAuth,
+  requireActive,
   requireAdmin,
   requireSuperAdmin,
   isSuperAdminEmail,
@@ -48,15 +49,17 @@ router.post("/events/login", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// Admin + super admin only: the audit log, newest first.
-router.get("/audit", requireAuth, requireAdmin, async (req, res) => {
+// The audit log, newest first. The super admin sees everyone's events; every
+// other user (admins included) sees only the actions they took themselves.
+router.get("/audit", requireAuth, requireActive, async (req, res) => {
   try {
     const all = (await db.get("audit")) || {};
     const events = Object.entries(all)
       .map(([id, e]) => ({ id, ...e }))
+      .filter((e) => req.user.isSuperAdmin || e.actorUid === req.user.uid)
       .sort((a, b) => (b.at || 0) - (a.at || 0))
       .slice(0, 300);
-    res.json({ events });
+    res.json({ events, scope: req.user.isSuperAdmin ? "all" : "own" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to load the audit log" });
@@ -216,6 +219,65 @@ router.post("/requests/:uid/deny", requireAuth, requireAdmin, async (req, res) =
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to deny" });
+  }
+});
+
+// Any admin: create an account directly — same fields as self-signup, but it
+// skips the approval queue (active straight away, in the chosen department)
+// and has no 2FA set up; the user can turn 2FA on later from Profile.
+router.post("/users", requireAuth, requireAdmin, async (req, res) => {
+  const b = req.body || {};
+  const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
+  const password = typeof b.password === "string" ? b.password : "";
+  const displayName = (typeof b.displayName === "string" ? b.displayName.trim() : "") || null;
+  const department = b.department;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: "Enter a valid email address" });
+  }
+  // Same 8/4 rule the signup form enforces (the zxcvbn strength check runs client-side).
+  if (
+    password.length < 8 ||
+    !/[a-z]/.test(password) ||
+    !/[A-Z]/.test(password) ||
+    !/[0-9]/.test(password) ||
+    !/[^A-Za-z0-9]/.test(password)
+  ) {
+    return res.status(400).json({
+      error: "Password needs at least 8 characters, with an uppercase letter, a lowercase letter, a number, and a special character",
+    });
+  }
+  if (!DEPARTMENTS.includes(department)) {
+    return res.status(400).json({ error: "Choose a department" });
+  }
+  if (isSuperAdminEmail(email)) {
+    return res.status(403).json({ error: "That email is reserved for the super admin" });
+  }
+
+  try {
+    const created = await auth.createUser({ email, password, displayName: displayName || undefined });
+    const pageAccess = DEFAULT_PAGE_ACCESS[department] || {};
+    await auth.setCustomUserClaims(created.uid, { role: "user" });
+    await db.set(`users/${created.uid}`, {
+      email,
+      displayName,
+      role: "user",
+      status: "active",
+      department,
+      pageAccess,
+      createdBy: req.user.uid,
+    });
+    await audit(req, "user.create", { targetUid: created.uid, email, department });
+    res.status(201).json({ uid: created.uid, email, role: "user", status: "active", department, pageAccess });
+  } catch (err) {
+    if (err?.code === "auth/email-already-exists") {
+      return res.status(409).json({ error: "An account with that email already exists" });
+    }
+    if (err?.code === "auth/invalid-password" || err?.code === "auth/invalid-email") {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ error: "Failed to create user" });
   }
 });
 

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { requireAuth, requireActive, requirePageAccess, requireSuperAdmin } from "../middleware/authMiddleware.js";
-import { db } from "../firebaseAdmin.js";
+import multer from "multer";
+import { getDownloadURL } from "firebase-admin/storage";
+import { db, storageBucket } from "../firebaseAdmin.js";
 import { audit } from "../audit.js";
 import { getSpreadsheetInfo, readSheetRows, sheetsServiceEmail } from "../googleSheets.js";
 import {
@@ -84,7 +86,16 @@ async function loadSaleReport() {
     await db.set("meta/saleReportSeeded", true);
   }
   const stored = (await db.get(SALE_REPORT_PATH)) || {};
-  return Object.values(stored).sort((a, b) => b.shippedDate.localeCompare(a.shippedDate));
+  return Object.values(stored)
+    .map((r) => ({ ...r, unitPrice: unitPriceOf(r) }))
+    .sort((a, b) => b.shippedDate.localeCompare(a.shippedDate));
+}
+
+// Unit price = QTY × product sales price, rounded to cents. Always derived,
+// never trusted from storage, so older rows saved under a different formula
+// still come out right.
+function unitPriceOf(r) {
+  return Math.round(Number(r.qty) * Number(r.productSalesPrice) * 100) / 100;
 }
 
 router.get("/sale-report", ...saleReportAccess, async (req, res) => {
@@ -96,7 +107,7 @@ router.get("/sale-report", ...saleReportAccess, async (req, res) => {
   }
 });
 
-// Edit one row. Unit price is always recomputed as sales price / qty.
+// Edit one row. Unit price is always recomputed as QTY × sales price.
 router.patch("/sale-report/:id", ...saleReportAccess, async (req, res) => {
   const { id } = req.params;
   const b = req.body || {};
@@ -128,7 +139,7 @@ router.patch("/sale-report/:id", ...saleReportAccess, async (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(row.shippedDate)) {
     return res.status(400).json({ error: "Shipped date must be YYYY-MM-DD" });
   }
-  row.unitPrice = Math.round((row.productSalesPrice / row.qty) * 100) / 100;
+  row.unitPrice = unitPriceOf(row);
 
   try {
     await loadSaleReport();
@@ -136,7 +147,7 @@ router.patch("/sale-report/:id", ...saleReportAccess, async (req, res) => {
       return res.status(404).json({ error: "Row not found" });
     }
     await db.set(`${SALE_REPORT_PATH}/${id}`, row);
-    await audit(req, "sale_report.update", { id, orderId: row.orderId });
+    await audit(req, "sale_report.update", { id, orderId: row.orderId, itemCode: row.itemCode });
     res.json({ row });
   } catch (err) {
     console.error(err);
@@ -151,7 +162,7 @@ router.delete("/sale-report/:id", ...saleReportAccess, async (req, res) => {
     const existing = await db.get(`${SALE_REPORT_PATH}/${id}`);
     if (existing == null) return res.status(404).json({ error: "Row not found" });
     await db.remove(`${SALE_REPORT_PATH}/${id}`);
-    await audit(req, "sale_report.delete", { id, orderId: existing.orderId });
+    await audit(req, "sale_report.delete", { id, orderId: existing.orderId, itemCode: existing.itemCode });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -209,7 +220,7 @@ router.post("/products", ...productsAccess, async (req, res) => {
     const { product, error } = await validateProduct(req.body);
     if (error) return res.status(400).json({ error });
     const { name: id } = await db.push(PRODUCTS_PATH, { ...product, createdAt: { ".sv": "timestamp" } });
-    await audit(req, "product.create", { id, sku: product.sku });
+    await audit(req, "product.create", { id, sku: product.sku, dtiItemDescription: product.dtiItemDescription });
     res.status(201).json({ id });
   } catch (err) {
     console.error(err);
@@ -224,7 +235,7 @@ router.patch("/products/:id", ...productsAccess, async (req, res) => {
     const { product, error } = await validateProduct(req.body, id);
     if (error) return res.status(400).json({ error });
     await db.update(`${PRODUCTS_PATH}/${id}`, { ...product, updatedAt: { ".sv": "timestamp" } });
-    await audit(req, "product.update", { id, sku: product.sku });
+    await audit(req, "product.update", { id, sku: product.sku, dtiItemDescription: product.dtiItemDescription });
     res.json({ id });
   } catch (err) {
     console.error(err);
@@ -238,11 +249,181 @@ router.delete("/products/:id", ...productsAccess, async (req, res) => {
     const existing = await db.get(`${PRODUCTS_PATH}/${id}`);
     if (existing == null) return res.status(404).json({ error: "Product not found" });
     await db.remove(`${PRODUCTS_PATH}/${id}`);
-    await audit(req, "product.delete", { id, sku: existing.sku });
+    await audit(req, "product.delete", { id, sku: existing.sku, dtiItemDescription: existing.dtiItemDescription });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to delete product" });
+  }
+});
+
+// --- AMAZON Listing ----------------------------------------------------------
+// Rows added from the "Add a new product" listing page. Kept separate from the
+// products catalog because a listing only carries these five fields + an image.
+// The image goes to Firebase Storage at listings/{id}/…; the row stores its
+// download URL (imageUrl) and storage path (imagePath).
+const LISTINGS_PATH = "listings";
+const listingsAccess = [requireAuth, requireActive, requirePageAccess("product_listings")];
+const LISTING_FIELDS = ["division", "dtiItemCode", "dtiItemDescription", "type", "ean"];
+const LISTING_REQUIRED = new Set(["division", "dtiItemCode", "dtiItemDescription", "type"]);
+
+router.get("/listings", ...listingsAccess, async (req, res) => {
+  try {
+    const stored = (await db.get(LISTINGS_PATH)) || {};
+    const rows = Object.entries(stored)
+      .map(([id, r]) => ({ id, ...r }))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    res.json({ rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load listings" });
+  }
+});
+
+// PNG and JPG only — WEBP and GIF are not accepted.
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_IMAGE_BYTES, files: 1 },
+  fileFilter: (req, file, cb) => cb(null, IMAGE_TYPES.has(file.mimetype)),
+}).single("image");
+
+// Wraps multer so its errors come back as a normal 400 JSON response.
+function parseImage(req, res, next) {
+  imageUpload(req, res, (err) => {
+    if (!err) return next();
+    const tooBig = err.code === "LIMIT_FILE_SIZE";
+    res.status(400).json({ error: tooBig ? "Image must be 5 MB or smaller" : "Couldn't read the uploaded image" });
+  });
+}
+
+async function saveListingImage(id, file) {
+  const ext = { "image/png": "png", "image/jpeg": "jpg" }[file.mimetype];
+  const path = `${LISTINGS_PATH}/${id}/${Date.now()}.${ext}`;
+  const ref = storageBucket().file(path);
+  await ref.save(file.buffer, { contentType: file.mimetype, resumable: false });
+  return { imagePath: path, imageUrl: await getDownloadURL(ref) };
+}
+
+// multipart/form-data: the five text fields + an optional "image" file.
+router.post("/listings", ...listingsAccess, parseImage, async (req, res) => {
+  const b = req.body || {};
+  const row = {};
+  for (const key of LISTING_FIELDS) {
+    row[key] = typeof b[key] === "string" ? b[key].trim() : "";
+    if (LISTING_REQUIRED.has(key) && !row[key]) return res.status(400).json({ error: `${key} is required` });
+  }
+  if (req.body?.hasImage === "true" && !req.file) {
+    return res.status(400).json({ error: "Image must be a PNG or JPG" });
+  }
+
+  let id = null;
+  try {
+    ({ name: id } = await db.push(LISTINGS_PATH, {
+      ...row,
+      imageUrl: null,
+      imagePath: null,
+      createdAt: { ".sv": "timestamp" },
+    }));
+    let image = { imageUrl: null, imagePath: null };
+    if (req.file) {
+      image = await saveListingImage(id, req.file);
+      await db.update(`${LISTINGS_PATH}/${id}`, image);
+    }
+    await audit(req, "listing.create", {
+      id,
+      dtiItemCode: row.dtiItemCode,
+      dtiItemDescription: row.dtiItemDescription,
+      hasImage: !!req.file,
+    });
+    res.status(201).json({ id, ...image });
+  } catch (err) {
+    console.error(err);
+    // Don't leave a half-saved row behind if the image upload failed.
+    if (id) await db.remove(`${LISTINGS_PATH}/${id}`).catch(() => {});
+    const notConfigured = /FIREBASE_STORAGE_BUCKET/.test(err?.message || "");
+    res.status(500).json({
+      error: notConfigured
+        ? "Image storage isn't configured on the server (FIREBASE_STORAGE_BUCKET)"
+        : req.file
+          ? "Failed to upload the image"
+          : "Failed to add listing",
+    });
+  }
+});
+
+router.get("/listings/:id", ...listingsAccess, async (req, res) => {
+  try {
+    const row = await db.get(`${LISTINGS_PATH}/${req.params.id}`);
+    if (row == null) return res.status(404).json({ error: "Listing not found" });
+    res.json({ row: { id: req.params.id, ...row } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load listing" });
+  }
+});
+
+async function deleteListingImage(path) {
+  if (!path) return;
+  await storageBucket()
+    .file(path)
+    .delete({ ignoreNotFound: true })
+    .catch((err) => console.error("listing image delete failed:", err.message));
+}
+
+// multipart/form-data like POST. A new "image" replaces the old one;
+// removeImage=true clears it; otherwise the current image is kept.
+router.patch("/listings/:id", ...listingsAccess, parseImage, async (req, res) => {
+  const { id } = req.params;
+  const b = req.body || {};
+  const row = {};
+  for (const key of LISTING_FIELDS) {
+    row[key] = typeof b[key] === "string" ? b[key].trim() : "";
+    if (LISTING_REQUIRED.has(key) && !row[key]) return res.status(400).json({ error: `${key} is required` });
+  }
+  if (b.hasImage === "true" && !req.file) {
+    return res.status(400).json({ error: "Image must be a PNG or JPG" });
+  }
+
+  try {
+    const existing = await db.get(`${LISTINGS_PATH}/${id}`);
+    if (existing == null) return res.status(404).json({ error: "Listing not found" });
+
+    let image = { imageUrl: existing.imageUrl ?? null, imagePath: existing.imagePath ?? null };
+    if (req.file) {
+      image = await saveListingImage(id, req.file);
+    } else if (b.removeImage === "true") {
+      image = { imageUrl: null, imagePath: null };
+    }
+    await db.update(`${LISTINGS_PATH}/${id}`, { ...row, ...image, updatedAt: { ".sv": "timestamp" } });
+    // Only drop the old file once the row points at the new state.
+    if (existing.imagePath && existing.imagePath !== image.imagePath) await deleteListingImage(existing.imagePath);
+
+    await audit(req, "listing.update", { id, dtiItemCode: row.dtiItemCode, dtiItemDescription: row.dtiItemDescription });
+    res.json({ id, ...image });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: req.file ? "Failed to upload the image" : "Failed to update listing" });
+  }
+});
+
+router.delete("/listings/:id", ...listingsAccess, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const existing = await db.get(`${LISTINGS_PATH}/${id}`);
+    if (existing == null) return res.status(404).json({ error: "Listing not found" });
+    await db.remove(`${LISTINGS_PATH}/${id}`);
+    await deleteListingImage(existing.imagePath);
+    await audit(req, "listing.delete", {
+      id,
+      dtiItemCode: existing.dtiItemCode,
+      dtiItemDescription: existing.dtiItemDescription,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete listing" });
   }
 });
 

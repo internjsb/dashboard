@@ -1,6 +1,7 @@
 /* Visual styling only — position/width/transform live in tokens.css (.app-sidebar). */
 .sidebar {
   height: 100%;
+  min-height: 0;
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
   display: flex;
@@ -32,11 +33,34 @@
   font-size: 13px;
 }
 
+/* Only the link list scrolls (when there are more links than fit), so the
+   brand stays at the top and the user/sign-out footer stays at the bottom. */
 .nav {
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -6px;
+  padding: 0 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+.brand,
+.sidebarFooter {
+  flex-shrink: 0;
 }
 
 .navItem {

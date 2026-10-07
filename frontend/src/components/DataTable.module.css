@@ -56,10 +56,14 @@
 }
 
 /* --- Table --------------------------------------------------------------- */
+/* The border + rounded corners live on the scroll wrapper, not the table:
+   overflow: hidden on the <table> would stop the .stickyRight column pinning. */
 .tableWrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  background: var(--surface);
 }
 
 .table {
@@ -67,9 +71,6 @@
   min-width: 480px;
   border-collapse: collapse;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
 }
 
 .table thead th {
@@ -126,6 +127,25 @@
 .right {
   text-align: right;
   white-space: nowrap;
+}
+
+/* Pinned column: stays at the right edge while the table scrolls sideways.
+   Soft gray so it reads as separate; the solid fill also stops scrolled
+   cells showing through underneath. */
+.stickyRight {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--bg);
+  box-shadow: -8px 0 8px -8px rgba(0, 0, 0, 0.18);
+}
+
+.table thead th.stickyRight {
+  z-index: 2;
+}
+
+.table tbody tr:hover .stickyRight {
+  background: var(--border);
 }
 
 .empty {

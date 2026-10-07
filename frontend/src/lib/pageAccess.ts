@@ -23,7 +23,7 @@ export const PAGE_LABEL: Record<PageKey, string> = {
   inventory: "Inventory",
   finance: "Finance",
   products: "Products",
-  product_listings: "Products listings",
+  product_listings: "AMAZON Listing",
   sale_report: "Sales report",
 };
 

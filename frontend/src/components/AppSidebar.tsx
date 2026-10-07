@@ -110,7 +110,7 @@ export default function AppSidebar() {
           {canSeeSaleReport && (
             <NavLink to="/sale-report" className={navItemClass}>
               <FileText className={styles.icon} size={18} />
-              Sale report
+              Sales report
             </NavLink>
           )}
           {canSeeStockAvailable && (
@@ -145,7 +145,7 @@ export default function AppSidebar() {
           {canSeeProductListings && (
             <NavLink to="/product-listings" className={navItemClass}>
               <ListChecks className={styles.icon} size={18} />
-              Products listings
+              AMAZON Listing
             </NavLink>
           )}
           <NavLink to="/profile" className={navItemClass}>
@@ -164,12 +164,10 @@ export default function AppSidebar() {
               Page management
             </NavLink>
           )}
-          {role === "admin" && (
-            <NavLink to="/audit" className={navItemClass}>
-              <ScrollText className={styles.icon} size={18} />
-              Audit log
-            </NavLink>
-          )}
+          <NavLink to="/audit" className={navItemClass}>
+            <ScrollText className={styles.icon} size={18} />
+            Audit log
+          </NavLink>
         </nav>
 
         <div className={styles.sidebarFooter}>

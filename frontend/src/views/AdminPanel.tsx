@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import axios from "axios";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { PASSWORD_RULE_TEXT, passwordError } from "../utils/passwordPolicy";
 import type { UserRecord, PendingRequest, Role, UserStatus, Department } from "../types";
 import styles from "./AdminPanel.module.css";
 
@@ -25,6 +26,17 @@ function errorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+type RoleTab = "all" | "user" | "admin";
+
+const EMPTY_NEW_USER = { displayName: "", email: "", password: "", confirm: "", department: "" as Department | "" };
+
+// The super admin counts as an admin for the User / Admin tabs.
+function isRoleTab(u: UserRecord, tab: RoleTab): boolean {
+  if (tab === "all") return true;
+  const isAdmin = u.isSuperAdmin || u.role === "admin";
+  return tab === "admin" ? isAdmin : !isAdmin;
+}
+
 export default function AdminPanel() {
   const { user, isSuperAdmin } = useAuth();
   const currentUid = user?.uid;
@@ -36,6 +48,52 @@ export default function AdminPanel() {
   const [busyUid, setBusyUid] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<UserRecord | null>(null);
   const [requestDept, setRequestDept] = useState<Record<string, Department | "">>({});
+  const [roleTab, setRoleTab] = useState<RoleTab>("all");
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
+  const [addingUser, setAddingUser] = useState(false);
+  const [addUserError, setAddUserError] = useState("");
+
+  function closeAddUser() {
+    if (addingUser) return;
+    setShowAddUser(false);
+    setNewUser(EMPTY_NEW_USER);
+    setAddUserError("");
+  }
+
+  async function handleAddUser(e: FormEvent) {
+    e.preventDefault();
+    setAddUserError("");
+    if (newUser.password !== newUser.confirm) {
+      setAddUserError("Passwords don't match.");
+      return;
+    }
+    if (!newUser.department) {
+      setAddUserError("Choose a department.");
+      return;
+    }
+    setAddingUser(true);
+    try {
+      const pwIssue = await passwordError(newUser.password);
+      if (pwIssue) {
+        setAddUserError(pwIssue);
+        return;
+      }
+      await api.post("/users", {
+        displayName: newUser.displayName,
+        email: newUser.email,
+        password: newUser.password,
+        department: newUser.department,
+      });
+      setShowAddUser(false);
+      setNewUser(EMPTY_NEW_USER);
+      await load();
+    } catch (err) {
+      setAddUserError(errorMessage(err, "Couldn't create the user. Please try again."));
+    } finally {
+      setAddingUser(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -345,14 +403,124 @@ export default function AdminPanel() {
                 </section>
               )}
 
+              <button type="button" className={styles.addUserBtn} onClick={() => setShowAddUser(true)}>
+                + Add User Manually
+              </button>
+
+              <div className={styles.tabs} role="tablist" aria-label="Filter by role">
+                {(
+                  [
+                    ["all", "All"],
+                    ["user", "User"],
+                    ["admin", "Admin"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={roleTab === key}
+                    className={`${styles.tab} ${roleTab === key ? styles.tabActive : ""}`}
+                    onClick={() => setRoleTab(key)}
+                  >
+                    {label}
+                    <span className={styles.tabCount}>{users.filter((u) => isRoleTab(u, key)).length}</span>
+                  </button>
+                ))}
+              </div>
+
               <DataTable
                 columns={columns}
-                rows={users}
+                rows={users.filter((u) => isRoleTab(u, roleTab))}
                 rowKey={(u) => u.uid}
                 showSearch={false}
-                emptyMessage="No users."
+                emptyMessage={roleTab === "admin" ? "No admins." : roleTab === "user" ? "No standard users." : "No users."}
               />
             </>
+          )}
+
+          {showAddUser && (
+            <div
+              className={styles.modalOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-user-title"
+              onClick={closeAddUser}
+            >
+              <form className={`${styles.modal} ${styles.addUserModal}`} onClick={(e) => e.stopPropagation()} onSubmit={handleAddUser}>
+                <h3 id="add-user-title" className={styles.modalTitle}>
+                  Add user manually
+                </h3>
+                <div className={styles.addUserFields}>
+                  <label className={styles.formField}>
+                    <span>Display name</span>
+                    <input
+                      type="text"
+                      value={newUser.displayName}
+                      onChange={(e) => setNewUser({ ...newUser, displayName: e.target.value })}
+                      placeholder="Optional"
+                    />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Email</span>
+                    <input
+                      type="email"
+                      required
+                      autoComplete="off"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Password</span>
+                    <input
+                      type="password"
+                      required
+                      autoComplete="new-password"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    />
+                    <small>{PASSWORD_RULE_TEXT}</small>
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Confirm password</span>
+                    <input
+                      type="password"
+                      required
+                      autoComplete="new-password"
+                      value={newUser.confirm}
+                      onChange={(e) => setNewUser({ ...newUser, confirm: e.target.value })}
+                    />
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Department</span>
+                    <select
+                      required
+                      value={newUser.department}
+                      onChange={(e) => setNewUser({ ...newUser, department: e.target.value as Department | "" })}
+                    >
+                      <option value="" disabled>
+                        Choose department…
+                      </option>
+                      {DEPARTMENT_OPTIONS.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {addUserError && <p className={`${styles.state} ${styles.error}`}>{addUserError}</p>}
+                <div className={styles.modalActions}>
+                  <button type="button" className={styles.cancel} onClick={closeAddUser} disabled={addingUser}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={styles.primary} disabled={addingUser}>
+                    {addingUser ? "Creating…" : "Create user"}
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
 
           {confirmRemove && (

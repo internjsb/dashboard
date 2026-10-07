@@ -1,5 +1,6 @@
 import "dotenv/config";
 import admin from "firebase-admin";
+import { getStorage } from "firebase-admin/storage";
 
 // Service-account credentials — the only credential type that can verify ID
 // tokens, set custom claims, and do privileged reads/writes. This is NOT the
@@ -13,10 +14,21 @@ const credential = admin.credential.cert({
 });
 
 if (!admin.apps.length) {
-  admin.initializeApp({ credential });
+  admin.initializeApp({
+    credential,
+    // Firebase console -> Storage (e.g. "my-project.firebasestorage.app").
+    // Same value as the frontend's VITE_FIREBASE_STORAGE_BUCKET.
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || undefined,
+  });
 }
 
 export const auth = admin.auth();
+
+/** The Firebase Storage bucket; throws a clear error if it isn't configured. */
+export function storageBucket() {
+  if (!process.env.FIREBASE_STORAGE_BUCKET) throw new Error("FIREBASE_STORAGE_BUCKET is not set");
+  return getStorage().bucket();
+}
 export default admin;
 
 // --- Realtime Database via REST ------------------------------------------

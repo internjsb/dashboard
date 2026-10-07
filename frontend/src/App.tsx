@@ -13,7 +13,9 @@ const StockAvailable = lazy(() => import("./views/StockAvailable"));
 const Inventory = lazy(() => import("./views/Inventory"));
 const Finance = lazy(() => import("./views/Finance"));
 const Products = lazy(() => import("./views/Products"));
+const AddProduct = lazy(() => import("./views/AddProduct"));
 const ProductListings = lazy(() => import("./views/ProductListings"));
+const AddListing = lazy(() => import("./views/AddListing"));
 const SaleReport = lazy(() => import("./views/SaleReport"));
 const Profile = lazy(() => import("./views/Profile"));
 const Setup2FA = lazy(() => import("./views/Setup2FA"));
@@ -130,10 +132,34 @@ export default function App() {
               }
             />
             <Route
+              path="/products/new"
+              element={
+                <ProtectedRoute page="products">
+                  <AddProduct />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/product-listings"
               element={
                 <ProtectedRoute page="product_listings">
                   <ProductListings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/product-listings/new"
+              element={
+                <ProtectedRoute page="product_listings">
+                  <AddListing />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/product-listings/:id/edit"
+              element={
+                <ProtectedRoute page="product_listings">
+                  <AddListing />
                 </ProtectedRoute>
               }
             />
@@ -180,7 +206,7 @@ export default function App() {
             <Route
               path="/audit"
               element={
-                <ProtectedRoute role="admin">
+                <ProtectedRoute>
                   <AuditLog />
                 </ProtectedRoute>
               }

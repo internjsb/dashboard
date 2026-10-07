@@ -61,7 +61,7 @@ export default function PageManagement() {
     load();
   }, []);
 
-  // No department and not an admin -> nothing meaningful to show in Roles or
+  // No department and not an admin -> nothing meaningful to show in Department or
   // grant yet (e.g. still pending, or denied). Keep the matrix to accounts
   // that actually have something assigned.
   const visibleUsers = users.filter((u) => u.isSuperAdmin || u.role === "admin" || !!u.department);
@@ -102,7 +102,7 @@ export default function PageManagement() {
                       Users
                     </th>
                     <th rowSpan={2} className={styles.rolesHead}>
-                      Roles
+                      Department
                     </th>
                     <th colSpan={PAGES.length} className={styles.pagesHead}>
                       Pages
@@ -128,14 +128,20 @@ export default function PageManagement() {
                       const isSelf = u.uid === currentUid;
                       return (
                         <tr key={u.uid}>
-                          <td className={styles.userCell}>{u.email}</td>
-                          <td className={styles.roleCell}>
+                          <td className={styles.userCell}>
                             <div className={styles.roleCellInner}>
-                              <span>
-                                {u.isSuperAdmin ? "super user" : u.department ? DEPARTMENT_LABEL[u.department] : "—"}
-                              </span>
-                              {u.role === "admin" && <span className={styles.adminBadge}>admin</span>}
+                              <span>{u.email}</span>
+                              {u.isSuperAdmin ? (
+                                <span className={styles.adminBadge}>Super admin</span>
+                              ) : u.role === "admin" ? (
+                                <span className={styles.adminBadge}>Admin</span>
+                              ) : (
+                                <span className={styles.userBadge}>User</span>
+                              )}
                             </div>
+                          </td>
+                          <td className={styles.roleCell}>
+                            {u.isSuperAdmin ? "super user" : u.department ? DEPARTMENT_LABEL[u.department] : "—"}
                           </td>
                           {PAGES.map((page) => {
                             const checked = u.isSuperAdmin ? true : !!u.pageAccess?.[page];

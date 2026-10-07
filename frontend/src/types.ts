@@ -249,6 +249,9 @@ export interface AuditEvent {
   action: string;
   detail?: Record<string, unknown> | null;
   userAgent: string;
+  /** Recorded from this point on; older entries don't have them. */
+  ip?: string | null;
+  location?: { local?: boolean; city?: string | null; region?: string | null; country?: string | null } | null;
 }
 
 export interface SaleReportRow {
