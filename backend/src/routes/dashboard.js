@@ -21,6 +21,18 @@ import {
 
 const router = Router();
 
+// For the audit log: which fields an edit actually changed, as
+// [{ field, from, to }]. Compared as trimmed strings so 1 and "1" match.
+function diffFields(before, after, fields) {
+  const changes = [];
+  for (const field of fields) {
+    const from = before?.[field] ?? "";
+    const to = after?.[field] ?? "";
+    if (String(from).trim() !== String(to).trim()) changes.push({ field, from, to });
+  }
+  return changes;
+}
+
 // Admins, "super_user", and "sales" can see the overview.
 router.get("/overview", requireAuth, requireActive, requirePageAccess("dashboard"), async (req, res) => {
   res.json({
@@ -91,11 +103,19 @@ async function loadSaleReport() {
     .sort((a, b) => b.shippedDate.localeCompare(a.shippedDate));
 }
 
-// Unit price = QTY × product sales price, rounded to cents. Always derived,
-// never trusted from storage, so older rows saved under a different formula
-// still come out right.
+// Unit price = product sales price ÷ QTY (the accounting format's
+// "Unit price (Sales/Qty)"), rounded to cents. Always derived, never trusted
+// from storage, so rows saved under an older formula still come out right.
 function unitPriceOf(r) {
-  return Math.round(Number(r.qty) * Number(r.productSalesPrice) * 100) / 100;
+  const qty = Number(r.qty);
+  return qty > 0 ? Math.round((Number(r.productSalesPrice) / qty) * 100) / 100 : 0;
+}
+
+// Amazon's API gives "2026-08-17T08:32:43+01:00"; the report wants
+// "2026-08-17". Takes the date as written — no timezone conversion.
+function shortDate(value) {
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(typeof value === "string" ? value.trim() : "");
+  return m ? m[1] : "";
 }
 
 router.get("/sale-report", ...saleReportAccess, async (req, res) => {
@@ -115,20 +135,25 @@ router.patch("/sale-report/:id", ...saleReportAccess, async (req, res) => {
   const row = {
     id,
     category: str(b.category),
+    purchaseDate: shortDate(b.purchaseDate) || null,
     itemCode: str(b.itemCode),
-    set: Number(b.set),
+    // Free text, e.g. "2pcs per pack"; blank for single items.
+    set: typeof b.set === "number" ? String(b.set) : str(b.set),
     qty: Number(b.qty),
     productSalesPrice: Number(b.productSalesPrice),
     orderId: str(b.orderId),
     fulfillment: str(b.fulfillment),
-    shippedDate: str(b.shippedDate),
+    shippedDate: shortDate(b.shippedDate),
   };
 
   if (!row.category || !row.itemCode || !row.orderId || !row.fulfillment) {
     return res.status(400).json({ error: "Category, item code, order id and fulfillment are required" });
   }
-  if (!Number.isInteger(row.set) || row.set < 0) {
-    return res.status(400).json({ error: "Set must be a whole number" });
+  if (row.set.length > 100) {
+    return res.status(400).json({ error: "Set must be 100 characters or fewer" });
+  }
+  if (b.purchaseDate && !row.purchaseDate) {
+    return res.status(400).json({ error: "Purchase date must be YYYY-MM-DD" });
   }
   if (!Number.isInteger(row.qty) || row.qty < 1) {
     return res.status(400).json({ error: "QTY must be a whole number of at least 1" });
@@ -136,18 +161,34 @@ router.patch("/sale-report/:id", ...saleReportAccess, async (req, res) => {
   if (!Number.isFinite(row.productSalesPrice) || row.productSalesPrice < 0) {
     return res.status(400).json({ error: "Product sales price must be 0 or more" });
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(row.shippedDate)) {
+  if (!row.shippedDate) {
     return res.status(400).json({ error: "Shipped date must be YYYY-MM-DD" });
   }
   row.unitPrice = unitPriceOf(row);
 
   try {
     await loadSaleReport();
-    if ((await db.get(`${SALE_REPORT_PATH}/${id}`)) == null) {
+    const existing = await db.get(`${SALE_REPORT_PATH}/${id}`);
+    if (existing == null) {
       return res.status(404).json({ error: "Row not found" });
     }
     await db.set(`${SALE_REPORT_PATH}/${id}`, row);
-    await audit(req, "sale_report.update", { id, orderId: row.orderId, itemCode: row.itemCode });
+    await audit(req, "sale_report.update", {
+      id,
+      orderId: row.orderId,
+      itemCode: row.itemCode,
+      changes: diffFields(existing, row, [
+        "category",
+        "purchaseDate",
+        "itemCode",
+        "set",
+        "qty",
+        "productSalesPrice",
+        "orderId",
+        "fulfillment",
+        "shippedDate",
+      ]),
+    });
     res.json({ row });
   } catch (err) {
     console.error(err);
@@ -231,11 +272,17 @@ router.post("/products", ...productsAccess, async (req, res) => {
 router.patch("/products/:id", ...productsAccess, async (req, res) => {
   const { id } = req.params;
   try {
-    if ((await db.get(`${PRODUCTS_PATH}/${id}`)) == null) return res.status(404).json({ error: "Product not found" });
+    const existing = await db.get(`${PRODUCTS_PATH}/${id}`);
+    if (existing == null) return res.status(404).json({ error: "Product not found" });
     const { product, error } = await validateProduct(req.body, id);
     if (error) return res.status(400).json({ error });
     await db.update(`${PRODUCTS_PATH}/${id}`, { ...product, updatedAt: { ".sv": "timestamp" } });
-    await audit(req, "product.update", { id, sku: product.sku, dtiItemDescription: product.dtiItemDescription });
+    await audit(req, "product.update", {
+      id,
+      sku: product.sku,
+      dtiItemDescription: product.dtiItemDescription,
+      changes: diffFields(existing, product, ["sn", "set", ...PRODUCT_TEXT_FIELDS]),
+    });
     res.json({ id });
   } catch (err) {
     console.error(err);
@@ -333,6 +380,7 @@ router.post("/listings", ...listingsAccess, parseImage, async (req, res) => {
     }
     await audit(req, "listing.create", {
       id,
+      rowNo: 1, // newest first, so a new row is No. 1 in the table
       dtiItemCode: row.dtiItemCode,
       dtiItemDescription: row.dtiItemDescription,
       hasImage: !!req.file,
@@ -400,7 +448,22 @@ router.patch("/listings/:id", ...listingsAccess, parseImage, async (req, res) =>
     // Only drop the old file once the row points at the new state.
     if (existing.imagePath && existing.imagePath !== image.imagePath) await deleteListingImage(existing.imagePath);
 
-    await audit(req, "listing.update", { id, dtiItemCode: row.dtiItemCode, dtiItemDescription: row.dtiItemDescription });
+    // What happened to the photo: added / replaced / removed, or null if untouched.
+    const imageChange = req.file
+      ? existing.imagePath
+        ? "replaced"
+        : "added"
+      : existing.imagePath && !image.imagePath
+        ? "removed"
+        : null;
+    await audit(req, "listing.update", {
+      id,
+      rowNo: Number(b.rowNo) || null,
+      dtiItemCode: row.dtiItemCode,
+      dtiItemDescription: row.dtiItemDescription,
+      changes: diffFields(existing, row, LISTING_FIELDS),
+      imageChange,
+    });
     res.json({ id, ...image });
   } catch (err) {
     console.error(err);
@@ -417,6 +480,7 @@ router.delete("/listings/:id", ...listingsAccess, async (req, res) => {
     await deleteListingImage(existing.imagePath);
     await audit(req, "listing.delete", {
       id,
+      rowNo: Number(req.query.no) || null,
       dtiItemCode: existing.dtiItemCode,
       dtiItemDescription: existing.dtiItemDescription,
     });

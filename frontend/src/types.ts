@@ -251,6 +251,8 @@ export interface AuditEvent {
   userAgent: string;
   /** Recorded from this point on; older entries don't have them. */
   ip?: string | null;
+  /** True on a notice about something done TO you (e.g. admin revoked); who did it is withheld. */
+  aboutYou?: boolean;
   location?: { local?: boolean; city?: string | null; region?: string | null; country?: string | null } | null;
 }
 
@@ -258,11 +260,15 @@ export interface SaleReportRow {
   id: string;
   category: string;
   itemCode: string;
-  set: number;
+  /** Free text per the accounting format, e.g. "2pcs per pack"; blank for single items. */
+  set: string | number;
   qty: number;
   productSalesPrice: number;
+  /** Sales ÷ QTY, always computed by the backend. */
   unitPrice: number;
   orderId: string;
   fulfillment: string;
+  /** YYYY-MM-DD; older rows may not have one. */
+  purchaseDate?: string | null;
   shippedDate: string;
 }

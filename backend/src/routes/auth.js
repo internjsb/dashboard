@@ -49,14 +49,41 @@ router.post("/events/login", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Actions someone else took ON you that you get told about in your own log.
+const NOTIFY_TARGET_ACTIONS = new Set(["user.role_change"]);
+
 // The audit log, newest first. The super admin sees everyone's events; every
-// other user (admins included) sees only the actions they took themselves.
+// other user (admins included) sees the actions they took themselves, plus a
+// notice when someone changed their admin role. Those notices are stripped of
+// everything that identifies who did it (uid, email, IP, location, device).
 router.get("/audit", requireAuth, requireActive, async (req, res) => {
+  const { uid, isSuperAdmin } = req.user;
   try {
     const all = (await db.get("audit")) || {};
     const events = Object.entries(all)
       .map(([id, e]) => ({ id, ...e }))
-      .filter((e) => req.user.isSuperAdmin || e.actorUid === req.user.uid)
+      .filter(
+        (e) =>
+          isSuperAdmin ||
+          e.actorUid === uid ||
+          (NOTIFY_TARGET_ACTIONS.has(e.action) && e.detail?.targetUid === uid),
+      )
+      .map((e) =>
+        isSuperAdmin || e.actorUid === uid
+          ? e
+          : {
+              id: e.id,
+              at: e.at,
+              action: e.action,
+              actorUid: null,
+              actorEmail: null,
+              userAgent: "",
+              ip: null,
+              location: null,
+              detail: { role: e.detail?.role ?? null },
+              aboutYou: true,
+            },
+      )
       .sort((a, b) => (b.at || 0) - (a.at || 0))
       .slice(0, 300);
     res.json({ events, scope: req.user.isSuperAdmin ? "all" : "own" });

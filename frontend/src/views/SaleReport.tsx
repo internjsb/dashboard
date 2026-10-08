@@ -11,29 +11,51 @@ import styles from "./SaleReport.module.css";
 // Rows-per-page choices; 0 means "All". Always starts at 10.
 const PAGE_SIZE_OPTIONS = [10, 50, 100, 0];
 
-type SortKey = "category" | "itemCode" | "set" | "qty" | "productSalesPrice" | "unitPrice" | "orderId" | "fulfillment" | "shippedDate";
+type SortKey =
+  | "category"
+  | "purchaseDate"
+  | "itemCode"
+  | "set"
+  | "qty"
+  | "productSalesPrice"
+  | "unitPrice"
+  | "orderId"
+  | "fulfillment"
+  | "shippedDate";
 type SortDir = "asc" | "desc";
 
+// Column order and headings follow the accounting department's "Format for
+// Sales Report" (the CSV export uses the same, for import into the ERP).
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "category", label: "Category" },
-  { key: "itemCode", label: "Item code" },
-  { key: "set", label: "Set", numeric: true },
+  { key: "purchaseDate", label: "Purchase Date" },
+  { key: "itemCode", label: "Item Code" },
+  { key: "set", label: "Set" },
   { key: "qty", label: "QTY", numeric: true },
-  { key: "productSalesPrice", label: "Product sales price", numeric: true },
-  { key: "unitPrice", label: "Unit price (Qty × Sales)", numeric: true },
+  { key: "productSalesPrice", label: "Product Sales Price", numeric: true },
+  { key: "unitPrice", label: "Unit price (Sales/Qty)", numeric: true },
   { key: "orderId", label: "Order id" },
   { key: "fulfillment", label: "Fulfillment" },
-  { key: "shippedDate", label: "Shipped date" },
+  { key: "shippedDate", label: "Shipped Date" },
 ];
 
+// Plain two-decimal amounts (20.00, 7.50) — no currency symbol, per the format.
 function money(n: number): string {
-  return n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// "2026-08-17T08:32:43+01:00" -> "2026-08-17". Keeps the calendar date as
+// written (no timezone conversion), so it matches the Amazon report.
+function shortDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim());
+  return m ? m[1] : value;
 }
 
 // Stat-tile values: full precision while small, compacted once they get long.
 function compactMoney(n: number): string {
   return Math.abs(n) >= 100_000
-    ? n.toLocaleString(undefined, { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 })
+    ? n.toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 1 })
     : money(n);
 }
 
@@ -48,8 +70,8 @@ function errorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+function formatDate(value: string | null | undefined): string {
+  return shortDate(value) || "—";
 }
 
 // yyyy-mm-dd in local time (what <input type="date"> and shippedDate use).
@@ -91,9 +113,17 @@ function csvCell(v: string | number): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+// Export in the exact accounting format: same columns and headings, dates as
+// YYYY-MM-DD, amounts with two decimals, blank Set left blank.
+function csvValue(r: SaleReportRow, key: SortKey): string | number {
+  if (key === "purchaseDate" || key === "shippedDate") return shortDate(r[key]);
+  if (key === "productSalesPrice" || key === "unitPrice") return r[key].toFixed(2);
+  return r[key] ?? "";
+}
+
 function downloadCsv(rows: SaleReportRow[]) {
   const header = COLUMNS.map((c) => c.label);
-  const lines = rows.map((r) => COLUMNS.map((c) => csvCell(r[c.key])).join(","));
+  const lines = rows.map((r) => COLUMNS.map((c) => csvCell(csvValue(r, c.key))).join(","));
   const blob = new Blob([[header.map(csvCell).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -105,27 +135,22 @@ function downloadCsv(rows: SaleReportRow[]) {
 
 // Edit form values — kept as strings so inputs can be blank mid-edit.
 type EditForm = Record<
-  "category" | "itemCode" | "set" | "qty" | "productSalesPrice" | "orderId" | "fulfillment" | "shippedDate",
+  "category" | "purchaseDate" | "itemCode" | "set" | "qty" | "productSalesPrice" | "orderId" | "fulfillment" | "shippedDate",
   string
 >;
 
 function toForm(r: SaleReportRow): EditForm {
   return {
     category: r.category,
+    purchaseDate: shortDate(r.purchaseDate),
     itemCode: r.itemCode,
-    set: String(r.set),
+    set: r.set == null ? "" : String(r.set),
     qty: String(r.qty),
     productSalesPrice: String(r.productSalesPrice),
     orderId: r.orderId,
     fulfillment: r.fulfillment,
-    shippedDate: r.shippedDate,
+    shippedDate: shortDate(r.shippedDate),
   };
-}
-
-// Distinct values already in use, plus the row's own value, so the edit
-// dropdowns never drop what's there and typos can't split the data.
-function optionsFor(rows: SaleReportRow[], key: "category" | "fulfillment", current: string): string[] {
-  return Array.from(new Set([...rows.map((r) => r[key]), current].filter(Boolean))).sort();
 }
 
 export default function SaleReport() {
@@ -141,6 +166,8 @@ export default function SaleReport() {
   const [pageSize, setPageSize] = useState(10);
 
   const [editing, setEditing] = useState<SaleReportRow | null>(null);
+  // The row's No. in the table when Edit was clicked (shown in the popup title).
+  const [editingNo, setEditingNo] = useState<number | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -168,9 +195,9 @@ export default function SaleReport() {
 
   const filtered = useMemo(() => {
     const out = rows
-      .filter((r) => !fromDate || r.shippedDate >= fromDate)
-      .filter((r) => !toDate || r.shippedDate <= toDate)
-      .filter((r) => matches(`${r.category} ${r.itemCode} ${r.orderId} ${r.fulfillment}`, query));
+      .filter((r) => !fromDate || shortDate(r.shippedDate) >= fromDate)
+      .filter((r) => !toDate || shortDate(r.shippedDate) <= toDate)
+      .filter((r) => matches(`${r.category} ${r.itemCode} ${r.set ?? ""} ${r.orderId} ${r.fulfillment}`, query));
     const dir = sort.dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
       const av = a[sort.key];
@@ -182,7 +209,7 @@ export default function SaleReport() {
 
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
-    const sales = filtered.reduce((sum, r) => sum + r.unitPrice, 0);
+    const sales = filtered.reduce((sum, r) => sum + r.productSalesPrice, 0);
     const orders = new Set(filtered.map((r) => r.orderId)).size;
     return {
       orders,
@@ -217,8 +244,9 @@ export default function SaleReport() {
     setToDate("");
   }
 
-  function openEdit(r: SaleReportRow) {
+  function openEdit(r: SaleReportRow, no: number) {
     setEditing(r);
+    setEditingNo(no);
     setForm(toForm(r));
     setFormError("");
   }
@@ -237,7 +265,7 @@ export default function SaleReport() {
     try {
       const { data } = await api.patch<{ row: SaleReportRow }>(`/dashboard/sale-report/${editing.id}`, {
         ...form,
-        set: Number(form.set),
+        set: form.set.trim(),
         qty: Number(form.qty),
         productSalesPrice: Number(form.productSalesPrice),
       });
@@ -435,10 +463,11 @@ export default function SaleReport() {
                             {/* Running number across pages, so page 2 starts at 11. */}
                             <td className={`${styles.num} ${styles.muted}`}>{firstIndex + i + 1}</td>
                             <td>{r.category}</td>
+                            <td className={styles.nowrap}>{formatDate(r.purchaseDate)}</td>
                             <td>
                               <span className={styles.code}>{r.itemCode}</span>
                             </td>
-                            <td className={styles.num}>{r.set || "—"}</td>
+                            <td>{r.set === "" || r.set == null ? "" : r.set}</td>
                             <td className={styles.num}>{r.qty}</td>
                             <td className={styles.num}>{money(r.productSalesPrice)}</td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unitPrice)}</td>
@@ -452,7 +481,7 @@ export default function SaleReport() {
                                 <button
                                   type="button"
                                   className={styles.iconBtn}
-                                  onClick={() => openEdit(r)}
+                                  onClick={() => openEdit(r, firstIndex + i + 1)}
                                   aria-label={`Edit order ${r.orderId}`}
                                   title="Edit"
                                 >
@@ -524,29 +553,20 @@ export default function SaleReport() {
             <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="edit-row-title" onClick={closeEdit}>
               <form className={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={handleSave}>
                 <h3 id="edit-row-title" className={styles.modalTitle}>
-                  Edit order <span className={styles.mono}>{editing.orderId}</span>
+                  Edit order No. {editingNo}
                 </h3>
                 <div className={styles.formGrid}>
-                  {(["category", "fulfillment"] as const).map((key) => (
-                    <label key={key} className={styles.formField}>
-                      <span>{key === "category" ? "Category" : "Fulfillment"}</span>
-                      <select required value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })}>
-                        {optionsFor(rows, key, editing[key]).map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ))}
                   {(
                     [
-                      ["itemCode", "Item code", "text"],
-                      ["orderId", "Order id", "text"],
-                      ["set", "Set", "number"],
+                      ["category", "Category", "text"],
+                      ["purchaseDate", "Purchase Date", "date"],
+                      ["itemCode", "Item Code", "text"],
+                      ["set", "Set", "text"],
                       ["qty", "QTY", "number"],
-                      ["productSalesPrice", "Product sales price", "number"],
-                      ["shippedDate", "Shipped date", "date"],
+                      ["productSalesPrice", "Product Sales Price", "number"],
+                      ["orderId", "Order id", "text"],
+                      ["fulfillment", "Fulfillment", "text"],
+                      ["shippedDate", "Shipped Date", "date"],
                     ] as const
                   ).map(([key, label, type]) => (
                     <label key={key} className={styles.formField}>
@@ -554,19 +574,20 @@ export default function SaleReport() {
                       <input
                         type={type}
                         value={form[key]}
-                        required
+                        required={key !== "set" && key !== "purchaseDate"}
+                        placeholder={key === "set" ? "e.g. 2pcs per pack (blank if single)" : undefined}
                         min={type === "number" ? (key === "qty" ? 1 : 0) : undefined}
-                        step={key === "productSalesPrice" ? "0.01" : type === "number" ? "1" : undefined}
+                        step={key === "productSalesPrice" ? "0.01" : key === "qty" ? "1" : undefined}
                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                       />
                     </label>
                   ))}
                 </div>
                 <div className={styles.formHint}>
-                  <span>Unit price (QTY × sales price)</span>
+                  <span>Unit price (Sales/Qty)</span>
                   <strong>
-                    {form.qty !== "" && form.productSalesPrice !== ""
-                      ? money(Number(form.qty) * Number(form.productSalesPrice))
+                    {Number(form.qty) > 0 && form.productSalesPrice !== ""
+                      ? money(Number(form.productSalesPrice) / Number(form.qty))
                       : "—"}
                   </strong>
                 </div>

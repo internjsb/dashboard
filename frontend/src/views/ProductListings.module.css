@@ -121,46 +121,6 @@
   color: var(--danger) !important;
 }
 
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--sidebar-bg);
-  cursor: pointer;
-}
-
-.arrow:hover:not(:disabled) {
-  background: var(--accent-tint);
-}
-
-.arrow:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.pageText {
-  padding: 7px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-strong);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .success {
   margin: 14px 22px 0;
   padding: 10px 12px;
@@ -303,4 +263,163 @@
   width: 56px;
   color: var(--text-muted) !important;
   font-variant-numeric: tabular-nums;
+}
+
+/* --- search toolbar (same look as Sales report) ---------------------------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-family: var(--font-body);
+}
+
+.search input:focus {
+  outline: none;
+}
+
+.searchIcon {
+  flex-shrink: 0;
+}
+
+.clearBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clearBtn:hover {
+  color: var(--text-primary);
+}
+
+/* --- pagination (same as Sales report) -------------------------------------- */
+
+/* Three columns: rows-per-page on the left, page arrows centred, and the
+   "Showing x–y of z" count on the right (equal 1fr sides keep arrows centred). */
+.pagination {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 600px) {
+  .pagination {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pageNav {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+  }
+}
+
+.pageSize {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pageSize select {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.pageSize select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.pageNav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pageBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.showing {
+  justify-self: end;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }

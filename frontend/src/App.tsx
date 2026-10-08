@@ -22,6 +22,7 @@ const Setup2FA = lazy(() => import("./views/Setup2FA"));
 const Verify2FA = lazy(() => import("./views/Verify2FA"));
 const AdminPanel = lazy(() => import("./views/AdminPanel"));
 const AuditLog = lazy(() => import("./views/AuditLog"));
+const Testing = lazy(() => import("./testing"));
 const PageManagement = lazy(() => import("./views/PageManagement"));
 const Forbidden = lazy(() => import("./views/Forbidden"));
 const NotFound = lazy(() => import("./views/NotFound"));
@@ -200,6 +201,14 @@ export default function App() {
               element={
                 <ProtectedRoute role="admin">
                   <AdminPanel />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/testing"
+              element={
+                <ProtectedRoute role="admin">
+                  <Testing />
                 </ProtectedRoute>
               }
             />

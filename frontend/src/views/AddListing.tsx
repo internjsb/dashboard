@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ImagePlus, Upload, X } from "lucide-react";
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
@@ -40,6 +40,8 @@ export default function AddListing() {
   const navigate = useNavigate();
   const { id: editId } = useParams();
   const isEdit = !!editId;
+  // The row's No. in the listing table when Edit was clicked (for the audit log).
+  const rowNo = (useLocation().state as { no?: number } | null)?.no;
   const [form, setForm] = useState(EMPTY);
   const [image, setImage] = useState<File | null>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
@@ -121,6 +123,7 @@ export default function AddListing() {
       // Uploads can take longer than the client's default 10s timeout.
       if (isEdit) {
         if (removeSaved && !image) body.append("removeImage", "true");
+        if (rowNo) body.append("rowNo", String(rowNo));
         await api.patch(`/dashboard/listings/${editId}`, body, { timeout: 60000 });
       } else {
         await api.post("/dashboard/listings", body, { timeout: 60000 });

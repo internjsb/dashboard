@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, ImageIcon, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import api from "../api/client";
+import { matches } from "../utils/search";
 import { errorMessage } from "./productForm";
 import styles from "./ProductListings.module.css";
 
-const PAGE_SIZE = 10;
+// Rows-per-page choices; 0 means "All". Always starts at 10 (same as Sales report).
+const PAGE_SIZE_OPTIONS = [10, 50, 100, 0];
 
 interface ListingRow {
   id: string;
@@ -26,10 +28,13 @@ export default function ProductListings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [query, setQuery] = useState("");
   const navigate = useNavigate();
   // Set when we arrive straight from "Add row" / "Save changes" on the form page.
   const flash = useLocation().state as { added?: string; updated?: string } | null;
-  const [confirmDelete, setConfirmDelete] = useState<ListingRow | null>(null);
+  // The row being deleted plus its No. in the table at that moment (for the audit log).
+  const [confirmDelete, setConfirmDelete] = useState<(ListingRow & { no: number }) | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState("");
   const [deletedCode, setDeletedCode] = useState<string | null>(null);
@@ -39,7 +44,7 @@ export default function ProductListings() {
     setDeleting(true);
     setActionError("");
     try {
-      await api.delete(`/dashboard/listings/${confirmDelete.id}`);
+      await api.delete(`/dashboard/listings/${confirmDelete.id}`, { params: { no: confirmDelete.no } });
       setProducts((prev) => prev.filter((r) => r.id !== confirmDelete.id));
       setDeletedCode(confirmDelete.dtiItemCode);
     } catch (err) {
@@ -65,9 +70,22 @@ export default function ProductListings() {
     };
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
+  const filtered = useMemo(
+    () =>
+      products.filter((p) => matches(`${p.division} ${p.dtiItemCode} ${p.dtiItemDescription} ${p.type} ${p.ean}`, query)),
+    [products, query],
+  );
+
+  // A new search or page size changes which rows land on which page.
+  useEffect(() => {
+    setPage(1);
+  }, [query, pageSize]);
+
+  const perPage = pageSize || filtered.length || 1;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const currentPage = Math.min(page, totalPages);
-  const paged = products.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const firstIndex = (currentPage - 1) * perPage;
+  const paged = filtered.slice(firstIndex, firstIndex + perPage);
 
   return (
     <div className="app-shell">
@@ -99,6 +117,25 @@ export default function ProductListings() {
             ) : null}
             {actionError && <p className={styles.errorBanner}>{actionError}</p>}
 
+            <div className={styles.toolbar}>
+              <div className={styles.search}>
+                <Search className={styles.searchIcon} size={16} aria-hidden="true" />
+                <input
+                  type="search"
+                  placeholder="Search division, DTI item, description, type, EAN…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="Search AMAZON Listing"
+                />
+              </div>
+              {query && (
+                <button type="button" className={styles.clearBtn} onClick={() => setQuery("")}>
+                  <X size={14} aria-hidden="true" />
+                  Clear
+                </button>
+              )}
+            </div>
+
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead>
@@ -117,14 +154,19 @@ export default function ProductListings() {
                   {loading || loadError || paged.length === 0 ? (
                     <tr>
                       <td colSpan={8} className={`${styles.state} ${loadError ? styles.error : ""}`}>
-                        {loading ? "Loading…" : loadError || "No listings yet — use “Add new product” to add one."}
+                        {loading
+                          ? "Loading…"
+                          : loadError ||
+                            (products.length === 0
+                              ? "No listings yet — use “Add new product” to add one."
+                              : "No listings match your search.")}
                       </td>
                     </tr>
                   ) : (
                     paged.map((p, i) => (
                       <tr key={p.id}>
                         {/* Running number across pages, so page 2 starts at 11. */}
-                        <td className={styles.noCol}>{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
+                        <td className={styles.noCol}>{firstIndex + i + 1}</td>
                         <td className={styles.imageCol}>
                           {p.imageUrl ? (
                             <img src={p.imageUrl} alt={p.dtiItemDescription} className={styles.imageTile} />
@@ -144,7 +186,7 @@ export default function ProductListings() {
                             <button
                               type="button"
                               className={styles.iconBtn}
-                              onClick={() => navigate(`/product-listings/${p.id}/edit`)}
+                              onClick={() => navigate(`/product-listings/${p.id}/edit`, { state: { no: firstIndex + i + 1 } })}
                               aria-label={`Edit ${p.dtiItemCode}`}
                               title="Edit"
                             >
@@ -153,7 +195,7 @@ export default function ProductListings() {
                             <button
                               type="button"
                               className={`${styles.iconBtn} ${styles.iconDanger}`}
-                              onClick={() => setConfirmDelete(p)}
+                              onClick={() => setConfirmDelete({ ...p, no: firstIndex + i + 1 })}
                               aria-label={`Delete ${p.dtiItemCode}`}
                               title="Delete"
                             >
@@ -167,31 +209,48 @@ export default function ProductListings() {
                 </tbody>
               </table>
             </div>
-          </section>
 
-          <div className={styles.pagination}>
-            <button
-              type="button"
-              className={styles.arrow}
-              onClick={() => setPage((n) => Math.max(1, n - 1))}
-              disabled={currentPage <= 1}
-              aria-label="Previous page"
-            >
-              <ArrowLeft size={22} />
-            </button>
-            <span className={styles.pageText}>
-              {currentPage} of {totalPages} {totalPages === 1 ? "page" : "pages"}
-            </span>
-            <button
-              type="button"
-              className={styles.arrow}
-              onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
-              disabled={currentPage >= totalPages}
-              aria-label="Next page"
-            >
-              <ArrowRight size={22} />
-            </button>
-          </div>
+            <div className={styles.pagination}>
+              <label className={styles.pageSize}>
+                <span>Show</span>
+                <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n === 0 ? "All" : n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className={styles.pageNav}>
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => setPage((n) => Math.max(1, n - 1))}
+                  disabled={currentPage <= 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className={styles.pageText}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className={styles.pageBtn}
+                  onClick={() => setPage((n) => Math.min(totalPages, n + 1))}
+                  disabled={currentPage >= totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <span className={styles.showing}>
+                {filtered.length === 0
+                  ? "Showing 0 of 0"
+                  : `Showing ${firstIndex + 1}–${firstIndex + paged.length} of ${filtered.length}`}
+              </span>
+            </div>
+          </section>
 
           {confirmDelete && (
             <div

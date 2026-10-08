@@ -96,6 +96,7 @@ function describe(e: AuditEvent): string {
       return `Removed ${who}'s orphaned request`;
     case "user.role_change": {
       const role = str(d, "role") || "";
+      if (e.aboutYou) return role === "admin" ? "You were made an admin" : "Your admin access was revoked";
       return `Changed ${who} to ${ROLE_NAME[role] || `"${role}"`}`;
     }
     case "user.department_change": {
@@ -162,6 +163,64 @@ const PAGE_NAME: Record<string, string> = {
   sale_report: "Sales report",
 };
 
+// Readable names for the fields an edit can change (see diffFields in the backend).
+const FIELD_LABEL: Record<string, string> = {
+  division: "Division",
+  dtiItemCode: "DTI item",
+  dtiItemDescription: "DTI Item Description",
+  type: "Type",
+  ean: "EAN",
+  sn: "S/N",
+  sku: "SKU",
+  set: "Set",
+  country: "Country",
+  asin: "ASIN",
+  fnsku: "FNSKU",
+  description: "Description",
+  status: "Status",
+  category: "Category",
+  itemCode: "Item code",
+  qty: "QTY",
+  productSalesPrice: "Product sales price",
+  orderId: "Order id",
+  shippedDate: "Shipped date",
+};
+
+const IMAGE_CHANGE_LABEL: Record<string, string> = {
+  added: "Photo added",
+  replaced: "Photo changed",
+  removed: "Photo removed",
+};
+
+// Fields recorded by the backend but not shown in Details, per page prefix.
+const HIDDEN_CHANGE_FIELDS: Record<string, Set<string>> = {
+  listing: new Set(["type"]),
+};
+
+interface FieldChange {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
+// One line per thing an edit changed: "Division: DWL → LOCK", "Photo removed".
+// Entries recorded before change tracking existed return [].
+function changesOf(e: AuditEvent): string[] {
+  const d = e.detail;
+  const lines: string[] = [];
+  const shown = (v: unknown) => (v === "" || v == null ? "(blank)" : String(v));
+  const hidden = HIDDEN_CHANGE_FIELDS[e.action.split(".")[0]];
+  const changes = (Array.isArray(d?.changes) ? (d!.changes as FieldChange[]) : []).filter(
+    (c) => !hidden?.has(c.field),
+  );
+  for (const c of changes) lines.push(`${FIELD_LABEL[c.field] || c.field}: ${shown(c.from)} → ${shown(c.to)}`);
+  const img = str(d, "imageChange");
+  if (img) lines.push(IMAGE_CHANGE_LABEL[img] || `Photo ${img}`);
+  // Only when nothing changed at all — not when the only changes were hidden fields.
+  if (Array.isArray(d?.changes) && d!.changes.length === 0 && !img) lines.push("Saved with no changes");
+  return lines;
+}
+
 function pageOf(action: string): string {
   return PAGE_BY_ACTION[action] ?? PAGE_BY_PREFIX[action.split(".")[0]] ?? "—";
 }
@@ -172,8 +231,12 @@ function subjectOf(e: AuditEvent): string | null {
   const join = (...parts: (string | null)[]) => parts.filter(Boolean).join(" · ") || null;
   const [prefix] = e.action.split(".");
   switch (prefix) {
-    case "listing":
-      return join(str(d, "dtiItemCode") && `DTI item ${str(d, "dtiItemCode")}`, str(d, "dtiItemDescription"));
+    case "listing": {
+      // No. = the row's position in the listing table at the time; older
+      // entries didn't record it, so they fall back to the DTI item.
+      const no = typeof d?.rowNo === "number" ? `No. ${d.rowNo}` : null;
+      return no ?? (str(d, "dtiItemCode") && `DTI item ${str(d, "dtiItemCode")}`);
+    }
     case "product":
       return join(str(d, "sku") && `SKU ${str(d, "sku")}`, str(d, "dtiItemDescription"));
     case "sale_report":
@@ -273,7 +336,14 @@ export default function AuditLog() {
       header: "Who",
       accessor: (e) => username(e.actorEmail) || e.actorUid || "",
       className: styles.who,
-      render: (e) => <span title={e.actorEmail || undefined}>{username(e.actorEmail) || e.actorUid || "—"}</span>,
+      render: (e) =>
+        e.aboutYou ? (
+          <span className={styles.hidden} title="Who made this change isn't shown">
+            —
+          </span>
+        ) : (
+          <span title={e.actorEmail || undefined}>{username(e.actorEmail) || e.actorUid || "—"}</span>
+        ),
     },
     {
       key: "action",
@@ -284,13 +354,21 @@ export default function AuditLog() {
     {
       key: "details",
       header: "Details",
-      accessor: (e) => `${pageOf(e.action)} ${subjectOf(e) ?? ""}`,
+      accessor: (e) => `${pageOf(e.action)} ${subjectOf(e) ?? ""} ${changesOf(e).join(" ")}`,
       render: (e) => {
         const subject = subjectOf(e);
+        const changes = changesOf(e);
         return (
           <span className={styles.details}>
             <span className={styles.pageTag}>{pageOf(e.action)}</span>
             {subject && <span className={styles.subject}>{subject}</span>}
+            {changes.length > 0 && (
+              <ul className={styles.changes}>
+                {changes.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            )}
           </span>
         );
       },
@@ -312,7 +390,7 @@ export default function AuditLog() {
       header: "Device",
       accessor: (e) => deviceFromUA(e.userAgent),
       className: styles.device,
-      render: (e) => <span title={e.userAgent}>{deviceFromUA(e.userAgent)}</span>,
+      render: (e) => (e.aboutYou ? "—" : <span title={e.userAgent}>{deviceFromUA(e.userAgent)}</span>),
     },
   ];
 
@@ -326,7 +404,7 @@ export default function AuditLog() {
             <p className={styles.intro}>
               {scope === "all"
                 ? "Every user's sign-ins and actions. Most recent first (last 300)."
-                : "Your own sign-ins and actions. Most recent first (last 300)."}
+                : "Your own sign-ins and actions, plus changes made to your admin access. Most recent first (last 300)."}
             </p>
             <button className={styles.refresh} onClick={load} disabled={loading}>
               Refresh
@@ -345,6 +423,7 @@ export default function AuditLog() {
               rows={events}
               rowKey={(e) => e.id}
               showSearch={false}
+              rowClassName={(e) => (e.aboutYou ? styles.aboutYouRow : "")}
               emptyMessage="No events recorded yet."
             />
           )}
