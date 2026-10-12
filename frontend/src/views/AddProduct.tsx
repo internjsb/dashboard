@@ -27,7 +27,7 @@ export default function AddProduct() {
         <main className={styles.content}>
           <Link to="/products" className={styles.backLink}>
             <ArrowLeft size={15} aria-hidden="true" />
-            Back to products
+            Back to AMAZON Listing
           </Link>
 
           <section className={`${styles.card} ${styles.pageForm}`}>

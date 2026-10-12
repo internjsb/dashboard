@@ -135,19 +135,20 @@ export default function AppSidebar() {
               <Wallet className={styles.icon} size={18} />
               Finance
             </NavLink>
+          )} 
+           {canSeeProductListings && (
+            <NavLink to="/product-listings" className={navItemClass}>
+              <ListChecks className={styles.icon} size={18} />
+              Product Listing
+            </NavLink>
           )}
           {canSeeProducts && (
             <NavLink to="/products" className={navItemClass}>
               <Tag className={styles.icon} size={18} />
-              Products
-            </NavLink>
-          )}
-          {canSeeProductListings && (
-            <NavLink to="/product-listings" className={navItemClass}>
-              <ListChecks className={styles.icon} size={18} />
               AMAZON Listing
             </NavLink>
           )}
+        
           <NavLink to="/profile" className={navItemClass}>
             <CircleUserRound className={styles.icon} size={18} />
             Profile

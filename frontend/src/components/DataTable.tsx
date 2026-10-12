@@ -45,6 +45,8 @@ interface DataTableProps<T> {
   defaultSort?: { key: string; dir: SortDir };
   /** Rows per page. Set to 0 to disable pagination entirely. Default 10. */
   pageSize?: number;
+  /** Add a leading "No." column: 1, 2, 3… in the order shown, continuing across pages. */
+  showRowNumbers?: boolean;
 }
 
 export default function DataTable<T>({
@@ -59,6 +61,7 @@ export default function DataTable<T>({
   rowClassName,
   defaultSort,
   pageSize = 10,
+  showRowNumbers = false,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
@@ -116,11 +119,11 @@ export default function DataTable<T>({
 
   const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
   const currentPage = Math.min(page, totalPages);
+  const firstIndex = pageSize > 0 ? (currentPage - 1) * pageSize : 0;
   const paged = useMemo(() => {
     if (pageSize <= 0) return sorted;
-    const start = (currentPage - 1) * pageSize;
-    return sorted.slice(start, start + pageSize);
-  }, [sorted, currentPage, pageSize]);
+    return sorted.slice(firstIndex, firstIndex + pageSize);
+  }, [sorted, firstIndex, pageSize]);
 
   const showToolbar =
     (showSearch && columns.some((c) => c.searchable !== false && c.accessor)) ||
@@ -166,6 +169,7 @@ export default function DataTable<T>({
         <table className={styles.table}>
           <thead>
             <tr>
+              {showRowNumbers && <th className={styles.noCol}>No.</th>}
               {columns.map((c) => {
                 const canSort = c.sortable !== false && !!c.accessor;
                 const active = sort?.key === c.key;
@@ -194,13 +198,14 @@ export default function DataTable<T>({
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td className={styles.empty} colSpan={columns.length}>
+                <td className={styles.empty} colSpan={columns.length + (showRowNumbers ? 1 : 0)}>
                   {emptyMessage}
                 </td>
               </tr>
             ) : (
-              paged.map((row) => (
+              paged.map((row, i) => (
                 <tr key={rowKey(row)} className={rowClassName?.(row) ?? ""}>
+                  {showRowNumbers && <td className={styles.noCol}>{firstIndex + i + 1}</td>}
                   {columns.map((c) => (
                     <td
                       key={c.key}

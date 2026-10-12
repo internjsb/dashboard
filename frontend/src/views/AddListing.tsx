@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ImagePlus, Upload, X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
@@ -25,127 +25,113 @@ const FIELDS: { key: ListingKey; label: string; hint: string; placeholder: strin
   { key: "ean", label: "EAN", hint: "This is the barcode number of the item.", placeholder: "Enter an EAN like 0000000000000", required: false },
 ];
 
-// PNG and JPG only — WEBP and GIF are not accepted (backend enforces the same).
-const IMAGE_TYPES = ["image/png", "image/jpeg"];
-const MAX_IMAGE_MB = 5;
-
 const EMPTY: Record<ListingKey, string> = { division: "", dtiItemCode: "", dtiItemDescription: "", type: "", ean: "" };
 
-// "Add a new product" for AMAZON Listing: image on the left, the five listing
-// fields on the right. The image is uploaded with the row (multipart) and the
-// backend stores it in Firebase Storage. Also serves /product-listings/:id/edit,
-// where the same form is pre-filled and the current image can be kept,
-// replaced or removed.
+type ListingRow = {
+  division: string | null;
+  dti_item_code: string | null;
+  dti_item_description: string | null;
+  type?: string | null;
+  ean?: string | null;
+};
+
+const toForm = (row: ListingRow): Record<ListingKey, string> => ({
+  division: row.division ?? "",
+  dtiItemCode: row.dti_item_code ?? "",
+  dtiItemDescription: row.dti_item_description ?? "",
+  type: row.type ?? "",
+  ean: row.ean ?? "",
+});
+
+// "Add a new product" for Product Listing — saved to Postgres:
+//   /product-listings/new             -> POST  /dashboard/listing-items (core.items)
+//   /product-listings/:id/edit        -> PATCH /dashboard/listing-items/:code (id = DTI item code)
+//   /product-listings/amazon/:sku/edit -> PATCH /dashboard/listing-data/:sku
+// Division follows the DTI Item Description; the database has no photo storage yet.
 export default function AddListing() {
   const navigate = useNavigate();
-  const { id: editId } = useParams();
-  const isEdit = !!editId;
+  const { id: editCode, sku: amazonSku } = useParams();
+  const isAmazon = !!amazonSku;
+  const isEdit = !!editCode || isAmazon;
   // The row's No. in the listing table when Edit was clicked (for the audit log).
   const rowNo = (useLocation().state as { no?: number } | null)?.no;
-  const [form, setForm] = useState(EMPTY);
-  const [image, setImage] = useState<File | null>(null);
-  const [localPreview, setLocalPreview] = useState<string | null>(null);
-  // Edit mode: the image already saved on the row, until replaced/removed.
-  const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
-  const [removeSaved, setRemoveSaved] = useState(false);
+  const [form, setForm] = useState<Record<ListingKey, string>>(EMPTY);
   const [loadingRow, setLoadingRow] = useState(isEdit);
-  const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const fileInput = useRef<HTMLInputElement>(null);
 
+  // Edit: load the row's current values from Cloud SQL.
   useEffect(() => {
-    if (!image) {
-      setLocalPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(image);
-    setLocalPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [image]);
-
-  useEffect(() => {
-    if (!editId) return;
+    if (!isEdit) return;
     let cancelled = false;
+    const url = isAmazon
+      ? `/dashboard/listing-data/${encodeURIComponent(amazonSku!)}`
+      : `/dashboard/listing-items/${encodeURIComponent(editCode!)}`;
     api
-      .get<{ row: Record<ListingKey, string> & { imageUrl: string | null } }>(`/dashboard/listings/${editId}`)
-      .then(({ data }) => {
-        if (cancelled) return;
-        const next = { ...EMPTY };
-        for (const f of FIELDS) next[f.key] = data.row[f.key] ?? "";
-        setForm(next);
-        setSavedImageUrl(data.row.imageUrl);
-      })
-      .catch((err) => !cancelled && setError(errorMessage(err, "Couldn't load this listing.")))
+      .get<{ row: ListingRow }>(url, { timeout: 30000 })
+      .then(({ data }) => !cancelled && setForm(toForm(data.row)))
+      .catch((err) => !cancelled && setError(errorMessage(err, isAmazon ? "Couldn't load this Amazon listing." : "Couldn't load this listing.")))
       .finally(() => !cancelled && setLoadingRow(false));
     return () => {
       cancelled = true;
     };
-  }, [editId]);
-
-  const preview = localPreview || (!removeSaved ? savedImageUrl : null);
-  const hasAnyImage = !!image || (!!savedImageUrl && !removeSaved);
-
-  function clearImage() {
-    setImage(null);
-    if (savedImageUrl) setRemoveSaved(true);
-  }
-
-  function pickFile(file: File | undefined) {
-    if (!file) return;
-    if (!IMAGE_TYPES.includes(file.type)) {
-      setError("Please choose a PNG or JPG image.");
-      return;
-    }
-    if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
-      setError(`Image must be ${MAX_IMAGE_MB} MB or smaller.`);
-      return;
-    }
-    setError("");
-    setImage(file);
-  }
-
-  function onDrop(e: DragEvent) {
-    e.preventDefault();
-    setDragging(false);
-    pickFile(e.dataTransfer.files[0]);
-  }
+  }, [isEdit, isAmazon, amazonSku, editCode]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setSaving(true);
     try {
-      const body = new FormData();
-      for (const [key, value] of Object.entries(form)) body.append(key, value);
-      body.append("hasImage", image ? "true" : "false");
-      if (image) body.append("image", image);
-      // Uploads can take longer than the client's default 10s timeout.
-      if (isEdit) {
-        if (removeSaved && !image) body.append("removeImage", "true");
-        if (rowNo) body.append("rowNo", String(rowNo));
-        await api.patch(`/dashboard/listings/${editId}`, body, { timeout: 60000 });
+      if (isAmazon) {
+        // core.items / core.item_sku_map
+        await api.patch(
+          `/dashboard/listing-data/${encodeURIComponent(amazonSku!)}`,
+          { dtiItemCode: form.dtiItemCode, dtiItemDescription: form.dtiItemDescription, ean: form.ean, type: form.type, rowNo },
+          { timeout: 30000 },
+        );
+      } else if (isEdit) {
+        await api.patch(
+          `/dashboard/listing-items/${encodeURIComponent(editCode!)}`,
+          { dtiItemCode: form.dtiItemCode, dtiItemDescription: form.dtiItemDescription, rowNo },
+          { timeout: 30000 },
+        );
       } else {
-        await api.post("/dashboard/listings", body, { timeout: 60000 });
+        await api.post(
+          "/dashboard/listing-items",
+          { dtiItemCode: form.dtiItemCode, dtiItemDescription: form.dtiItemDescription },
+          { timeout: 30000 },
+        );
       }
       // Back to the listing; it shows a short note for this row.
-      navigate("/product-listings", { state: { [isEdit ? "updated" : "added"]: form.dtiItemCode } });
+      navigate("/product-listings", { state: { [isEdit ? "updated" : "added"]: form.dtiItemCode || amazonSku } });
     } catch (err) {
-      setError(errorMessage(err, isEdit ? "Couldn't save changes. Please try again." : "Couldn't add the row. Please try again."));
+      setError(
+        errorMessage(
+          err,
+          isAmazon
+            ? "Couldn't save changes to the database. Please try again."
+            : isEdit
+              ? "Couldn't save changes. Please try again."
+              : "Couldn't add the row. Please try again.",
+        ),
+      );
     } finally {
       setSaving(false);
     }
   }
 
+  // Your items only store DTI item + description; Type / EAN come from Amazon.
+  const fields = isAmazon ? FIELDS : FIELDS.filter((f) => f.key !== "type" && f.key !== "ean");
+
   return (
     <div className="app-shell">
       <AppSidebar />
       <div className="app-content">
-        <AppTopbar title="AMAZON Listing" />
+        <AppTopbar title="Product Listing" />
         <main className={styles.content}>
           <Link to="/product-listings" className={styles.backLink}>
             <ArrowLeft size={15} aria-hidden="true" />
-            Back to AMAZON Listing
+            Back to Product Listing
           </Link>
 
           <form className={styles.layout} onSubmit={handleSubmit}>
@@ -153,73 +139,18 @@ export default function AddListing() {
               <div className={styles.sideHead}>
                 <h2 className={styles.heading}>{isEdit ? "Edit product" : "Add a new product"}</h2>
                 <p className={styles.subheading}>
-                  {isEdit ? "Update the image or listing details." : "Add a product image and its listing details."}
+                  {isAmazon
+                    ? `Amazon listing ${amazonSku} — changes are saved to the database (Cloud SQL).`
+                    : isEdit
+                      ? "Update the listing details — changes are saved to the database (Cloud SQL)."
+                      : "Add the listing details — the row is saved to the database (Cloud SQL)."}
                 </p>
               </div>
 
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/png,image/jpeg"
-                hidden
-                onChange={(e) => {
-                  pickFile(e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-              />
-
-              <button
-                type="button"
-                className={`${styles.dropZone} ${dragging ? styles.dropZoneActive : ""} ${preview ? styles.hasPreview : ""}`}
-                onClick={() => fileInput.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={onDrop}
-                aria-label={preview ? "Change image" : "Browse for an image"}
-              >
-                {preview ? (
-                  <>
-                    <img src={preview} alt="" className={styles.preview} />
-                    <span className={styles.changeBadge}>Change image</span>
-                  </>
-                ) : (
-                  <span className={styles.dropInner}>
-                    <span className={styles.dropIcon}>
-                      <ImagePlus size={30} aria-hidden="true" />
-                    </span>
-                    <span className={styles.dropTitle}>{dragging ? "Drop to add image" : "Drag & drop an image"}</span>
-                    <span className={styles.dropSub}>
-                      or <span className={styles.browse}>browse</span> from your computer
-                    </span>
-                    <span className={styles.dropMeta}>PNG or JPG · up to {MAX_IMAGE_MB} MB</span>
-                  </span>
-                )}
-              </button>
-
-              <div className={styles.imageActions}>
-                <button type="button" className={styles.uploadBtn} onClick={() => fileInput.current?.click()}>
-                  <Upload size={16} aria-hidden="true" />
-                  Upload image
-                </button>
-                {hasAnyImage && (
-                  <button type="button" className={styles.removeImage} onClick={clearImage}>
-                    <X size={14} aria-hidden="true" />
-                    Remove
-                  </button>
-                )}
+              <div className={styles.amazonNote}>
+                <strong>Photos</strong>
+                <span>Listings are stored in the database, which doesn't have a place for photos yet.</span>
               </div>
-              <p className={styles.imageNote}>
-                {image ? (
-                  <span className={styles.fileName}>
-                    {image.name} · {(image.size / 1024 / 1024).toFixed(1)} MB
-                  </span>
-                ) : (
-                  "Optional — you can add a row without an image."
-                )}
-              </p>
             </section>
 
             <section className={styles.fieldsSide}>
@@ -228,22 +159,45 @@ export default function AddListing() {
                 <p className={styles.subheading}>Fields marked optional can be left blank.</p>
               </div>
 
-              {FIELDS.map((f) => (
-                <label key={f.key} className={styles.field}>
-                  <span className={styles.label}>
-                    {f.label}
-                    {!f.required && <em className={styles.optional}>Optional</em>}
-                  </span>
-                  <span className={styles.hint}>{f.hint}</span>
-                  <input
-                    type="text"
-                    required={f.required}
-                    placeholder={f.placeholder}
-                    value={form[f.key]}
-                    onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                  />
-                </label>
-              ))}
+              {/* Two columns; the description spans both. */}
+              <div className={styles.fieldGrid}>
+                {fields.map((f) => {
+                  const wide = f.key === "dtiItemDescription" ? styles.wide : "";
+                  return f.key === "division" ? (
+                    <div key={f.key} className={`${styles.field} ${wide}`}>
+                      <span className={styles.label}>
+                        {f.label}
+                        <em className={styles.optional}>Auto</em>
+                      </span>
+                      <span className={styles.readOnly}>
+                        {form.dtiItemDescription.split("-")[0].replace(/NIST$/, "") || "—"}
+                      </span>
+                      <span className={styles.hint}>From the start of the description (DWL-001 → DWL).</span>
+                    </div>
+                  ) : (
+                    <label key={f.key} className={`${styles.field} ${wide}`}>
+                      <span className={styles.label}>
+                        {f.label}
+                        {!f.required && <em className={styles.optional}>Optional</em>}
+                      </span>
+                      <input
+                        type="text"
+                        required={isAmazon ? f.key === "dtiItemCode" || f.key === "dtiItemDescription" : f.required}
+                        placeholder={f.placeholder}
+                        value={form[f.key]}
+                        onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                      />
+                      <span className={styles.hint}>
+                        {isAmazon && f.key === "dtiItemDescription"
+                          ? "Changes this item's description for every SKU that uses it."
+                          : isAmazon && (f.key === "ean" || f.key === "type")
+                            ? "Leave blank to use Amazon's value."
+                            : f.hint}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
 
               {error && <p className={styles.error}>{error}</p>}
 
@@ -252,7 +206,7 @@ export default function AddListing() {
                   Cancel
                 </button>
                 <button type="submit" className={styles.addRow} disabled={saving || loadingRow}>
-                  {saving ? (image ? "Uploading…" : "Saving…") : isEdit ? "Save changes" : "Add row"}
+                  {saving ? "Saving…" : isEdit ? "Save changes" : "Add row"}
                 </button>
               </div>
             </section>

@@ -217,3 +217,12 @@
     margin-left: 0;
   }
 }
+
+/* Leading "No." column (showRowNumbers). */
+.noCol {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}

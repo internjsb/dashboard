@@ -156,6 +156,9 @@
 .actions .disable { border-color: var(--warning); color: var(--warning); }
 .actions .enable { border-color: var(--success); color: var(--success); }
 .actions .remove { border-color: var(--danger); color: #fff; background: var(--danger); }
+.actions .details { border-color: var(--border); color: var(--text-primary); }
+.actions .details:hover { background: var(--bg); }
+.actions .details + .locked { margin-left: 8px; }
 .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .locked {

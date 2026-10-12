@@ -338,6 +338,65 @@ router.get("/users", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// SUPER ADMIN ONLY: the "User details" pop-up on Manage users — the account
+// record plus what the audit log knows: last sign-in (when / where / device),
+// the latest thing they changed, and their display-name changes.
+router.get("/users/:uid/details", requireAuth, requireSuperAdmin, async (req, res) => {
+  const { uid } = req.params;
+  try {
+    let authUser;
+    try {
+      authUser = await auth.getUser(uid);
+    } catch (err) {
+      if (err?.code === "auth/user-not-found") return res.status(404).json({ error: "No such user" });
+      throw err;
+    }
+    const [record, all] = await Promise.all([
+      db.get(`users/${uid}`).then((v) => v || {}),
+      db.get("audit").then((v) => v || {}),
+    ]);
+
+    // Everything this user did themselves, newest first.
+    const own = Object.entries(all)
+      .map(([id, e]) => ({ id, ...e }))
+      .filter((e) => e.actorUid === uid)
+      .sort((a, b) => (b.at || 0) - (a.at || 0));
+    const lastLogin = own.find((e) => e.action === "auth.login") || null;
+    const changes = own.filter((e) => e.action !== "auth.login");
+
+    res.json({
+      user: {
+        uid,
+        email: authUser.email,
+        displayName: authUser.displayName || record.displayName || null,
+        role: record.role || "user",
+        status: record.status || "active",
+        department: record.department || null,
+        isSuperAdmin: isSuperAdminEmail(authUser.email),
+        disabled: authUser.disabled,
+        createdAt: authUser.metadata.creationTime || null,
+        // Firebase's own record — kept even for sign-ins before the audit log existed.
+        lastSignInTime: authUser.metadata.lastSignInTime || null,
+      },
+      lastLogin: lastLogin && {
+        at: lastLogin.at,
+        ip: lastLogin.ip ?? null,
+        location: lastLogin.location ?? null,
+        userAgent: lastLogin.userAgent || "",
+      },
+      lastChange: changes[0] || null,
+      recentChanges: changes.slice(0, 5),
+      nameChanges: own
+        .filter((e) => e.action === "profile.update")
+        .slice(0, 5)
+        .map((e) => ({ at: e.at, displayName: e.detail?.displayName ?? null })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load user details" });
+  }
+});
+
 // SUPER ADMIN ONLY: promote/demote between "admin" and "user". Being admin
 // only adds the role-gated admin pages (Manage users / Audit log / Page
 // management) — it does NOT grant every business page. Promoting resets their

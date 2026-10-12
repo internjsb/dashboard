@@ -11,7 +11,10 @@ import SegmentSearchBar from "../components/SegmentSearchBar";
 import api from "../api/client";
 import { matches } from "../utils/search";
 import type { DashboardOverview } from "../types";
-import styles from "./Dashboard.module.css";
+import styles from "./Dashboard.module.css";;
+
+
+
 
 const EMPTY_OVERVIEW: DashboardOverview = {
   product: { name: "", asin: "", price: 0, rating: 0, reviews: 0, stock: 0, unitsLifetime: 0 },

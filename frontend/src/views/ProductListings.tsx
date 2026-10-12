@@ -19,15 +19,37 @@ interface ListingRow {
   type: string;
   ean: string;
   imageUrl: string | null;
+  /** All photos in order (first = cover, same as imageUrl). */
+  images?: { url: string; path: string }[];
+  /** "added" = your item with no Amazon listing yet (core.items); "amazon" = an Amazon listing. */
+  source: "added" | "amazon";
+  /** Amazon SKU (Amazon rows: used to edit / hide the row; your items: the linked SKU, if any). */
+  sku?: string;
 }
 
-// Rows added from "Add new product" (/product-listings/new). Images live in
-// Firebase Storage; rows added without one show a placeholder tile.
+// Shape returned by GET /api/dashboard/listing-data (Cloud SQL).
+interface AmazonListingRow {
+  source: "amazon" | "item";
+  sku: string | null;
+  image_url: string | null;
+  division: string | null;
+  dti_item_code: string | null;
+  dti_item_description: string | null;
+  type: string | null;
+  ean: string | null;
+}
+
+type SourceFilter = "all" | "added" | "amazon";
+
+// Everything comes from Postgres via GET /api/dashboard/listing-data: your items
+// with no Amazon listing yet ("Added here" — created with "Add new product"),
+// then Amazon's listings. Edits save to core.items / core.item_sku_map.
 export default function ProductListings() {
   const [products, setProducts] = useState<ListingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
@@ -44,7 +66,18 @@ export default function ProductListings() {
     setDeleting(true);
     setActionError("");
     try {
-      await api.delete(`/dashboard/listings/${confirmDelete.id}`, { params: { no: confirmDelete.no } });
+      if (confirmDelete.source === "amazon") {
+        // Amazon data is read-only here — this only hides the row from the page.
+        await api.post("/dashboard/listing-data/hide", {
+          sku: confirmDelete.sku,
+          rowNo: confirmDelete.no,
+          dtiItemCode: confirmDelete.dtiItemCode,
+        });
+      } else {
+        await api.delete(`/dashboard/listing-items/${encodeURIComponent(confirmDelete.dtiItemCode)}`, {
+          params: { no: confirmDelete.no },
+        });
+      }
       setProducts((prev) => prev.filter((r) => r.id !== confirmDelete.id));
       setDeletedCode(confirmDelete.dtiItemCode);
     } catch (err) {
@@ -58,11 +91,27 @@ export default function ProductListings() {
   useEffect(() => {
     let cancelled = false;
     api
-      .get<{ rows: ListingRow[] }>("/dashboard/listings")
-      .then(({ data }) => !cancelled && setProducts(data.rows))
+      .get<{ rows: AmazonListingRow[] }>("/dashboard/listing-data", { timeout: 30000 })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setProducts(
+          data.rows.map((r, i) => ({
+            id: r.source === "item" ? `item-${r.dti_item_code}` : `amazon-${r.sku || i}`,
+            source: r.source === "item" ? ("added" as const) : ("amazon" as const),
+            sku: r.sku ?? undefined,
+            division: r.division ?? "",
+            dtiItemCode: r.dti_item_code ?? "",
+            dtiItemDescription: r.dti_item_description ?? "",
+            type: r.type ?? "",
+            ean: r.ean ?? "",
+            imageUrl: r.image_url || null,
+            images: r.image_url ? [{ url: r.image_url, path: "" }] : [],
+          })),
+        );
+      })
       .catch((err) => {
         console.error(err);
-        if (!cancelled) setLoadError("Couldn't load the listing.");
+        if (!cancelled) setLoadError("Couldn't load the listing from the database.");
       })
       .finally(() => !cancelled && setLoading(false));
     return () => {
@@ -72,14 +121,16 @@ export default function ProductListings() {
 
   const filtered = useMemo(
     () =>
-      products.filter((p) => matches(`${p.division} ${p.dtiItemCode} ${p.dtiItemDescription} ${p.type} ${p.ean}`, query)),
-    [products, query],
+      products
+        .filter((p) => sourceFilter === "all" || p.source === sourceFilter)
+        .filter((p) => matches(`${p.division} ${p.dtiItemCode} ${p.dtiItemDescription} ${p.type} ${p.ean}`, query)),
+    [products, query, sourceFilter],
   );
 
   // A new search or page size changes which rows land on which page.
   useEffect(() => {
     setPage(1);
-  }, [query, pageSize]);
+  }, [query, pageSize, sourceFilter]);
 
   const perPage = pageSize || filtered.length || 1;
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -91,7 +142,7 @@ export default function ProductListings() {
     <div className="app-shell">
       <AppSidebar />
       <div className="app-content">
-        <AppTopbar title="AMAZON Listing" />
+        <AppTopbar title="Product Listing" />
         <main className={styles.content}>
           <section className={styles.card}>
             <div className={styles.header}>
@@ -122,10 +173,10 @@ export default function ProductListings() {
                 <Search className={styles.searchIcon} size={16} aria-hidden="true" />
                 <input
                   type="search"
-                  placeholder="Search division, DTI item, description, type, EAN…"
+                  placeholder="Search division, DTI item Code, description, type, EAN…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  aria-label="Search AMAZON Listing"
+                  aria-label="Search Product Listing"
                 />
               </div>
               {query && (
@@ -134,6 +185,29 @@ export default function ProductListings() {
                   Clear
                 </button>
               )}
+              <div className={styles.sourceTabs} role="tablist" aria-label="Filter by source">
+                {(
+                  [
+                    ["all", "All"],
+                    ["added", "Added here"],
+                    ["amazon", "From Amazon"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={sourceFilter === key}
+                    className={`${styles.sourceTab} ${sourceFilter === key ? styles.sourceTabActive : ""}`}
+                    onClick={() => setSourceFilter(key)}
+                  >
+                    {label}
+                    <span className={styles.sourceCount}>
+                      {key === "all" ? products.length : products.filter((p) => p.source === key).length}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className={styles.tableWrap}>
@@ -143,7 +217,7 @@ export default function ProductListings() {
                     <th className={styles.noCol}>No.</th>
                     <th className={styles.imageCol}>Image</th>
                     <th>Division</th>
-                    <th>DTI item</th>
+                    <th>DTI item Code</th>
                     <th>DTI Item Description</th>
                     <th>Type</th>
                     <th>EAN</th>
@@ -169,7 +243,14 @@ export default function ProductListings() {
                         <td className={styles.noCol}>{firstIndex + i + 1}</td>
                         <td className={styles.imageCol}>
                           {p.imageUrl ? (
-                            <img src={p.imageUrl} alt={p.dtiItemDescription} className={styles.imageTile} />
+                            <div className={styles.imageStack}>
+                              <img src={p.imageUrl} alt={p.dtiItemDescription} className={styles.imageTile} />
+                              {(p.images?.length ?? 0) > 1 && (
+                                <span className={styles.photoCount} title={`${p.images!.length} photos`}>
+                                  +{p.images!.length - 1}
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <div className={styles.imageTile} role="img" aria-label={`No image yet for ${p.dtiItemCode}`}>
                               <ImageIcon size={28} aria-hidden="true" />
@@ -186,9 +267,18 @@ export default function ProductListings() {
                             <button
                               type="button"
                               className={styles.iconBtn}
-                              onClick={() => navigate(`/product-listings/${p.id}/edit`, { state: { no: firstIndex + i + 1 } })}
+                              onClick={() =>
+                                p.source === "amazon"
+                                  ? // Amazon rows are edited in place and saved to Postgres.
+                                    navigate(`/product-listings/amazon/${encodeURIComponent(p.sku ?? "")}/edit`, {
+                                      state: { no: firstIndex + i + 1 },
+                                    })
+                                  : navigate(`/product-listings/${encodeURIComponent(p.dtiItemCode)}/edit`, {
+                                      state: { no: firstIndex + i + 1 },
+                                    })
+                              }
+                              title={p.source === "amazon" ? "Edit (saves to the database)" : "Edit"}
                               aria-label={`Edit ${p.dtiItemCode}`}
-                              title="Edit"
                             >
                               <Pencil size={15} />
                             </button>
@@ -262,12 +352,22 @@ export default function ProductListings() {
             >
               <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
                 <h3 id="delete-listing-title" className={styles.modalTitle}>
-                  Delete this listing?
+                  {confirmDelete.source === "amazon" ? "Remove this Amazon listing?" : "Delete this listing?"}
                 </h3>
+                {confirmDelete.source === "amazon" ? (
+                  <p className={styles.modalBody}>
+                    {confirmDelete.dtiItemCode || confirmDelete.sku} · {confirmDelete.dtiItemDescription} will be hidden from
+                    Product Listing for everyone. Amazon's data in the database isn't changed.
+                  </p>
+                ) : (
                 <p className={styles.modalBody}>
                   {confirmDelete.dtiItemCode} · {confirmDelete.dtiItemDescription}
-                  {confirmDelete.imageUrl ? " and its image" : ""} will be removed. This can't be undone.
+                  {(confirmDelete.images?.length ?? 0) > 0
+                    ? ` and its ${confirmDelete.images!.length === 1 ? "photo" : `${confirmDelete.images!.length} photos`}`
+                    : ""}{" "}
+                  will be removed. This can't be undone.
                 </p>
+                )}
                 <div className={styles.modalActions}>
                   <button type="button" className={styles.cancel} onClick={() => setConfirmDelete(null)} disabled={deleting}>
                     Cancel

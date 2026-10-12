@@ -3,6 +3,7 @@ import axios from "axios";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import DataTable, { type DataTableColumn } from "../components/DataTable";
+import UserDetailsModal from "../components/UserDetailsModal";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { PASSWORD_RULE_TEXT, passwordError } from "../utils/passwordPolicy";
@@ -47,6 +48,8 @@ export default function AdminPanel() {
   const [error, setError] = useState("");
   const [busyUid, setBusyUid] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<UserRecord | null>(null);
+  // Super admin only: whose "User details" pop-up is open.
+  const [detailsUid, setDetailsUid] = useState<string | null>(null);
   const [requestDept, setRequestDept] = useState<Record<string, Department | "">>({});
   const [roleTab, setRoleTab] = useState<RoleTab>("all");
   const [showAddUser, setShowAddUser] = useState(false);
@@ -273,57 +276,65 @@ export default function AdminPanel() {
       sortable: false,
       searchable: false,
       className: styles.actions,
-      render: (u) =>
-        u.isSuperAdmin ? (
-          <span className={styles.locked}>locked</span>
-        ) : u.uid === currentUid ? (
-          <span className={styles.locked}>you</span>
-        ) : (
-          <>
-            {isSuperAdmin &&
-              (u.role !== "admin" ? (
+      render: (u) => (
+        <>
+          {isSuperAdmin && (
+            <button className={styles.details} onClick={() => setDetailsUid(u.uid)}>
+              User details
+            </button>
+          )}
+          {u.isSuperAdmin ? (
+            <span className={styles.locked}>locked</span>
+          ) : u.uid === currentUid ? (
+            <span className={styles.locked}>you</span>
+          ) : (
+            <>
+              {isSuperAdmin &&
+                (u.role !== "admin" ? (
+                  <button
+                    className={styles.promote}
+                    disabled={busyUid === u.uid || u.status !== "active"}
+                    onClick={() => changeRole(u, "admin")}
+                  >
+                    Make admin
+                  </button>
+                ) : (
+                  <button
+                    className={styles.demote}
+                    disabled={busyUid === u.uid}
+                    onClick={() => changeRole(u, "user")}
+                  >
+                    Revoke admin
+                  </button>
+                ))}
+              {u.status === "disabled" || u.status === "denied" ? (
                 <button
-                  className={styles.promote}
-                  disabled={busyUid === u.uid || u.status !== "active"}
-                  onClick={() => changeRole(u, "admin")}
+                  className={styles.enable}
+                  disabled={busyUid === u.uid}
+                  onClick={() => setDisabled(u, false)}
                 >
-                  Make admin
+                  Enable
                 </button>
               ) : (
                 <button
-                  className={styles.demote}
+                  className={styles.disable}
                   disabled={busyUid === u.uid}
-                  onClick={() => changeRole(u, "user")}
+                  onClick={() => setDisabled(u, true)}
                 >
-                  Revoke admin
+                  Disable
                 </button>
-              ))}
-            {u.status === "disabled" || u.status === "denied" ? (
+              )}
               <button
-                className={styles.enable}
+                className={styles.remove}
                 disabled={busyUid === u.uid}
-                onClick={() => setDisabled(u, false)}
+                onClick={() => setConfirmRemove(u)}
               >
-                Enable
+                Remove
               </button>
-            ) : (
-              <button
-                className={styles.disable}
-                disabled={busyUid === u.uid}
-                onClick={() => setDisabled(u, true)}
-              >
-                Disable
-              </button>
-            )}
-            <button
-              className={styles.remove}
-              disabled={busyUid === u.uid}
-              onClick={() => setConfirmRemove(u)}
-            >
-              Remove
-            </button>
-          </>
-        ),
+            </>
+          )}
+        </>
+      ),
     },
   ];
 
@@ -522,6 +533,8 @@ export default function AdminPanel() {
               </form>
             </div>
           )}
+
+          {detailsUid && <UserDetailsModal uid={detailsUid} onClose={() => setDetailsUid(null)} />}
 
           {confirmRemove && (
             <div

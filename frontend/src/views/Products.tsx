@@ -102,7 +102,7 @@ export default function Products() {
     <div className="app-shell">
       <AppSidebar />
       <div className="app-content">
-        <AppTopbar title="Products" />
+        <AppTopbar title="AMAZON Listing" />
         <main className={styles.content}>
           <p className={styles.intro}>Product catalog.</p>
 
@@ -136,7 +136,7 @@ export default function Products() {
 
           <section className={styles.card}>
             <div className={styles.cardHead}>
-              <h3>Products</h3>
+              <h3>AMAZON Listing</h3>
               <span className={styles.cardSub}>Product master list</span>
             </div>
             {added && (

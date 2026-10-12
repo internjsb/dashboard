@@ -93,7 +93,12 @@ export default function Login() {
           </label>
 
           <label className={styles.field}>
-            <span>Password</span>
+            <span className={styles.labelRow}>
+              Password
+              <Link to="/forgot-password" state={{ email }} className={styles.forgot}>
+                Forgot password?
+              </Link>
+            </span>
             <PasswordField
               required
               autoComplete="current-password"

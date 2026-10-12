@@ -122,3 +122,20 @@ export function requirePageAccess(page) {
     return res.status(403).json({ error: "You don't have access to this page" });
   };
 }
+
+// --- Local testing without sign-in ---------------------------------------------
+// True only for a request made on this machine (localhost) while NOT running in
+// production. Heroku sets NODE_ENV=production and requests there arrive from
+// the internet, so this is never true on the live site.
+export function isLocalDevRequest(req) {
+  if (process.env.NODE_ENV === "production") return false;
+  const ip = (req.ip || req.socket?.remoteAddress || "").replace(/^::ffff:/, "");
+  return ip === "127.0.0.1" || ip === "::1";
+}
+
+// Wraps sign-in/permission checks so test routes can be opened straight in a
+// browser tab during local development: the checks are skipped on localhost
+// and still enforced everywhere else.
+export function unlessLocalDev(...guards) {
+  return guards.map((guard) => (req, res, next) => (isLocalDevRequest(req) ? next() : guard(req, res, next)));
+}

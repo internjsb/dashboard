@@ -3,18 +3,19 @@ import AppSidebar from "./components/AppSidebar";
 import AppTopbar from "./components/AppTopbar";
 import api from "./api/client";
 
-// Test page (/testing, admins only): shows the first 100 rows of
-// amazon.get_ledger_detail_view_data from Cloud SQL via GET /api/health/orders.
+// Test page (/testing): shows the Product Listing data from Cloud SQL (image,
+// division, DTI item code/description, type, EAN) via GET /api/health/listing-data.
+// Locally it opens without signing in; on Heroku it's admins only.
 function Orders() {
   const [orders, setOrders] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // The shared API client uses the right backend (local or Heroku) and sends the sign-in token.
+    // The shared API client uses the right backend (local or Heroku) and sends the sign-in token if there is one.
     api
-      .get<Record<string, unknown>[]>("/health/orders", { timeout: 30000 })
-      .then(({ data }) => setOrders(data))
+      .get<{ rows: Record<string, unknown>[] }>("/health/listing-data", { timeout: 30000 })
+      .then(({ data }) => setOrders(data.rows))
       .catch((err) => setError(err.response?.data?.error || err.message))
       .finally(() => setLoading(false));
   }, []);

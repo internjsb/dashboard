@@ -6,6 +6,7 @@ import { defaultPageFor } from "./lib/pageAccess";
 
 const Login = lazy(() => import("./views/Login"));
 const Register = lazy(() => import("./views/Register"));
+const ForgotPassword = lazy(() => import("./views/ForgotPassword"));
 const Pending = lazy(() => import("./views/Pending"));
 const Dashboard = lazy(() => import("./views/Dashboard"));
 const SalesHistory = lazy(() => import("./views/SalesHistory"));
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="/" element={<HomeRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route
               path="/pending"
               element={
@@ -165,6 +167,14 @@ export default function App() {
               }
             />
             <Route
+              path="/product-listings/amazon/:sku/edit"
+              element={
+                <ProtectedRoute page="product_listings">
+                  <AddListing />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/sale-report"
               element={
                 <ProtectedRoute page="sale_report">
@@ -207,9 +217,14 @@ export default function App() {
             <Route
               path="/testing"
               element={
-                <ProtectedRoute role="admin">
+                // Local dev: open without signing in. Built site (Heroku): admins only.
+                import.meta.env.DEV ? (
                   <Testing />
-                </ProtectedRoute>
+                ) : (
+                  <ProtectedRoute role="admin">
+                    <Testing />
+                  </ProtectedRoute>
+                )
               }
             />
             <Route

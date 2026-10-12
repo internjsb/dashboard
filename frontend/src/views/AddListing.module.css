@@ -264,6 +264,13 @@
   padding: 28px 32px;
 }
 
+/* Title row with a hairline under it, instead of a large gap. */
+.fieldsSide > .sideHead {
+  margin: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
 @media (max-width: 700px) {
   .imageSide,
   .fieldsSide {
@@ -271,16 +278,34 @@
   }
 }
 
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+}
+
+@media (max-width: 560px) {
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wide {
+  grid-column: 1 / -1;
 }
 
 .label {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -296,8 +321,8 @@
 }
 
 .hint {
-  margin: 2px 0 8px;
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--text-muted);
 }
 
@@ -397,4 +422,237 @@
 
 .success a {
   color: inherit;
+}
+
+/* --- multiple photos ------------------------------------------------------ */
+
+.previewWrap {
+  position: relative;
+}
+
+.previewTools {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.previewTools > * {
+  pointer-events: auto;
+}
+
+.coverBadge,
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(16, 21, 38, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.toolBtn {
+  cursor: pointer;
+}
+
+.toolBtn:hover {
+  background: rgba(16, 21, 38, 0.88);
+}
+
+.toolDanger:hover {
+  background: var(--danger);
+}
+
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.thumbs li {
+  position: relative;
+}
+
+.thumb,
+.thumbAdd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.thumb {
+  border: 2px solid var(--border);
+  background: var(--surface);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbActive {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+.thumbCover {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.thumbRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.thumbRemove:hover {
+  background: var(--danger);
+}
+
+.thumbAdd {
+  border: 2px dashed var(--accent);
+  background: var(--surface);
+  color: var(--accent-strong);
+}
+
+.thumbAdd:hover {
+  background: var(--accent-tint);
+}
+
+.uploadBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Amazon-row edit mode ------------------------------------------------- */
+
+.amazonNote {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px dashed var(--warning);
+  border-radius: 14px;
+  background: var(--warning-tint);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.amazonNote strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.readOnly {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* --- "Saved to the database" panel (left side) ------------------------------ */
+
+.dbNote {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dbNote strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.dbIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.dbNote ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dbNote li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.dbNote li span {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dbNote code {
+  font-size: 12px;
+  color: var(--accent-strong);
+}
+
+.dbFoot {
+  font-size: 12px;
+  color: var(--text-muted);
 }

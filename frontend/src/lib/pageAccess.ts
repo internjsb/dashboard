@@ -22,8 +22,8 @@ export const PAGE_LABEL: Record<PageKey, string> = {
   stock_available: "Stock availability",
   inventory: "Inventory",
   finance: "Finance",
-  products: "Products",
-  product_listings: "AMAZON Listing",
+  products: "AMAZON Listing",
+  product_listings: "Product Listing",
   sale_report: "Sales report",
 };
 
