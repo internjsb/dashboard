@@ -5,14 +5,12 @@ import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import api from "../api/client";
 import { matches } from "../utils/search";
-import type { SaleReportRow } from "../types";
 import styles from "./SaleReport.module.css";
 
 // Rows-per-page choices; 0 means "All". Always starts at 10.
 const PAGE_SIZE_OPTIONS = [10, 50, 100, 0];
 
 type SortKey =
-  | "category"
   | "purchaseDate"
   | "itemCode"
   | "set"
@@ -24,10 +22,51 @@ type SortKey =
   | "shippedDate";
 type SortDir = "asc" | "desc";
 
+interface SaleReport {
+  id: string;
+  purchaseDate: string | null;
+  itemCode: string;
+  set: string;
+  qty: number;
+  productSalesPrice: number;
+  unitPrice: number;
+  orderId: string;
+  fulfillment: string;
+  shippedDate: string;
+}
+
+interface SaleReportApiRow {
+  purchase_date: string | null;
+  item_code: string | null;
+  set_: number | null;
+  qty: number | null;
+  product_sale_price: string | number | null;
+  unit_price: string | number | null;
+  order_id: string | null;
+  fulfilment: string | null;
+  shipped_date: string | null;
+}
+
+// API row -> SaleReport. The query has no row id, so one is made from the
+// order id and position (stable for a given load).
+function toSaleReport(r: SaleReportApiRow, i: number): SaleReport {
+  return {
+    id: `${r.order_id ?? "row"}-${i}`,
+    purchaseDate: r.purchase_date,
+    itemCode: r.item_code ?? "",
+    set: r.set_ == null ? "" : String(r.set_),
+    qty: Number(r.qty) || 0,
+    productSalesPrice: Number(r.product_sale_price) || 0,
+    unitPrice: Number(r.unit_price) || 0,
+    orderId: r.order_id ?? "",
+    fulfillment: r.fulfilment ?? "",
+    shippedDate: r.shipped_date ?? "",
+  };
+}
+
 // Column order and headings follow the accounting department's "Format for
 // Sales Report" (the CSV export uses the same, for import into the ERP).
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
-  { key: "category", label: "Category" },
   { key: "purchaseDate", label: "Purchase Date" },
   { key: "itemCode", label: "Item Code" },
   { key: "set", label: "Set" },
@@ -115,13 +154,14 @@ function csvCell(v: string | number): string {
 
 // Export in the exact accounting format: same columns and headings, dates as
 // YYYY-MM-DD, amounts with two decimals, blank Set left blank.
-function csvValue(r: SaleReportRow, key: SortKey): string | number {
+function csvValue(r: SaleReport, key: SortKey): string | number {
   if (key === "purchaseDate" || key === "shippedDate") return shortDate(r[key]);
   if (key === "productSalesPrice" || key === "unitPrice") return r[key].toFixed(2);
+  if (key === "qty") return r.qty;
   return r[key] ?? "";
 }
 
-function downloadCsv(rows: SaleReportRow[]) {
+function downloadCsv(rows: SaleReport[]) {
   const header = COLUMNS.map((c) => c.label);
   const lines = rows.map((r) => COLUMNS.map((c) => csvCell(csvValue(r, c.key))).join(","));
   const blob = new Blob([[header.map(csvCell).join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
@@ -135,16 +175,15 @@ function downloadCsv(rows: SaleReportRow[]) {
 
 // Edit form values — kept as strings so inputs can be blank mid-edit.
 type EditForm = Record<
-  "category" | "purchaseDate" | "itemCode" | "set" | "qty" | "productSalesPrice" | "orderId" | "fulfillment" | "shippedDate",
+  "purchaseDate" | "itemCode" | "set" | "qty" | "productSalesPrice" | "orderId" | "fulfillment" | "shippedDate",
   string
 >;
 
-function toForm(r: SaleReportRow): EditForm {
+function toForm(r: SaleReport): EditForm {
   return {
-    category: r.category,
     purchaseDate: shortDate(r.purchaseDate),
     itemCode: r.itemCode,
-    set: r.set == null ? "" : String(r.set),
+    set: r.set ?? "",
     qty: String(r.qty),
     productSalesPrice: String(r.productSalesPrice),
     orderId: r.orderId,
@@ -154,7 +193,7 @@ function toForm(r: SaleReportRow): EditForm {
 }
 
 export default function SaleReport() {
-  const [rows, setRows] = useState<SaleReportRow[]>([]);
+  const [rows, setRows] = useState<SaleReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -165,13 +204,13 @@ export default function SaleReport() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const [editing, setEditing] = useState<SaleReportRow | null>(null);
+  const [editing, setEditing] = useState<SaleReport | null>(null);
   // The row's No. in the table when Edit was clicked (shown in the popup title).
   const [editingNo, setEditingNo] = useState<number | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<SaleReportRow | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<SaleReport | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState("");
 
@@ -179,8 +218,8 @@ export default function SaleReport() {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await api.get<{ rows: SaleReportRow[] }>("/dashboard/sale-report");
-        if (!cancelled) setRows(data.rows);
+        const { data } = await api.get<{ rows: SaleReportApiRow[] }>("/health/sale_report");
+        if (!cancelled) setRows(data.rows.map(toSaleReport));
       } catch (err) {
         if (!cancelled) setError("Couldn't load the sales report. Is the backend running?");
         console.error(err);
@@ -197,7 +236,7 @@ export default function SaleReport() {
     const out = rows
       .filter((r) => !fromDate || shortDate(r.shippedDate) >= fromDate)
       .filter((r) => !toDate || shortDate(r.shippedDate) <= toDate)
-      .filter((r) => matches(`${r.category} ${r.itemCode} ${r.set ?? ""} ${r.orderId} ${r.fulfillment}`, query));
+      .filter((r) => matches(`${r.itemCode} ${r.set} ${r.orderId} ${r.fulfillment}`, query));
     const dir = sort.dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
       const av = a[sort.key];
@@ -244,7 +283,7 @@ export default function SaleReport() {
     setToDate("");
   }
 
-  function openEdit(r: SaleReportRow, no: number) {
+  function openEdit(r: SaleReport, no: number) {
     setEditing(r);
     setEditingNo(no);
     setForm(toForm(r));
@@ -260,10 +299,15 @@ export default function SaleReport() {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (!editing || !form) return;
+    // Same-day shipping is fine; a purchase after shipping isn't.
+    if (form.purchaseDate && form.shippedDate && form.purchaseDate > form.shippedDate) {
+      setFormError("Purchase date can't be after the shipped date.");
+      return;
+    }
     setSaving(true);
     setFormError("");
     try {
-      const { data } = await api.patch<{ row: SaleReportRow }>(`/dashboard/sale-report/${editing.id}`, {
+      const { data } = await api.patch<{ row: SaleReport }>(`/health/sale-report/${editing.id}`, {
         ...form,
         set: form.set.trim(),
         qty: Number(form.qty),
@@ -284,7 +328,7 @@ export default function SaleReport() {
     setActionError("");
     setDeleting(true);
     try {
-      await api.delete(`/dashboard/sale-report/${confirmDelete.id}`);
+      await api.delete(`/health/sale-report/${confirmDelete.id}`);
       setRows((prev) => prev.filter((x) => x.id !== confirmDelete.id));
       setConfirmDelete(null);
     } catch (err) {
@@ -326,7 +370,7 @@ export default function SaleReport() {
                 <Search className={styles.searchIcon} size={16} aria-hidden="true" />
                 <input
                   type="search"
-                  placeholder="Search category, item code, order id…"
+                  placeholder="Search item code, order id, fulfillment…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   aria-label="Search sales report"
@@ -462,12 +506,11 @@ export default function SaleReport() {
                           <tr key={r.id}>
                             {/* Running number across pages, so page 2 starts at 11. */}
                             <td className={`${styles.num} ${styles.muted}`}>{firstIndex + i + 1}</td>
-                            <td>{r.category}</td>
                             <td className={styles.nowrap}>{formatDate(r.purchaseDate)}</td>
                             <td>
                               <span className={styles.code}>{r.itemCode}</span>
                             </td>
-                            <td>{r.set === "" || r.set == null ? "" : r.set}</td>
+                            <td>{r.set}</td>
                             <td className={styles.num}>{r.qty}</td>
                             <td className={styles.num}>{money(r.productSalesPrice)}</td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unitPrice)}</td>
@@ -478,21 +521,22 @@ export default function SaleReport() {
                             <td className={styles.nowrap}>{formatDate(r.shippedDate)}</td>
                             <td className={styles.actionsCol}>
                               <div className={styles.rowActions}>
+                                {/* Placeholders for now: the rows come from Amazon's read-only tables. */}
                                 <button
                                   type="button"
                                   className={styles.iconBtn}
-                                  onClick={() => openEdit(r, firstIndex + i + 1)}
-                                  aria-label={`Edit order ${r.orderId}`}
-                                  title="Edit"
+                                  disabled
+                                  aria-label={`Edit order ${r.orderId} (coming soon)`}
+                                  title="Edit — coming soon"
                                 >
                                   <Pencil size={15} />
                                 </button>
                                 <button
                                   type="button"
                                   className={`${styles.iconBtn} ${styles.iconDanger}`}
-                                  onClick={() => setConfirmDelete(r)}
-                                  aria-label={`Delete order ${r.orderId}`}
-                                  title="Delete"
+                                  disabled
+                                  aria-label={`Delete order ${r.orderId} (coming soon)`}
+                                  title="Delete — coming soon"
                                 >
                                   <Trash2 size={15} />
                                 </button>
@@ -558,7 +602,6 @@ export default function SaleReport() {
                 <div className={styles.formGrid}>
                   {(
                     [
-                      ["category", "Category", "text"],
                       ["purchaseDate", "Purchase Date", "date"],
                       ["itemCode", "Item Code", "text"],
                       ["set", "Set", "text"],
@@ -576,7 +619,16 @@ export default function SaleReport() {
                         value={form[key]}
                         required={key !== "set" && key !== "purchaseDate"}
                         placeholder={key === "set" ? "e.g. 2pcs per pack (blank if single)" : undefined}
-                        min={type === "number" ? (key === "qty" ? 1 : 0) : undefined}
+                        min={
+                          type === "number"
+                            ? key === "qty"
+                              ? 1
+                              : 0
+                            : key === "shippedDate"
+                              ? form.purchaseDate || undefined
+                              : undefined
+                        }
+                        max={key === "purchaseDate" ? form.shippedDate || undefined : undefined}
                         step={key === "productSalesPrice" ? "0.01" : key === "qty" ? "1" : undefined}
                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                       />
@@ -618,7 +670,7 @@ export default function SaleReport() {
                 </h3>
                 <p className={styles.modalBody}>
                   Order <span className={styles.mono}>{confirmDelete.orderId}</span> · {confirmDelete.itemCode} ·{" "}
-                  {formatDate(confirmDelete.shippedDate)}. This can't be undone.
+                  {formatDate(confirmDelete.shippedDate)}. It's removed from this report only — Amazon's data isn't changed.
                 </p>
                 <div className={styles.modalActions}>
                   <button type="button" className={styles.cancel} onClick={() => setConfirmDelete(null)} disabled={deleting}>

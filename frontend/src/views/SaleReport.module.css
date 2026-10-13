@@ -393,6 +393,12 @@
   border-color: var(--text-muted);
 }
 
+/* Edit / Delete are placeholders for now (Sale Report rows are read-only). */
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .iconDanger {
   color: var(--danger);
 }

@@ -159,7 +159,7 @@ export default function AppSidebar() {
               Manage users
             </NavLink>
           )}
-          {role === "admin" && (
+          {isSuperAdmin && (
             <NavLink to="/page-management" className={navItemClass}>
               <Table2 className={styles.icon} size={18} />
               Page management

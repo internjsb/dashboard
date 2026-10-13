@@ -481,6 +481,10 @@ router.patch("/sale-report/:id", ...saleReportAccess, async (req, res) => {
   if (!row.shippedDate) {
     return res.status(400).json({ error: "Shipped date must be YYYY-MM-DD" });
   }
+  // YYYY-MM-DD strings compare correctly as text. Same-day shipping is fine.
+  if (row.purchaseDate && row.purchaseDate > row.shippedDate) {
+    return res.status(400).json({ error: "Purchase date can't be after the shipped date" });
+  }
   row.unitPrice = unitPriceOf(row);
 
   try {

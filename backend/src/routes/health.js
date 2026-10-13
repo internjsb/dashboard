@@ -159,6 +159,32 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
 
 
 
+router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("sale_report")), async (req, res) => {
+  try {
+
+    const { rows } = await query(`
+    select    a.purchase_date                       as  Purchase_date,
+		          a.product_name                        as  Item_Code,
+		          b.units_per_sku                       as  Set_,
+		          a.quantity_shipped                    as  QTY,
+		          c.price                               as  Product_Sale_Price,
+		          Round((c.price/a.quantity_shipped),2) as  Unit_price,
+		          a.amazon_order_id                     as  Order_id,
+		          c.fulfillment_channel                 as  Fulfilment,
+		          a.shipment_date                       as  Shipped_date
+		          From amazon.get_amazon_fulfilled_shipments_data_general a
+		          Left join core.item_sku_map b
+		          On a.sku = b.seller_sku 
+		          Left join amazon.get_merchant_listings_all_data c
+		          On a.sku = c.seller_sku;
+		`);
+    res.json({ rows });
+  } catch (err) {
+    console.error("[health/shipment_data]", err.message);
+    res.status(500).json({ error: "Failed to load shipments from the database" });
+  }
+});
+
 
 
 export default router;

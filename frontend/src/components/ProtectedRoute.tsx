@@ -9,13 +9,15 @@ interface ProtectedRouteProps {
   role?: Role;
   /** For business pages gated by per-user grants (see lib/pageAccess.ts). */
   page?: PageKey;
+  /** Only the super admin may open this route (e.g. Page management). */
+  superAdmin?: boolean;
 }
 
 // Replaces the Vue router's global beforeEach guard. Wrap any route element
 // that needs auth in this; pass `role` for routes that also need a specific
 // role, or `page` for routes gated by department (mirrors the route `meta`
 // object in the old router config).
-export default function ProtectedRoute({ children, role, page }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, role, page, superAdmin }: ProtectedRouteProps) {
   const {
     user,
     role: userRole,
@@ -73,6 +75,10 @@ export default function ProtectedRoute({ children, role, page }: ProtectedRouteP
     if (twoFactorEnabled === true && !twoFactorVerified) {
       return <Navigate to="/verify-2fa" replace />;
     }
+  }
+
+  if (superAdmin && !isSuperAdmin) {
+    return <Navigate to="/forbidden" replace />;
   }
 
   // When both are given, either one satisfies the guard (e.g. a page that

@@ -238,7 +238,7 @@ export default function App() {
             <Route
               path="/page-management"
               element={
-                <ProtectedRoute role="admin">
+                <ProtectedRoute superAdmin>
                   <PageManagement />
                 </ProtectedRoute>
               }

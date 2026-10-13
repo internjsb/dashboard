@@ -470,12 +470,12 @@ router.patch("/users/:uid/department", requireAuth, requireAdmin, async (req, re
   }
 });
 
-// Any admin: grant or revoke one page for one user — the "Page management"
+// SUPER ADMIN ONLY: grant or revoke one page for one user — the "Page management"
 // screen's checkbox grid calls this once per click. The super admin always
 // has every page (see requirePageAccess) and can't be targeted; you also
 // can't edit your own grants, so an admin can't accidentally lock themself
 // out.
-router.patch("/users/:uid/page-access", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/users/:uid/page-access", requireAuth, requireSuperAdmin, async (req, res) => {
   const { uid } = req.params;
   const { page, allowed } = req.body || {};
 

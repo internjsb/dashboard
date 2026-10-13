@@ -133,38 +133,38 @@ export interface StockCountry {
   available: number;
 }
 
-export interface InventoryRow {
-  sku: string;
-  dtiItemCode: string;
-  finish: string;
-  warehouse: string;
-  country: string;
-  onHand: number;
-  reserved: number;
-  available: number;
-}
+// export interface InventoryRow {
+//   sku: string;
+//   dtiItemCode: string;
+//   finish: string;
+//   warehouse: string;
+//   country: string;
+//   onHand: number;
+//   reserved: number;
+//   available: number;
+// }
 
-export type ShipmentStatus = "in_transit" | "customs" | "delayed" | "arrived";
+// export type ShipmentStatus = "in_transit" | "customs" | "delayed" | "arrived";
 
-export interface ShipmentRow {
-  id: string;
-  sku: string;
-  dtiItemCode: string;
-  finish: string;
-  quantity: number;
-  origin: string;
-  destination: string;
-  carrier: string;
-  eta: string;
-  status: ShipmentStatus;
-}
+// export interface ShipmentRow {
+//   id: string;
+//   sku: string;
+//   dtiItemCode: string;
+//   finish: string;
+//   quantity: number;
+//   origin: string;
+//   destination: string;
+//   carrier: string;
+//   eta: string;
+//   status: ShipmentStatus;
+// }
 
-export interface StockAvailableData {
-  byItem: StockItem[];
-  byCountry: StockCountry[];
-  inventory: InventoryRow[];
-  shipments: ShipmentRow[];
-}
+// export interface StockAvailableData {
+//   byItem: StockItem[];
+//   byCountry: StockCountry[];
+//   inventory: InventoryRow[];
+//   shipments: ShipmentRow[];
+// }
 
 // --- Finance page ----------------------------------------------------
 export type TransactionType = "sale" | "refund" | "payout" | "fee" | "advertising";

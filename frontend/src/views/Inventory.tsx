@@ -61,6 +61,23 @@ const DATE_PRESETS: { label: string; range: () => [string, string] }[] = [
   },
 ];
 
+// The current month and the 11 before it, newest first: "October" ->
+// ["2026-10-01", "2026-10-31"].
+function lastTwelveMonths(): { value: string; label: string; from: string; to: string }[] {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const first = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+    return {
+      value: isoDay(first).slice(0, 7),
+      // Month name only — 12 months never repeat a name.
+      label: first.toLocaleDateString(undefined, { month: "long" }),
+      from: isoDay(first),
+      to: isoDay(last),
+    };
+  });
+}
+
 function num(n: number | null): string {
   return n == null ? "—" : Number(n).toLocaleString();
 }
@@ -115,6 +132,9 @@ export default function Inventory() {
     [shipments, fromDate, toDate],
   );
   const hasDateFilter = !!(fromDate || toDate);
+  const months = useMemo(lastTwelveMonths, []);
+  // The month whose whole range is selected, if any (else the dropdown shows "All months").
+  const selectedMonth = months.find((m) => m.from === fromDate && m.to === toDate)?.value ?? "";
 
   const loading = inventoryLoading || shipmentsLoading;
   const reload = () => setNonce((n) => n + 1);
@@ -251,7 +271,7 @@ export default function Inventory() {
 
                 <div className={styles.dateBar}>
                   <div className={styles.dateGroup}>
-                    <span className={styles.dateLabel}>Purchase date</span>
+                    <span className={styles.dateLabel}>Date Filter</span>
                     <div className={styles.dateRow}>
                       <input
                         type="date"
@@ -271,6 +291,31 @@ export default function Inventory() {
                         aria-label="Purchased to"
                       />
                     </div>
+                  </div>
+                  <div className={styles.dateGroup}>
+                    <span className={styles.dateLabel}>Month</span>
+                    <select
+                      className={styles.dateInput}
+                      value={selectedMonth || (hasDateFilter ? "custom" : "")}
+                      onChange={(e) => {
+                        const m = months.find((x) => x.value === e.target.value);
+                        setFromDate(m?.from ?? "");
+                        setToDate(m?.to ?? "");
+                      }}
+                      aria-label="Filter by month"
+                    >
+                      <option value="">All months</option>
+                      {hasDateFilter && !selectedMonth && (
+                        <option value="custom" disabled>
+                          Custom range
+                        </option>
+                      )}
+                      {months.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className={styles.chips}>
                     {DATE_PRESETS.map((p) => {
