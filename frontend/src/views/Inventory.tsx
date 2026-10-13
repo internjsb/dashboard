@@ -150,7 +150,7 @@ export default function Inventory() {
 
   const inventoryColumns: DataTableColumn<InventoryRow>[] = [
     { key: "sku", header: "SKU", accessor: (i) => i.sku },
-    { key: "item_name", header: "Item Name", accessor: (i) => i.item_name ?? "" },
+    { key: "item_name", header: "DTI Item Description ", accessor: (i) => i.item_name ?? "" },
     { key: "country", header: "Country", accessor: (i) => i.country ?? "", render: (i) => i.country || "—" },
     qtyCol("warehouse_quantity", "Warehouse Qty"),
     qtyCol("fulfillable_quantity", "Fulfillable Qty"),
