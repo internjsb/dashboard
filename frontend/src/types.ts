@@ -159,12 +159,13 @@ export interface StockCountry {
 //   status: ShipmentStatus;
 // }
 
-// export interface StockAvailableData {
-//   byItem: StockItem[];
-//   byCountry: StockCountry[];
-//   inventory: InventoryRow[];
-//   shipments: ShipmentRow[];
-// }
+// GET /dashboard/stock-available — used by the Stock availability page and the
+// sidebar's low-stock badge. (The response also still carries sample
+// inventory/shipments, but the Inventory page now reads those from Cloud SQL.)
+export interface StockAvailableData {
+  byItem: StockItem[];
+  byCountry: StockCountry[];
+}
 
 // --- Finance page ----------------------------------------------------
 export type TransactionType = "sale" | "refund" | "payout" | "fee" | "advertising";

@@ -486,7 +486,7 @@ export default function SaleReport() {
                             </th>
                           );
                         })}
-                        <th className={styles.actionsCol}>Actions</th>
+               
                       </tr>
                     </thead>
                     <tbody>
@@ -519,29 +519,7 @@ export default function SaleReport() {
                               <span className={styles.pill}>{r.fulfillment}</span>
                             </td>
                             <td className={styles.nowrap}>{formatDate(r.shippedDate)}</td>
-                            <td className={styles.actionsCol}>
-                              <div className={styles.rowActions}>
-                                {/* Placeholders for now: the rows come from Amazon's read-only tables. */}
-                                <button
-                                  type="button"
-                                  className={styles.iconBtn}
-                                  disabled
-                                  aria-label={`Edit order ${r.orderId} (coming soon)`}
-                                  title="Edit — coming soon"
-                                >
-                                  <Pencil size={15} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`${styles.iconBtn} ${styles.iconDanger}`}
-                                  disabled
-                                  aria-label={`Delete order ${r.orderId} (coming soon)`}
-                                  title="Delete — coming soon"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </div>
-                            </td>
+                         
                           </tr>
                         ))
                       )}
