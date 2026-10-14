@@ -175,9 +175,10 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
            COALESCE(p.product_name, a.product_name, '')                           AS item_name,
            a.sku                                                                  AS sku,
            COALESCE(i.item_code, '')                                              AS "dtiItemCode",
-           COALESCE(round(a.item_price / NULLIF(a.quantity_shipped, 0), 2), 0)::float8 AS "Price",
-           COALESCE(a.quantity_shipped, 0)                                        AS qty,
-           COALESCE(a.item_price, 0)::float8                                      AS total
+  
+           COALESCE(i.units_per_sku, 0)                                        AS qty,
+           -- Quoted: unquoted aliases come back lower-case ("price").
+           COALESCE(a.item_price, 0)::float8                                      AS "Price"
       FROM amazon.get_amazon_fulfilled_shipments_data_general a
       LEFT JOIN core.item_sku_map i
              ON i.seller_sku = a.sku AND i.marketplace_id = a.marketplace_id

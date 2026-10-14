@@ -10,9 +10,8 @@ interface OrderRow {
   item_name: string;
   sku: string;
   dtiItemCode: string; // e.g. "2-011"
-  Price: number; // per unit (total ÷ qty)
-  qty: number;
-  total: number;
+  qty: number; // units per SKU (core.item_sku_map)
+  Price: number; // the order line's item price
 }
 
 const PAGE_SIZE = 5;
@@ -66,7 +65,6 @@ export default function RecentOrders() {
             { header: "DTI Item Code", value: (o) => o.dtiItemCode },
             { header: "Qty", value: (o) => o.qty },
             { header: "Price", value: (o) => o.Price.toFixed(2) },
-            { header: "Total", value: (o) => o.total.toFixed(2) },
           ]}
         />
       </div>
@@ -116,12 +114,12 @@ export default function RecentOrders() {
                   <div className={styles.itemCol}>
                     <span className={styles.product}>{o.item_name}</span>
                     <span className={styles.meta}>
-                      {o.qty} unit{o.qty > 1 ? "s" : ""} × ${o.Price.toFixed(2)}
+                      {o.qty} unit{o.qty === 1 ? "" : "s"} · {o.id}
                     </span>
                   </div>
                   <span className={styles.cell}>{o.sku}</span>
                   <span className={styles.cell}>{o.dtiItemCode}</span>
-                  <span className={styles.total}>${o.total.toFixed(2)}</span>
+                  <span className={styles.total}>${o.Price.toFixed(2)}</span>
                 </div>
               </li>
             ))}
