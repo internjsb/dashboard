@@ -154,7 +154,8 @@ export default function Dashboard() {
 
               {show.recentOrders && (
                 <section className={styles.block}>
-                  <RecentOrders orders={overview.recentOrders} />
+                  {/* Loads its own rows from Cloud SQL (/health/recent_order). */}
+                  <RecentOrders />
                 </section>
               )}
             </>

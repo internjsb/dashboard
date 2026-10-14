@@ -257,19 +257,19 @@ export interface AuditEvent {
   location?: { local?: boolean; city?: string | null; region?: string | null; country?: string | null } | null;
 }
 
-export interface SaleReportRow {
-  id: string;
-  category: string;
-  itemCode: string;
-  /** Free text per the accounting format, e.g. "2pcs per pack"; blank for single items. */
-  set: string | number;
-  qty: number;
-  productSalesPrice: number;
-  /** Sales ÷ QTY, always computed by the backend. */
-  unitPrice: number;
-  orderId: string;
-  fulfillment: string;
-  /** YYYY-MM-DD; older rows may not have one. */
-  purchaseDate?: string | null;
-  shippedDate: string;
-}
+// export interface SaleReportRow {
+//   id: string;
+//   category: string;
+//   itemCode: string;
+//   /** Free text per the accounting format, e.g. "2pcs per pack"; blank for single items. */
+//   set: string | number;
+//   qty: number;
+//   productSalesPrice: number;
+//   /** Sales ÷ QTY, always computed by the backend. */
+//   unitPrice: number;
+//   orderId: string;
+//   fulfillment: string;
+//   /** YYYY-MM-DD; older rows may not have one. */
+//   purchaseDate?: string | null;
+//   shippedDate: string;
+// }

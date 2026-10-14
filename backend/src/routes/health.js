@@ -135,40 +135,16 @@ router.get("/shipment_data", ...unlessLocalDev(requireAuth, requireActive, requi
   }
 });
 
-router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("inventory")), async (req, res) => {
-  try {
-
-    const { rows } = await query(`
-    Select  p.product_name      as Item_Name,
-		        i.units_per_sku     as unit,
-		        a.sku               as SKU,
-		        i.item_code         as DTI_code,
-		        a.item_price        as Price
-		from core.item_sku_map i
-		left join amazon.get_amazon_fulfilled_shipments_data_general a
-		on a.marketplace_id = i.marketplace_id
-		left join core.products p
-		on a.marketplace_id = p.marketplace_id
-		`);
-    res.json({ rows });
-  } catch (err) {
-    console.error("[health/shipment_data]", err.message);
-    res.status(500).json({ error: "Failed to load shipments from the database" });
-  }
-});
-
-
 
 router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("sale_report")), async (req, res) => {
   try {
 
     const { rows } = await query(`
-    
-select a.purchase_date as Purchase_date,
+      select a.purchase_date as Purchase_date,
 		d.item_code as Item_Code,
 		b.units_per_sku as Set_,
 		a.quantity_shipped as QTY,
-		c.price as Product_Sale_Price,
+		a.item_price as Product_Sale_Price,
 		Round((c.price/a.quantity_shipped),2) as Unit_price,
 		a.amazon_order_id as Order_id,
 		c.fulfillment_channel as Fulfilment,
@@ -180,8 +156,7 @@ select a.purchase_date as Purchase_date,
 		on a.sku = c.seller_sku
 		left join core.items d
 		on d.item_name = c.item_name;
-
-		`);
+`);
     res.json({ rows });
   } catch (err) {
     console.error("[health/shipment_data]", err.message);
@@ -190,5 +165,31 @@ select a.purchase_date as Purchase_date,
 });
 
 
+router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("dashboard")), async (req, res) => {
+  try {
+    // Dashboard "Recent orders": one row per shipped order line, newest first.
+    // Column names match the OrderRow interface in RecentOrders.tsx. Joined on
+    // the SKU (joining on marketplace alone paired every SKU with every order).
+    const { rows } = await query(`
+    SELECT a.shipment_item_id                                                     AS id,
+           COALESCE(p.product_name, a.product_name, '')                           AS item_name,
+           a.sku                                                                  AS sku,
+           COALESCE(i.item_code, '')                                              AS "dtiItemCode",
+           COALESCE(round(a.item_price / NULLIF(a.quantity_shipped, 0), 2), 0)::float8 AS "Price",
+           COALESCE(a.quantity_shipped, 0)                                        AS qty,
+           COALESCE(a.item_price, 0)::float8                                      AS total
+      FROM amazon.get_amazon_fulfilled_shipments_data_general a
+      LEFT JOIN core.item_sku_map i
+             ON i.seller_sku = a.sku AND i.marketplace_id = a.marketplace_id
+      LEFT JOIN core.products p
+             ON p.seller_sku = a.sku AND p.marketplace_id = a.marketplace_id
+     ORDER BY a.purchase_date DESC NULLS LAST
+     LIMIT 100`);
+    res.json({ rows });
+  } catch (err) {
+    console.error("[health/recent_order]", err.message);
+    res.status(500).json({ error: "Failed to load recent orders from the database" });
+  }
+});
 
 export default router;

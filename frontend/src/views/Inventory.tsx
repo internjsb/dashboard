@@ -172,7 +172,7 @@ export default function Inventory() {
   const shipmentColumns: DataTableColumn<Shipement>[] = [
     { key: "sku", header: "SKU", accessor: (s) => s.sku },
     { key: "order_id", header: "Order ID", accessor: (s) => s.order_id ?? "" },
-    { key: "product_name", header: "Product Name", accessor: (s) => s.product_name ?? "" },
+    { key: "product_name", header: "DTI Item Descriptioon", accessor: (s) => s.product_name ?? "" },
     {
       key: "shipment_qty",
       header: "Shipment Qty",

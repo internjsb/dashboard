@@ -1,25 +1,47 @@
 import { useEffect, useState } from "react";
-import type { OrderRow } from "../types";
+import api from "../api/client";
 import ExportCsvButton from "./ExportCsvButton";
 import { matches } from "../utils/search";
 import styles from "./RecentOrders.module.css";
 
-interface Props {
-  orders: OrderRow[];
+// One row from GET /health/recent_order — the query returns exactly these columns.
+interface OrderRow {
+  id: string;
+  item_name: string;
+  sku: string;
+  dtiItemCode: string; // e.g. "2-011"
+  Price: number; // per unit (total ÷ qty)
+  qty: number;
+  total: number;
 }
 
 const PAGE_SIZE = 5;
 
-export default function RecentOrders({ orders }: Props) {
+export default function RecentOrders() {
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [dtiFilter, setDtiFilter] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ rows: OrderRow[] }>("/health/recent_order", { timeout: 30000 })
+      .then(({ data }) => !cancelled && setOrders(data.rows))
+      .catch(() => !cancelled && setError("Couldn't load recent orders."))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const dtiOptions = Array.from(new Set(orders.map((o) => o.dtiItemCode))).sort();
 
   const filtered = orders
     .filter((o) => !dtiFilter || o.dtiItemCode === dtiFilter)
-    .filter((o) => matches(`${o.id} ${o.sku} ${o.dtiItemCode} ${o.finish}`, query));
+    .filter((o) => matches(`${o.id} ${o.sku} ${o.dtiItemCode} ${o.item_name}`, query));
 
   // A new search term or DTI filter changes which orders match, so whatever
   // page we were on no longer means the same thing — back to 1.
@@ -39,13 +61,12 @@ export default function RecentOrders({ orders }: Props) {
           filename="recent-orders"
           rows={orders}
           columns={[
+            { header: "Item", value: (o) => o.item_name },
             { header: "SKU", value: (o) => o.sku },
             { header: "DTI Item Code", value: (o) => o.dtiItemCode },
-            { header: "Order ID", value: (o) => o.id },
-            { header: "Item", value: (o) => o.finish },
             { header: "Qty", value: (o) => o.qty },
+            { header: "Price", value: (o) => o.Price.toFixed(2) },
             { header: "Total", value: (o) => o.total.toFixed(2) },
-            { header: "Time", value: (o) => o.time },
           ]}
         />
       </div>
@@ -74,7 +95,11 @@ export default function RecentOrders({ orders }: Props) {
         </select>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <p className={styles.empty}>Loading…</p>
+      ) : error ? (
+        <p className={styles.empty}>{error}</p>
+      ) : filtered.length === 0 ? (
         <p className={styles.empty}>No orders match the current filters.</p>
       ) : (
         <>
@@ -89,9 +114,9 @@ export default function RecentOrders({ orders }: Props) {
               <li key={o.id}>
                 <div className={styles.row}>
                   <div className={styles.itemCol}>
-                    <span className={styles.product}>{o.finish}</span>
+                    <span className={styles.product}>{o.item_name}</span>
                     <span className={styles.meta}>
-                      {o.qty} unit{o.qty > 1 ? "s" : ""} · {o.time} · {o.id}
+                      {o.qty} unit{o.qty > 1 ? "s" : ""} × ${o.Price.toFixed(2)}
                     </span>
                   </div>
                   <span className={styles.cell}>{o.sku}</span>
