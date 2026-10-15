@@ -19,15 +19,11 @@ interface ListingRow {
   type: string;
   ean: string;
   imageUrl: string | null;
-  /** All photos in order (first = cover, same as imageUrl). */
   images?: { url: string; path: string }[];
-  /** "added" = your item with no Amazon listing yet (core.items); "amazon" = an Amazon listing. */
   source: "added" | "amazon";
-  /** Amazon SKU (Amazon rows: used to edit / hide the row; your items: the linked SKU, if any). */
   sku?: string;
 }
 
-// Shape returned by GET /api/dashboard/listing-data (Cloud SQL).
 interface AmazonListingRow {
   source: "amazon" | "item";
   sku: string | null;

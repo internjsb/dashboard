@@ -58,7 +58,7 @@ router.get("/listing-data", ...unlessLocalDev(requireAuth, requireActive, requir
       SELECT l.image_url                                                    AS image_url,
              regexp_replace(split_part(i.item_name, '-', 1), 'NIST$', '')  AS division,
              m.item_code                                                   AS dti_item_code,
-             i.item_name                                                   AS dti_item_description,
+             m.item_name                                                   AS dti_item_description,
              initcap(replace(regexp_replace(ip.product_group, '^gl_', ''), '_', ' ')) AS type,
              CASE WHEN l.product_id_type = '4' THEN l.product_id END      AS ean
         FROM amazon.get_merchant_listings_all_data l
@@ -140,7 +140,7 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
   try {
 
     const { rows } = await query(`
-      select a.purchase_date as Purchase_date,
+      select to_char(a.purchase_date, 'DD/MM/YY') as Purchase_date,
 		d.item_code as Item_Code,
 		b.units_per_sku as Set_,
 		a.quantity_shipped as QTY,
@@ -148,7 +148,7 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 		Round((c.price/a.quantity_shipped),2) as Unit_price,
 		a.amazon_order_id as Order_id,
 		c.fulfillment_channel as Fulfilment,
-		a.shipment_date as Shipped_date
+		to_char(a.shipment_date, 'DD/MM/YY') as Shipped_date
 		from amazon.get_amazon_fulfilled_shipments_data_general a
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
@@ -171,14 +171,16 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
     // Column names match the OrderRow interface in RecentOrders.tsx. Joined on
     // the SKU (joining on marketplace alone paired every SKU with every order).
     const { rows } = await query(`
-    SELECT a.shipment_item_id                                                     AS id,
+    SELECT 
            COALESCE(p.product_name, a.product_name, '')                           AS item_name,
            a.sku                                                                  AS sku,
            COALESCE(i.item_code, '')                                              AS "dtiItemCode",
   
            COALESCE(i.units_per_sku, 0)                                        AS qty,
            -- Quoted: unquoted aliases come back lower-case ("price").
-           COALESCE(a.item_price, 0)::float8                                      AS "Price"
+           -- ::float8 so it arrives as a number (numeric comes through as text);
+           -- COALESCE so a SKU with no item_sku_map row gives 0, not NULL.
+           COALESCE(a.item_price * i.units_per_sku, 0)::float8                    AS "Price"
       FROM amazon.get_amazon_fulfilled_shipments_data_general a
       LEFT JOIN core.item_sku_map i
              ON i.seller_sku = a.sku AND i.marketplace_id = a.marketplace_id
@@ -190,6 +192,46 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
   } catch (err) {
     console.error("[health/recent_order]", err.message);
     res.status(500).json({ error: "Failed to load recent orders from the database" });
+  }
+});
+
+// DTI items for the AMAZON Listing form's "DTI Item Code" picker — the same
+// items the Product Listing page shows (core.items). Gated on the "products"
+// page, since AMAZON Listing users may not have Product Listing access.
+router.get("/dti_items", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("products")), async (req, res) => {
+  try {
+    const { rows } = await query(`
+      -- Division / Type / EAN the same way the Product Listing page shows them:
+      -- Type = Amazon's product group (latest snapshot), EAN = the listing's
+      -- product id when it's an EAN (type 4). Both look across ALL of the
+      -- item's SKUs, since its first SKU may not have one.
+      SELECT i.item_code                                                 AS "dtiItemCode",
+             COALESCE(i.item_name, '')                                   AS "dtiItemDescription",
+             regexp_replace(split_part(COALESCE(i.item_name, ''), '-', 1), 'NIST$', '') AS division,
+             COALESCE(initcap(replace(regexp_replace(pg.product_group, '^gl_', ''), '_', ' ')), '') AS type,
+             COALESCE(e.ean, '')                                         AS ean
+        FROM core.items i
+        LEFT JOIN LATERAL (
+               SELECT f.product_group
+                 FROM core.item_sku_map m
+                 JOIN amazon.get_fba_inventory_planning_data f
+                   ON f.sku = m.seller_sku AND f.marketplace_id = m.marketplace_id
+                WHERE m.item_code = i.item_code AND f.product_group IS NOT NULL
+                ORDER BY f.snapshot_date DESC, m.seller_sku
+                LIMIT 1) pg ON true
+        LEFT JOIN LATERAL (
+               SELECT l.product_id AS ean
+                 FROM core.item_sku_map m
+                 JOIN amazon.get_merchant_listings_all_data l
+                   ON l.seller_sku = m.seller_sku AND l.marketplace_id = m.marketplace_id
+                WHERE m.item_code = i.item_code AND l.product_id_type = '4' AND l.product_id IS NOT NULL
+                ORDER BY m.seller_sku
+                LIMIT 1) e ON true
+       ORDER BY i.item_code`);
+    res.json({ rows });
+  } catch (err) {
+    console.error("[health/dti_items]", err.message);
+    res.status(500).json({ error: "Failed to load DTI items from the database" });
   }
 });
 

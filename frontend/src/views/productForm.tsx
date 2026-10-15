@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { onValue, orderByChild, query, ref } from "firebase/database";
 import axios from "axios";
+import api from "../api/client";
+import DtiItemPicker, { type DtiItem } from "../components/DtiItemPicker";
 import { rtdb } from "../firebase";
 import styles from "./Products.module.css";
 
@@ -16,6 +18,9 @@ export interface ProductRow {
   dtiItemCode: string;
   set: number;
   dtiItemDescription: string;
+  /** Optional second DTI item (older rows don't have these). */
+  dtiItemCode2?: string;
+  dtiItemDescription2?: string;
   type: string;
   country: string;
   asin: string;
@@ -31,6 +36,12 @@ export type ProductPayload = Omit<ProductRow, "id">;
 
 const STATUS_OPTIONS = ["Active", "Inactive"];
 
+// Fields that come from the chosen DTI item (Product Listing's data).
+const DTI_LINKED_KEYS = ["dtiItemDescription", "division", "type", "ean"] as const;
+type DtiLinkedKey = (typeof DTI_LINKED_KEYS)[number];
+// Always read-only, even when the chosen item has no value for them.
+const ALWAYS_LOCKED: readonly DtiLinkedKey[] = ["dtiItemDescription", "type"];
+
 const DEFAULT_SET = "1";
 
 // Every field is required except "fnsku" and "ean". "Set" is a number (qty per pack), required, defaults to 1.
@@ -39,6 +50,8 @@ const FIELDS: { key: FieldKey; label: string; required: boolean; options?: strin
   { key: "division", label: "Division", required: true },
   { key: "dtiItemCode", label: "DTI Item Code", required: true },
   { key: "dtiItemDescription", label: "DTI Item Description", required: true },
+  { key: "dtiItemCode2", label: "2nd DTI Item Code", required: false },
+  { key: "dtiItemDescription2", label: "2nd DTI Item Description", required: false },
   { key: "type", label: "Type", required: true },
   { key: "country", label: "Country", required: true },
   { key: "asin", label: "ASIN", required: true },
@@ -53,7 +66,11 @@ const FIELDS: { key: FieldKey; label: string; required: boolean; options?: strin
 type LayoutKey = FieldKey | "sn" | "set";
 const SECTIONS: { title: string; keys: LayoutKey[] }[] = [
   { title: "Basics", keys: ["sn", "sku", "status"] },
-  { title: "Item details", keys: ["division", "dtiItemCode", "set", "dtiItemDescription", "type", "country"] },
+  // Row 1: first DTI item + Division; row 2: second DTI item + Set; row 3: Type, Country.
+  {
+    title: "Item details",
+    keys: ["dtiItemCode", "dtiItemDescription", "division", "dtiItemCode2", "dtiItemDescription2", "set", "type", "country"],
+  },
   { title: "Marketplace identifiers", keys: ["asin", "fnsku", "ean"] },
   { title: "Description", keys: ["description"] },
 ];
@@ -65,9 +82,11 @@ const HINTS: Record<LayoutKey, string> = {
   sku: "This is the Amazon Listing code.",
   status: "Status of the product",
   division: "Type of the product",
-  dtiItemCode: "Product code from the company",
+  dtiItemCode: "Pick from the Product Listing items — fills in the description, division, type and EAN too.",
   set: "how many units come in one pack.",
   dtiItemDescription: "This is the description for the DTI code",
+  dtiItemCode2: "Optional — a second DTI item in this product.",
+  dtiItemDescription2: "Matches the 2nd DTI Item Code.",
   type: "Type of the product",
   country: "eg.US",
   asin: "10-character Amazon ID.",
@@ -169,6 +188,45 @@ export function ProductForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // DTI items from the Product Listing page (core.items) for the DTI Item Code picker.
+  const [dtiItems, setDtiItems] = useState<DtiItem[]>([]);
+  const [dtiLoading, setDtiLoading] = useState(true);
+  const [dtiError, setDtiError] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ rows: DtiItem[] }>("/health/dti_items", { timeout: 30000 })
+      .then(({ data }) => !cancelled && setDtiItems(data.rows))
+      .catch((err) => !cancelled && setDtiError(errorMessage(err, "Couldn't load DTI items.")))
+      .finally(() => !cancelled && setDtiLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // The DTI item currently chosen in the picker (if it's one of Product Listing's).
+  const matchedDti = dtiItems.find((i) => i.dtiItemCode === form.dtiItemCode);
+  // The optional second DTI item. Division / Type / EAN still come from the first.
+  const matchedDti2 = form.dtiItemCode2 ? dtiItems.find((i) => i.dtiItemCode === form.dtiItemCode2) : undefined;
+
+  function pickDtiItem2(item: DtiItem | null) {
+    setForm((prev) => ({
+      ...prev,
+      dtiItemCode2: item?.dtiItemCode ?? "",
+      dtiItemDescription2: item?.dtiItemDescription ?? "",
+    }));
+  }
+
+  // Picking a DTI item fills in its linked fields. Ones the item has no value
+  // for (e.g. no Amazon listing yet) keep what was typed and stay editable.
+  function pickDtiItem(item: DtiItem) {
+    setForm((prev) => {
+      const next = { ...prev, dtiItemCode: item.dtiItemCode };
+      for (const k of DTI_LINKED_KEYS) next[k] = ALWAYS_LOCKED.includes(k) ? item[k] : item[k] || prev[k];
+      return next;
+    });
+  }
+
   const nextSn = useMemo(
     () => (products.length === 0 ? 1 : Math.max(...products.map((p) => p.sn)) + 1),
     [products],
@@ -189,11 +247,45 @@ export function ProductForm({
     e.preventDefault();
 
     for (const f of FIELDS) {
+      // Type is filled from the DTI item and locked, so an item with no type
+      // on Product Listing can still be saved with it blank.
+      if (f.key === "type" && matchedDti) continue;
       if (f.required && !form[f.key].trim()) {
         setError(`${f.label} is required.`);
         return;
       }
     }
+
+    // DTI Item Code must be one of Product Listing's items (an edited row may
+    // keep an older code it already had).
+    const code = form.dtiItemCode.trim();
+    const keptOldCode = editing && code === editing.dtiItemCode;
+    if (dtiItems.length > 0 && !keptOldCode && !dtiItems.some((i) => i.dtiItemCode === code)) {
+      setError("Pick a DTI Item Code from the list (Product Listing's items).");
+      return;
+    }
+
+    const code2 = form.dtiItemCode2.trim();
+    if (code2) {
+      if (code2 === code) {
+        setError("The 2nd DTI Item Code must be different from the first.");
+        return;
+      }
+      const keptOldCode2 = editing && code2 === editing.dtiItemCode2;
+      if (dtiItems.length > 0 && !keptOldCode2 && !dtiItems.some((i) => i.dtiItemCode === code2)) {
+        setError("Pick the 2nd DTI Item Code from the list (Product Listing's items).");
+        return;
+      }
+    }
+
+    // Linked fields always follow the chosen DTI item (2-001 -> DWL-001, DWL, …).
+    const dtiItem = dtiItems.find((i) => i.dtiItemCode === code);
+    const payloadForm = { ...form };
+    if (dtiItem)
+      for (const k of DTI_LINKED_KEYS) if (dtiItem[k] || ALWAYS_LOCKED.includes(k)) payloadForm[k] = dtiItem[k];
+    const dtiItem2 = code2 ? dtiItems.find((i) => i.dtiItemCode === code2) : undefined;
+    payloadForm.dtiItemCode2 = code2;
+    payloadForm.dtiItemDescription2 = code2 ? (dtiItem2?.dtiItemDescription ?? form.dtiItemDescription2) : "";
 
     const sn = snInput.trim() ? Number(snInput) : nextSn;
     if (!Number.isFinite(sn) || sn <= 0) {
@@ -214,7 +306,7 @@ export function ProductForm({
     setSaving(true);
     setError(null);
     try {
-      await onSubmit({ sn, ...form, set });
+      await onSubmit({ sn, ...payloadForm, set });
       if (resetOnSuccess) {
         setForm(EMPTY_FORM);
         setSnInput("");
@@ -271,6 +363,87 @@ export function ProductForm({
             onChange={(e) => setSetInput(e.target.value)}
           />
           {hint(key)}
+        </label>
+      );
+    }
+    if (key === "dtiItemCode") {
+      // A <div>, not a <label>: a label would forward clicks inside the pop-up to the button.
+      return (
+        <div key={key} className={styles.field}>
+          <span className={styles.fieldLabel}>
+            DTI Item Code
+            <span className={styles.required}> *</span>
+          </span>
+          <DtiItemPicker
+            items={dtiItems}
+            value={form.dtiItemCode}
+            onSelect={pickDtiItem}
+            loading={dtiLoading}
+            error={dtiError}
+            placeholder={`Select a DTI item code (e.g. ${PLACEHOLDERS.dtiItemCode})`}
+            required
+          />
+          {hint(key)}
+        </div>
+      );
+    }
+    // Description / Division / Type / EAN: read-only, filled in from the chosen
+    // DTI item. Description and Type are always locked; Division and EAN only
+    // when the item has a value (otherwise they can still be typed in).
+    if (key === "dtiItemCode2") {
+      return (
+        <div key={key} className={styles.field}>
+          <span className={styles.fieldLabel}>
+            2nd DTI Item Code <em className={styles.optional}>Optional</em>
+          </span>
+          <DtiItemPicker
+            items={dtiItems.filter((i) => i.dtiItemCode !== form.dtiItemCode)}
+            value={form.dtiItemCode2}
+            onSelect={pickDtiItem2}
+            onClear={() => pickDtiItem2(null)}
+            loading={dtiLoading}
+            error={dtiError}
+            placeholder="Add a second DTI item (optional)"
+          />
+          {hint(key)}
+        </div>
+      );
+    }
+    if (key === "dtiItemDescription2") {
+      return (
+        <label key={key} className={styles.field}>
+          <span className={styles.fieldLabel}>
+            2nd DTI Item Description <em className={styles.optional}>Auto</em>
+          </span>
+          <input
+            type="text"
+            readOnly
+            tabIndex={-1}
+            className={styles.readOnlyInput}
+            placeholder={form.dtiItemCode2 ? "None on Product Listing" : "Filled in from the 2nd DTI Item Code"}
+            value={matchedDti2?.dtiItemDescription ?? form.dtiItemDescription2}
+          />
+          {hint(key)}
+        </label>
+      );
+    }
+    const linked = (DTI_LINKED_KEYS as readonly LayoutKey[]).includes(key) ? (key as DtiLinkedKey) : null;
+    if (linked && (ALWAYS_LOCKED.includes(linked) || matchedDti?.[linked])) {
+      const label = FIELDS.find((x) => x.key === linked)!.label;
+      return (
+        <label key={key} className={styles.field}>
+          <span className={styles.fieldLabel}>
+            {label} <em className={styles.optional}>Auto</em>
+          </span>
+          <input
+            type="text"
+            readOnly
+            tabIndex={-1}
+            className={styles.readOnlyInput}
+            placeholder={matchedDti ? "None on Product Listing" : "Filled in from the DTI Item Code"}
+            value={matchedDti ? matchedDti[linked] || (ALWAYS_LOCKED.includes(linked) ? "" : form[linked]) : form[linked]}
+          />
+          {showHints && <small className={styles.fieldHint}>Matches the DTI Item Code you pick.</small>}
         </label>
       );
     }

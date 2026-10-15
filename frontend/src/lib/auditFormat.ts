@@ -166,6 +166,8 @@ export const FIELD_LABEL: Record<string, string> = {
   division: "Division",
   dtiItemCode: "DTI item",
   dtiItemDescription: "DTI Item Description",
+  dtiItemCode2: "2nd DTI item",
+  dtiItemDescription2: "2nd DTI Item Description",
   type: "Type",
   ean: "EAN",
   sn: "S/N",

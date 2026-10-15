@@ -247,6 +247,8 @@ export interface AuditEvent {
   at: number;
   actorUid: string | null;
   actorEmail: string | null;
+  /** The actor's current display name (looked up when the log loads). */
+  actorName?: string | null;
   action: string;
   detail?: Record<string, unknown> | null;
   userAgent: string;

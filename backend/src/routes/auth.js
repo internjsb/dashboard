@@ -59,9 +59,14 @@ const NOTIFY_TARGET_ACTIONS = new Set(["user.role_change"]);
 router.get("/audit", requireAuth, requireActive, async (req, res) => {
   const { uid, isSuperAdmin } = req.user;
   try {
-    const all = (await db.get("audit")) || {};
+    const [all, users] = await Promise.all([
+      db.get("audit").then((v) => v || {}),
+      db.get("users").then((v) => v || {}),
+    ]);
     const events = Object.entries(all)
-      .map(([id, e]) => ({ id, ...e }))
+      // The log only stores who by uid/email; attach their current display
+      // name so the page can show it (works for old entries too).
+      .map(([id, e]) => ({ id, ...e, actorName: users[e.actorUid]?.displayName || null }))
       .filter(
         (e) =>
           isSuperAdmin ||
@@ -77,6 +82,7 @@ router.get("/audit", requireAuth, requireActive, async (req, res) => {
               action: e.action,
               actorUid: null,
               actorEmail: null,
+              actorName: null,
               userAgent: "",
               ip: null,
               location: null,

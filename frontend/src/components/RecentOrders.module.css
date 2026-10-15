@@ -79,26 +79,32 @@
 }
 
 .card li {
-  padding: 12px 0;
   border-top: 1px solid var(--border);
 }
 
 .card li:first-child {
   border-top: none;
-  padding-top: 0;
 }
 
+.card li:hover {
+  background: var(--bg);
+}
+
+/* Every row (and the header) is its own grid, so all four columns need
+   widths that don't depend on the row's content — an "auto" price column
+   sized itself per row and knocked the other columns out of line. */
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.9fr) auto;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) 120px;
   align-items: center;
   gap: 16px;
+  padding: 12px 10px;
 }
 
 .rowHead {
+  padding-top: 0;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;

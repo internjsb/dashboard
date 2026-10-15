@@ -409,3 +409,20 @@
 .success a {
   color: inherit;
 }
+
+/* DTI Item Description: filled in from the DTI Item Code picker, not typed. */
+.field input.readOnlyInput,
+.field input.readOnlyInput:focus {
+  background: var(--surface);
+  border-style: dashed;
+  box-shadow: none;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+/* DTI Item Code / Description cells: the optional second DTI item on its own line. */
+.twoLines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

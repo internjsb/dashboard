@@ -5,7 +5,7 @@ import DataTable, { type DataTableColumn } from "../components/DataTable";
 import api from "../api/client";
 import type { AuditEvent } from "../types";
 import styles from "./AuditLog.module.css";
-import { username, describe, deviceFromUA, changesOf, pageOf, subjectOf, placeOf, when } from "../lib/auditFormat";
+import { describe, deviceFromUA, changesOf, pageOf, subjectOf, placeOf, when } from "../lib/auditFormat";
 
 export default function AuditLog() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -52,7 +52,8 @@ export default function AuditLog() {
     {
       key: "who",
       header: "Who",
-      accessor: (e) => username(e.actorEmail) || e.actorUid || "",
+      // Full email; search also matches their display name.
+      accessor: (e) => `${e.actorEmail || e.actorUid || ""} ${e.actorName || ""}`.trim(),
       className: styles.who,
       render: (e) =>
         e.aboutYou ? (
@@ -60,7 +61,7 @@ export default function AuditLog() {
             —
           </span>
         ) : (
-          <span title={e.actorEmail || undefined}>{username(e.actorEmail) || e.actorUid || "—"}</span>
+          <span title={e.actorName || undefined}>{e.actorEmail || e.actorUid || "—"}</span>
         ),
     },
     {

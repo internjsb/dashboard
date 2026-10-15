@@ -8,6 +8,18 @@ import DataTable, { type DataTableColumn, type DataTableFilter } from "../compon
 import { ProductForm, errorMessage, useProducts, type ProductPayload, type ProductRow } from "./productForm";
 import styles from "./Products.module.css";
 
+// First DTI value, plus the second one (if any) on its own line below.
+function TwoLines({ first, second }: { first: string; second?: string }) {
+  return second ? (
+    <span className={styles.twoLines}>
+      <span>{first}</span>
+      <span>{second}</span>
+    </span>
+  ) : (
+    <>{first}</>
+  );
+}
+
 export default function Products() {
   const { products, loading, loadError } = useProducts();
   const [editing, setEditing] = useState<ProductRow | null>(null);
@@ -45,9 +57,20 @@ export default function Products() {
     { key: "sn", header: "S/N", accessor: (p) => p.sn },
     { key: "sku", header: "SKU", accessor: (p) => p.sku },
     { key: "division", header: "Division", accessor: (p) => p.division },
-    { key: "dtiItemCode", header: "DTI Item Code", accessor: (p) => p.dtiItemCode },
+    // A product can have a second DTI item — shown on its own line in the same cell.
+    {
+      key: "dtiItemCode",
+      header: "DTI Item Code",
+      accessor: (p) => [p.dtiItemCode, p.dtiItemCode2].filter(Boolean).join(" / "),
+      render: (p) => <TwoLines first={p.dtiItemCode} second={p.dtiItemCode2} />,
+    },
     { key: "set", header: "Set", accessor: (p) => p.set },
-    { key: "dtiItemDescription", header: "DTI Item Description", accessor: (p) => p.dtiItemDescription },
+    {
+      key: "dtiItemDescription",
+      header: "DTI Item Description",
+      accessor: (p) => [p.dtiItemDescription, p.dtiItemDescription2].filter(Boolean).join(" / "),
+      render: (p) => <TwoLines first={p.dtiItemDescription} second={p.dtiItemDescription2} />,
+    },
     { key: "type", header: "Type", accessor: (p) => p.type },
     { key: "country", header: "Country", accessor: (p) => p.country },
     { key: "asin", header: "ASIN", accessor: (p) => p.asin },

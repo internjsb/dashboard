@@ -544,6 +544,9 @@ const PRODUCT_TEXT_FIELDS = [
   "division",
   "dtiItemCode",
   "dtiItemDescription",
+  // Optional second DTI item (a product can be made of two).
+  "dtiItemCode2",
+  "dtiItemDescription2",
   "type",
   "country",
   "asin",
@@ -552,7 +555,7 @@ const PRODUCT_TEXT_FIELDS = [
   "description",
   "status",
 ];
-const PRODUCT_OPTIONAL_FIELDS = new Set(["fnsku", "ean"]);
+const PRODUCT_OPTIONAL_FIELDS = new Set(["fnsku", "ean", "dtiItemCode2", "dtiItemDescription2"]);
 const PRODUCT_STATUS_OPTIONS = ["Active", "Inactive"];
 
 // Returns { product } or { error }. `excludeId` lets an edit keep its own S/N.
@@ -564,6 +567,10 @@ async function validateProduct(body, excludeId) {
     if (!PRODUCT_OPTIONAL_FIELDS.has(key) && !product[key]) return { error: `${key} is required` };
   }
   if (!PRODUCT_STATUS_OPTIONS.includes(product.status)) return { error: "Status must be Active or Inactive" };
+  if (product.dtiItemCode2 && product.dtiItemCode2 === product.dtiItemCode) {
+    return { error: "The second DTI Item Code must be different from the first" };
+  }
+  if (!product.dtiItemCode2) product.dtiItemDescription2 = "";
 
   product.sn = Number(b.sn);
   if (!Number.isFinite(product.sn) || product.sn <= 0) return { error: "S/N must be a positive number" };

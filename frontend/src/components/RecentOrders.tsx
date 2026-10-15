@@ -6,7 +6,7 @@ import styles from "./RecentOrders.module.css";
 
 // One row from GET /health/recent_order — the query returns exactly these columns.
 interface OrderRow {
-  id: string;
+  // id: string;
   item_name: string;
   sku: string;
   dtiItemCode: string; // e.g. "2-011"
@@ -40,8 +40,10 @@ export default function RecentOrders() {
 
   const filtered = orders
     .filter((o) => !dtiFilter || o.dtiItemCode === dtiFilter)
-    .filter((o) => matches(`${o.id} ${o.sku} ${o.dtiItemCode} ${o.item_name}`, query));
+    .filter((o) => matches(`${o.Price} ${o.sku} ${o.dtiItemCode} ${o.item_name}`, query));
 
+
+  // ${o.id}
   // A new search term or DTI filter changes which orders match, so whatever
   // page we were on no longer means the same thing — back to 1.
   useEffect(() => {
@@ -105,16 +107,17 @@ export default function RecentOrders() {
             <span>Item</span>
             <span>SKU</span>
             <span>DTI item code</span>
-            <span className={styles.priceHead}>Price</span>
+            <span className={styles.priceHead}>Total Price</span>
           </div>
           <ul>
-            {paged.map((o) => (
-              <li key={o.id}>
+            {paged.map((o, i) => (
+              // No id from the query, so SKU + position is the key.
+              <li key={`${o.sku}-${(currentPage - 1) * PAGE_SIZE + i}`}>
                 <div className={styles.row}>
                   <div className={styles.itemCol}>
                     <span className={styles.product}>{o.item_name}</span>
                     <span className={styles.meta}>
-                      {o.qty} unit{o.qty === 1 ? "" : "s"} · {o.id}
+                      {o.qty} unit{o.qty === 1 ? "" : "s"} × ${o.Price.toFixed(2)}
                     </span>
                   </div>
                   <span className={styles.cell}>{o.sku}</span>
