@@ -147,7 +147,7 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 		a.item_price as Product_Sale_Price,
 		Round((c.price/a.quantity_shipped),2) as Unit_price,
 		a.amazon_order_id as Order_id,
-		c.fulfillment_channel as Fulfilment,
+		c.fulfillment_channel as Fulfillment,
 		to_char(a.shipment_date, 'DD/MM/YY') as Shipped_date
 		from amazon.get_amazon_fulfilled_shipments_data_general a
 		left join core.item_sku_map b
@@ -177,9 +177,6 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
            COALESCE(i.item_code, '')                                              AS "dtiItemCode",
   
            COALESCE(i.units_per_sku, 0)                                        AS qty,
-           -- Quoted: unquoted aliases come back lower-case ("price").
-           -- ::float8 so it arrives as a number (numeric comes through as text);
-           -- COALESCE so a SKU with no item_sku_map row gives 0, not NULL.
            COALESCE(a.item_price * i.units_per_sku, 0)::float8                    AS "Price"
       FROM amazon.get_amazon_fulfilled_shipments_data_general a
       LEFT JOIN core.item_sku_map i
