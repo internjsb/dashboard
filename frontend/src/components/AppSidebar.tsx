@@ -116,7 +116,7 @@ export default function AppSidebar() {
           {canSeeStockAvailable && (
             <NavLink to="/stock-available" className={navItemClass}>
               <Package className={styles.icon} size={18} />
-              Stock available
+              Available Stock
               {lowItems.length > 0 && (
                 <span className={styles.badge} title={`${lowItems.length} item(s) low on stock`}>
                   {lowItems.length}

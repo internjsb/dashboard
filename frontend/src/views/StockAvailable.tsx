@@ -110,7 +110,7 @@ export default function StockAvailable() {
     <div className="app-shell">
       <AppSidebar />
       <div className="app-content">
-        <AppTopbar title="Stock available" />
+        <AppTopbar title="Available Stock" />
         <main className={styles.content}>
           <div className={styles.head}>
             <p className={styles.intro}>Stock available by item, by fulfilment country and warehouse.</p>

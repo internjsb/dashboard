@@ -129,42 +129,71 @@
 }
 
 .pill.admin { background: var(--accent-tint); color: var(--accent-strong); }
+.pill.superAdmin { background: var(--accent-strong); color: #fff; }
 .pill.active { background: var(--success-tint); color: var(--success); }
 .pill.pending { background: var(--warning-tint); color: var(--warning); }
 .pill.denied { background: var(--danger-tint); color: var(--danger); }
 .pill.disabled { background: var(--danger-tint); color: var(--danger); }
 
-.actions { text-align: right; white-space: nowrap; }
+/* Row actions: one tidy, right-aligned group with even spacing. */
+.actions { white-space: nowrap; }
+
+.actionGroup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+}
 
 .actions button {
   border: 1px solid var(--border);
   background: var(--surface);
-  padding: 6px 12px;
+  color: var(--text-primary);
+  height: 30px;
+  padding: 0 12px;
   border-radius: var(--radius-sm);
   font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-
-.actions button + button { margin-left: 6px; }
 
 .userTable th,
 .joined { white-space: nowrap; }
 
+.actions .details:hover:not(:disabled) { background: var(--bg); border-color: var(--text-muted); }
 .actions .promote { border-color: var(--accent); color: var(--accent-strong); }
+.actions .promote:hover:not(:disabled) { background: var(--accent-tint); }
 .actions .demote { border-color: var(--danger); color: var(--danger); }
+.actions .demote:hover:not(:disabled) { background: var(--danger-tint); }
 .actions .disable { border-color: var(--warning); color: var(--warning); }
+.actions .disable:hover:not(:disabled) { background: var(--warning-tint); }
 .actions .enable { border-color: var(--success); color: var(--success); }
-.actions .remove { border-color: var(--danger); color: #fff; background: var(--danger); }
-.actions .details { border-color: var(--border); color: var(--text-primary); }
-.actions .details:hover { background: var(--bg); }
-.actions .details + .locked { margin-left: 8px; }
+.actions .enable:hover:not(:disabled) { background: var(--success-tint); }
+/* Outlined until hovered, so a destructive button isn't a red block on every row. */
+.actions .remove { border-color: var(--danger); color: var(--danger); }
+.actions .remove:hover:not(:disabled) { background: var(--danger); color: #fff; }
 .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .locked {
   font-size: 12px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* "locked" (super admin) / "you" (your own row): a small badge in line with the buttons. */
+.rowTag {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--border);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .approve, .deny {
@@ -259,7 +288,6 @@
 .tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 12px;
 }
 
 .tab {
@@ -308,7 +336,6 @@
 .addUserBtn {
   display: inline-flex;
   align-items: center;
-  margin-bottom: 14px;
   padding: 9px 16px;
   border: none;
   border-radius: var(--radius-sm);
@@ -380,4 +407,32 @@
 .modalActions button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* --- Alignment ---------------------------------------------------------- */
+
+/* Tabs + "Add user" on one row; stacks on narrow screens. */
+.listBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Fixed widths so pills, drop-downs and dates line up from row to row;
+   the User column takes the rest. */
+.colRole { width: 120px; }
+.colDept { width: 170px; }
+.colStatus { width: 110px; }
+.colJoined { width: 110px; }
+
+/* Every Department drop-down the same width. */
+.colDept .deptSelect { width: 150px; }
+
+/* "—" / your own department: text lines up with the text inside the drop-downs. */
+.deptStatic {
+  display: inline-block;
+  padding-left: 11px;
 }

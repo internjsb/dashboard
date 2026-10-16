@@ -226,9 +226,10 @@ export default function AdminPanel() {
     {
       key: "role",
       header: "Role",
+      className: styles.colRole,
       accessor: (u) => (u.isSuperAdmin ? "super admin" : u.role),
       render: (u) => (
-        <span className={`${styles.pill} ${(u.isSuperAdmin ? styles.admin : styles[u.role]) || ""}`}>
+        <span className={`${styles.pill} ${(u.isSuperAdmin ? styles.superAdmin : styles[u.role]) || ""}`}>
           {u.isSuperAdmin ? "super admin" : u.role}
         </span>
       ),
@@ -236,12 +237,15 @@ export default function AdminPanel() {
     {
       key: "department",
       header: "Department",
+      className: styles.colDept,
       accessor: (u) => (u.isSuperAdmin ? "" : u.department ? DEPARTMENT_LABEL[u.department] : ""),
       render: (u) =>
         u.isSuperAdmin ? (
-          <span className={styles.locked}>—</span>
+          <span className={`${styles.locked} ${styles.deptStatic}`}>—</span>
         ) : u.uid === currentUid ? (
-          <span className={styles.locked}>{u.department ? DEPARTMENT_LABEL[u.department] : "Unassigned"}</span>
+          <span className={`${styles.locked} ${styles.deptStatic}`}>
+            {u.department ? DEPARTMENT_LABEL[u.department] : "Unassigned"}
+          </span>
         ) : (
           <select
             className={styles.deptSelect}
@@ -260,6 +264,7 @@ export default function AdminPanel() {
     {
       key: "status",
       header: "Status",
+      className: styles.colStatus,
       accessor: (u) => u.status,
       render: (u) => <span className={`${styles.pill} ${styles[u.status] || ""}`}>{u.status}</span>,
     },
@@ -267,26 +272,27 @@ export default function AdminPanel() {
       key: "joined",
       header: "Joined",
       accessor: (u) => (u.createdAt ? new Date(u.createdAt).getTime() : 0),
-      className: styles.joined,
+      className: `${styles.joined} ${styles.colJoined}`,
       render: (u) => formatDate(u.createdAt),
     },
     {
       key: "actions",
-      header: "",
+      header: "Actions",
       sortable: false,
       searchable: false,
+      align: "right",
       className: styles.actions,
       render: (u) => (
-        <>
+        <div className={styles.actionGroup}>
           {isSuperAdmin && (
             <button className={styles.details} onClick={() => setDetailsUid(u.uid)}>
               User details
             </button>
           )}
           {u.isSuperAdmin ? (
-            <span className={styles.locked}>locked</span>
+            <span className={styles.rowTag}>locked</span>
           ) : u.uid === currentUid ? (
-            <span className={styles.locked}>you</span>
+            <span className={styles.rowTag}>you</span>
           ) : (
             <>
               {isSuperAdmin &&
@@ -333,7 +339,7 @@ export default function AdminPanel() {
               </button>
             </>
           )}
-        </>
+        </div>
       ),
     },
   ];
@@ -414,10 +420,8 @@ export default function AdminPanel() {
                 </section>
               )}
 
-              <button type="button" className={styles.addUserBtn} onClick={() => setShowAddUser(true)}>
-                + Add User Manually
-              </button>
-
+              {/* Role tabs on the left, "Add user" on the right — one toolbar row above the table. */}
+              <div className={styles.listBar}>
               <div className={styles.tabs} role="tablist" aria-label="Filter by role">
                 {(
                   [
@@ -438,6 +442,10 @@ export default function AdminPanel() {
                     <span className={styles.tabCount}>{users.filter((u) => isRoleTab(u, key)).length}</span>
                   </button>
                 ))}
+              </div>
+                <button type="button" className={styles.addUserBtn} onClick={() => setShowAddUser(true)}>
+                  + Add User Manually
+                </button>
               </div>
 
               <DataTable
