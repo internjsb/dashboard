@@ -31,14 +31,14 @@ type SortDir = "asc" | "desc";
 // Sales Report" (the CSV export uses the same, for import into the ERP).
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "purchase_date", label: "Purchase Date" },
-  { key: "item_code", label: "Item Code" },
+  { key: "item_code", label: "Product Item Code" },
   { key: "set_", label: "Set" },
   { key: "qty", label: "QTY", numeric: true },
   { key: "product_sale_price", label: "Product Sales Price", numeric: true },
   { key: "unit_price", label: "Unit price (Sales/Qty)", numeric: true },
   { key: "order_id", label: "Order id" },
   { key: "fulfillment", label: "Fulfillment" },
-  { key: "shipped_date", label: "Shipped Date" },
+  { key: "shipped_date", label: "Order Fulfillment Date" },
 ];
 
 // Plain two-decimal amounts (20.00, 7.50) — no currency symbol, per the format.
@@ -60,6 +60,16 @@ function compactCount(n: number): string {
 function formatDate(value: string): string {
   return value || "—";
 }
+
+// The API sends dates as DD/MM/YY ("24/09/26"); compare and sort them as
+// YYYY-MM-DD ("2026-09-24"), which orders correctly as text and matches what
+// <input type="date"> gives. Anything else is returned unchanged.
+function sortableDate(value: string): string {
+  const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(value.trim());
+  return m ? `20${m[3]}-${m[2]}-${m[1]}` : value;
+}
+
+const DATE_KEYS: ReadonlySet<SortKey> = new Set(["purchase_date", "shipped_date"]);
 
 // yyyy-mm-dd in local time (what <input type="date"> uses).
 function isoDay(d: Date): string {
@@ -161,14 +171,14 @@ export default function SaleReport() {
 
   const filtered = useMemo(() => {
     const out = rows
-      // Date range is by purchase date; rows without one only show when no range is set.
-      .filter((r) => !fromDate || (!!r.purchase_date && r.purchase_date >= fromDate))
-      .filter((r) => !toDate || (!!r.purchase_date && r.purchase_date <= toDate))
+      // Date range is by order fulfillment (shipped) date; rows without one only show when no range is set.
+      .filter((r) => !fromDate || (!!r.shipped_date && sortableDate(r.shipped_date) >= fromDate))
+      .filter((r) => !toDate || (!!r.shipped_date && sortableDate(r.shipped_date) <= toDate))
       .filter((r) => matches(`${r.item_code} ${r.set_} ${r.order_id} ${r.fulfillment}`, query));
     const dir = sort.dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
-      const av = a[sort.key];
-      const bv = b[sort.key];
+      const av = DATE_KEYS.has(sort.key) ? sortableDate(String(a[sort.key])) : a[sort.key];
+      const bv = DATE_KEYS.has(sort.key) ? sortableDate(String(b[sort.key])) : b[sort.key];
       const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
       return cmp * dir;
     });
@@ -250,7 +260,7 @@ export default function SaleReport() {
               </div>
 
               <div className={styles.dateGroup}>
-                <span className={styles.dateLabel}>Purchase date</span>
+                <span className={styles.dateLabel}>Order Fulfillment Date</span>
                 <div className={styles.dateRow}>
                   <input
                     type="date"
@@ -258,7 +268,7 @@ export default function SaleReport() {
                     value={fromDate}
                     max={toDate || undefined}
                     onChange={(e) => setFromDate(e.target.value)}
-                    aria-label="Purchased from"
+                    aria-label="Fulfilled from"
                   />
                   <span className={styles.dateTo}>to</span>
                   <input
@@ -267,7 +277,7 @@ export default function SaleReport() {
                     value={toDate}
                     min={fromDate || undefined}
                     onChange={(e) => setToDate(e.target.value)}
-                    aria-label="Purchased to"
+                    aria-label="Fulfilled to"
                   />
                 </div>
               </div>

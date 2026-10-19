@@ -18,6 +18,7 @@ const AddProduct = lazy(() => import("./views/AddProduct"));
 const ProductListings = lazy(() => import("./views/ProductListings"));
 const AddListing = lazy(() => import("./views/AddListing"));
 const SaleReport = lazy(() => import("./views/SaleReport"));
+const RefundTable = lazy(() => import("./views/RefundTable"));
 const Profile = lazy(() => import("./views/Profile"));
 const Setup2FA = lazy(() => import("./views/Setup2FA"));
 const Verify2FA = lazy(() => import("./views/Verify2FA"));
@@ -179,6 +180,15 @@ export default function App() {
               element={
                 <ProtectedRoute page="sale_report">
                   <SaleReport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/refund-table"
+              element={
+                // Same audience as the Sales report.
+                <ProtectedRoute page="sale_report">
+                  <RefundTable />
                 </ProtectedRoute>
               }
             />

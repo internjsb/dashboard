@@ -14,6 +14,7 @@ import {
   ScrollText,
   Table2,
   LogOut,
+  Undo2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../hooks/useSidebar";
@@ -111,6 +112,12 @@ export default function AppSidebar() {
             <NavLink to="/sale-report" className={navItemClass}>
               <FileText className={styles.icon} size={18} />
               Sales report
+            </NavLink>
+          )}
+          {canSeeSaleReport && (
+            <NavLink to="/refund-table" className={navItemClass}>
+              <Undo2 className={styles.icon} size={18} />
+              Refund table
             </NavLink>
           )}
           {canSeeStockAvailable && (
