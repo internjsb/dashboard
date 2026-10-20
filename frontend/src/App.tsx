@@ -186,8 +186,8 @@ export default function App() {
             <Route
               path="/refund-table"
               element={
-                // Same audience as the Sales report.
-                <ProtectedRoute page="sale_report">
+                // Open to every signed-in, approved user (no page grant needed).
+                <ProtectedRoute>
                   <RefundTable />
                 </ProtectedRoute>
               }

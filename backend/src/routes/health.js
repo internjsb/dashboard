@@ -232,7 +232,8 @@ router.get("/dti_items", ...unlessLocalDev(requireAuth, requireActive, requirePa
   }
 });
 
-router.get("/refund_table", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("refund_table")), async (req, res) => {
+// Open to every signed-in, approved user (no page grant needed).
+router.get("/refund_table", ...unlessLocalDev(requireAuth, requireActive), async (req, res) => {
   try {
     const { rows } = await query(`
   

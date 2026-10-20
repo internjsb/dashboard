@@ -114,12 +114,11 @@ export default function AppSidebar() {
               Sales report
             </NavLink>
           )}
-          {canSeeSaleReport && (
-            <NavLink to="/refund-table" className={navItemClass}>
-              <Undo2 className={styles.icon} size={18} />
-              Refund table
-            </NavLink>
-          )}
+          {/* Everyone can see the Refund table. */}
+          <NavLink to="/refund-table" className={navItemClass}>
+            <Undo2 className={styles.icon} size={18} />
+            Refund table
+          </NavLink>
           {canSeeStockAvailable && (
             <NavLink to="/stock-available" className={navItemClass}>
               <Package className={styles.icon} size={18} />
