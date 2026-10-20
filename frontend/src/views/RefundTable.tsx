@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, S
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import { matches } from "../utils/search";
+import api from "../api/client";
 // Same look as the Sales report.
 import styles from "./SaleReport.module.css";
 
@@ -31,13 +32,15 @@ interface RefundRow {
 type SortKey = Exclude<keyof RefundRow, "id">;
 type SortDir = "asc" | "desc";
 
-// Column order and headings follow the accounting department's refund format
-// (the CSV export uses the same).
+
+
+
+
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "category", label: "Category" },
   { key: "return_date", label: "Return Date" },
   { key: "item_code", label: "Product Item Code" },
-  { key: "set_", label: "Set" },
+  { key: "set_", label: "Set Per Package" },
   { key: "qty", label: "QTY", numeric: true },
   { key: "product_refund_price", label: "Product Refund Price", numeric: true },
   { key: "unit_price", label: "Unit price (Sales/Qty)", numeric: true },
@@ -137,7 +140,34 @@ function downloadCsv(rows: RefundRow[]) {
 export default function RefundTable() {
   // No data source yet. When there is one, load it here the way the Sales
   // report does and pass the rows to setRows.
-  const [rows] = useState<RefundRow[]>([]);
+  const [rows, setRows] = useState<RefundRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+useEffect(() => {
+  let cancelled = false;
+  api
+    .get<{ rows: RefundRow[] }>("/health/refund_table", { timeout: 30000 })
+    .then(({ data }) => {
+      if (cancelled) return;
+      setRows(
+        data.rows.map((r, i) => ({
+          ...r,
+          id: `${r.order_id}-${i}`, // the query has no id column
+          set_: r.set_ == null ? "" : String(r.set_),
+          // numeric columns arrive as text — make them numbers so totals add up
+          qty: Number(r.qty) || 0,
+          product_refund_price: Number(r.product_refund_price) || 0,
+          unit_price: Number(r.unit_price) || 0,
+        })),
+      );
+    })
+    .catch(() => !cancelled && setError("Couldn't load refunds."))
+    .finally(() => !cancelled && setLoading(false));
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -169,10 +199,10 @@ export default function RefundTable() {
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
     const refunded = filtered.reduce((sum, r) => sum + r.product_refund_price, 0);
-    const orders = new Set(filtered.map((r) => r.order_id)).size;
+    const orders = filtered.length;
     return {
       orders,
-      units: filtered.reduce((sum, r) => sum + r.qty, 0),
+      units: filtered.reduce((sum, r) => sum + (Number(r.set_) || 0), 0),
       refunded,
       avgRefund: orders ? refunded / orders : 0,
     };
