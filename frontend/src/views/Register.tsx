@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
@@ -21,6 +21,21 @@ export default function Register() {
 
   const navigate = useNavigate();
   const { refreshRole } = useAuth();
+
+  // ?invite=... from the link an admin sent: fill in (and lock) the invited email.
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get("invite");
+  const [inviteError, setInviteError] = useState("");
+
+  useEffect(() => {
+    if (!inviteCode) return;
+    api
+      .get<{ email: string }>(`/invites/${encodeURIComponent(inviteCode)}`)
+      .then(({ data }) => setEmail(data.email))
+      .catch(() =>
+        setInviteError("This invite link is invalid or has expired because the link is valid for only 7 days."),
+      );
+  }, [inviteCode]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,7 +69,8 @@ export default function Register() {
 
     // Step 2 — provision the account record on our backend.
     try {
-      const { data } = await api.post<{ status: UserStatus }>("/register", { displayName: name });
+      const { data } = await api.post<{ status: UserStatus }>("/register", { displayName: name, inviteCode: inviteCode || undefined, });
+      await auth.currentUser?.getIdToken(true); // pick up the invite's role right away
       await refreshRole();
       // "/" hands off to HomeRedirect, which picks the first page this
       // user's role/department actually grants.
@@ -104,6 +120,7 @@ export default function Register() {
 
         <h1>Create account</h1>
         <p className={styles.subtitle}>Admin will approve after the account has created. </p>
+{inviteError && <p className={styles.error}>{inviteError}</p>}
 
         <form onSubmit={handleSubmit}>
           <label className={styles.field}>
@@ -120,6 +137,7 @@ export default function Register() {
           <label className={styles.field}>
             <span>Email</span>
             <input
+              readOnly = {!!inviteCode}
               type="email"
               required
               autoComplete="email"
@@ -166,3 +184,4 @@ export default function Register() {
     </div>
   );
 }
+

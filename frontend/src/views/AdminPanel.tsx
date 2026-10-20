@@ -56,6 +56,25 @@ export default function AdminPanel() {
   const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
   const [addingUser, setAddingUser] = useState(false);
   const [addUserError, setAddUserError] = useState("");
+  
+  const [showInvite, setShowInvite] = useState(false);
+  const [invite, setInvite] = useState({ email: "", role: "user", department: "" });
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteError, setInviteError] = useState("");
+
+  async function createInvite(e: FormEvent) {
+    e.preventDefault();
+    setInviteError("");
+    try {
+      const { data } = await api.post<{ link: string }>("/invites", invite);
+      setInviteLink(data.link);
+    } catch (err) {
+      setInviteError(errorMessage(err, "Couldn't create the invite."));
+    }
+  }
+
+
+
 
   function closeAddUser() {
     if (addingUser) return;
@@ -443,7 +462,8 @@ export default function AdminPanel() {
                   </button>
                 ))}
               </div>
-                <button type="button" className={styles.addUserBtn} onClick={() => setShowAddUser(true)}>
+                <button type="button" className={styles.addUserBtn} 
+                onClick={() => setShowInvite(true)}>
                   + Add User Manually
                 </button>
               </div>
@@ -568,6 +588,70 @@ export default function AdminPanel() {
               </div>
             </div>
           )}
+
+          {showInvite && (
+  <div className={styles.modalOverlay} role="dialog" aria-modal="true" onClick={() => setShowInvite(false)}>
+    <form className={`${styles.modal} ${styles.addUserModal}`} onClick={(e) => e.stopPropagation()} onSubmit={createInvite}>
+      <h3 className={styles.modalTitle}>Invite user</h3>
+
+      {inviteLink ? (
+        <>
+          <p className={styles.modalBody}>Send this link to {invite.email}. It works once, for 7 days.</p>
+          <div className={styles.formField}>
+            <input readOnly value={inviteLink} onFocus={(e) => e.target.select()} />
+          </div>
+          <div className={styles.modalActions}>
+            <button type="button" className={styles.cancel} onClick={() => navigator.clipboard.writeText(inviteLink)}>
+              Copy link
+            </button>
+            <button
+              type="button"
+              className={styles.primary}
+              onClick={() => {
+                setShowInvite(false);
+                setInviteLink("");
+                setInvite({ email: "", role: "user", department: "" });
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={styles.addUserFields}>
+            <label className={styles.formField}>
+              <span>Email</span>
+              <input type="email" required value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
+            </label>
+            <label className={styles.formField}>
+              <span>Role</span>
+              <select value={invite.role} onChange={(e) => setInvite({ ...invite, role: e.target.value })}>
+                <option value="user">User</option>
+                {isSuperAdmin && <option value="admin">Admin</option>}
+              </select>
+            </label>
+            <label className={styles.formField}>
+              <span>Department</span>
+              <select required value={invite.department} onChange={(e) => setInvite({ ...invite, department: e.target.value })}>
+                <option value="" disabled>Choose department…</option>
+                {DEPARTMENT_OPTIONS.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {inviteError && <p className={`${styles.state} ${styles.error}`}>{inviteError}</p>}
+          <div className={styles.modalActions}>
+            <button type="button" className={styles.cancel} onClick={() => setShowInvite(false)}>Cancel</button>
+            <button type="submit" className={styles.primary}>Create invite</button>
+          </div>
+        </>
+      )}
+    </form>
+  </div>
+)}
+
         </main>
       </div>
     </div>

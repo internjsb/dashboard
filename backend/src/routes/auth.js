@@ -8,8 +8,72 @@ import {
   requireSuperAdmin,
   isSuperAdminEmail,
 } from "../middleware/authMiddleware.js";
+import crypto from "crypto";
 
 const router = Router();
+
+const INVITE_DAYS = 7; //long the link work
+const hash = (s) => crypto.createHash("sha256").update(s).digest("hex");
+
+async function findInvite(code) {
+  const [id, token] = String(code || "").split(".");
+  if (!id || !token) return null;
+  const invite = await db.get(`invites/${id}`);
+  if (!invite || invite.tokenHash !== hash(token)) return null;
+  if (invite.usedAt || Date.now() > invite.expiresAt) return null;
+  return { id, ...invite };
+}
+
+router.post("/invites", requireAuth, requireAdmin, async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const role = req.body?.role;
+  const department = req.body?.department;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email" });
+  if (!["user", "admin"].includes(role)) return res.status(400).json({ error: "Choose a role" });
+  if (!DEPARTMENTS.includes(department)) return res.status(400).json({ error: "Choose a department" });
+  if (role === "admin" && !req.user.isSuperAdmin) {
+    return res.status(403).json({ error: "Only the super admin can invite admins" });
+  }
+  if (isSuperAdminEmail(email)) return res.status(403).json({ error: "That email is reserved for the super admin" });
+  try {
+    await auth.getUserByEmail(email);
+    return res.status(409).json({ error: "An account with that email already exists" });
+  } catch {
+    /* no account yet — good */
+  }
+
+  try {
+    const token = crypto.randomBytes(32).toString("base64url"); // the secret part of the link
+    const { name: id } = await db.push("invites", {
+      email,
+      role,
+      department,
+      tokenHash: hash(token), // only the hash is stored, never the secret itself
+      createdBy: req.user.uid,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + INVITE_DAYS * 24 * 60 * 60 * 1000,
+      usedAt: null,
+    });
+    const link = `${process.env.SITE_URL}/register?invite=${id}.${token}`;
+    await audit(req, "user.invite", { email, role, department });
+    res.status(201).json({ link });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create the invite" });
+  }
+});
+
+
+router.get("/invites/:code", async (req, res) => {
+  const invite = await findInvite(req.params.code);
+  if (!invite) return res.status(404).json({ error: "This invite link is invalid or has expired" });
+  res.json({ email: invite.email });
+});
+
+
+
+
 
 // Department tag — separate from the admin/user access-control role. Purely
 // informational for now (who's on which team), editable by any admin.
@@ -144,6 +208,35 @@ router.patch("/me", requireAuth, async (req, res) => {
 router.post("/register", requireAuth, async (req, res) => {
   const { uid, email, isSuperAdmin } = req.user;
   const displayName = (req.body?.displayName || "").trim() || null;
+
+      // Signed up with an invite link? Use the invite's role + department.
+    const invite = req.body?.inviteCode ? await findInvite(req.body.inviteCode) : null;
+    if (invite) {
+      // The account's email must be the one that was invited.
+      if ((email || "").toLowerCase() !== invite.email) {
+        return res.status(403).json({ error: "This invite is for a different email address" });
+      }
+      const pageAccess = DEFAULT_PAGE_ACCESS[invite.department] || {};
+      await auth.setCustomUserClaims(uid, { role: invite.role });
+      await db.set(`users/${uid}`, {
+        email,
+        displayName,
+        role: invite.role,
+        status: "active",
+        department: invite.department,
+        pageAccess,
+      });
+      await db.update(`invites/${invite.id}`, { usedAt: Date.now(), usedByUid: uid }); // tear up the ticket
+      await audit(req, "user.invite_accept", { email, role: invite.role, department: invite.department });
+      return res.status(201).json({ status: "active", role: invite.role });
+    }
+
+
+
+  const status = isSuperAdmin ? "active" : "pending";
+  const role = isSuperAdmin ? "admin" : "user";
+
+
 
   try {
     const existing = await db.get(`users/${uid}`);
