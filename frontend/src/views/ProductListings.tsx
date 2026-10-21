@@ -217,6 +217,7 @@ export default function ProductListings() {
                     <th>DTI Item Description</th>
                     <th>Type</th>
                     <th>EAN</th>
+                    <th>Amazon Listing Date</th>
                     <th className={styles.actionsCol}>Actions</th>
                   </tr>
                 </thead>
@@ -258,6 +259,7 @@ export default function ProductListings() {
                         <td>{p.dtiItemDescription || "—"}</td>
                         <td>{p.type || "—"}</td>
                         <td>{p.ean || "—"}</td>
+                        <td></td>
                         <td className={styles.actionsCol}>
                           <div className={styles.rowActions}>
                             <button
