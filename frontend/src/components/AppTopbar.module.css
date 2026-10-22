@@ -42,3 +42,23 @@
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.select {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.select:hover {
+  background: var(--bg);
+}

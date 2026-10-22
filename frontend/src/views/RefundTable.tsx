@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, S
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import { matches } from "../utils/search";
+import { inMarketplace, useMarketplace } from "../hooks/useMarketplace";
 import api from "../api/client";
 // Same look as the Sales report.
 import styles from "./SaleReport.module.css";
@@ -27,9 +28,10 @@ interface RefundRow {
   status: string;
   fulfillment: string;
   purchase_date: string;
+  marketplace_id: string | null; // not shown; used by the top-bar marketplace filter
 }
 
-type SortKey = Exclude<keyof RefundRow, "id">;
+type SortKey = Exclude<keyof RefundRow, "id" | "marketplace_id">;
 type SortDir = "asc" | "desc";
 
 
@@ -176,8 +178,10 @@ useEffect(() => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const { code } = useMarketplace();
   const filtered = useMemo(() => {
     const out = rows
+      .filter((r) => inMarketplace(code, r.marketplace_id))
       // Date range is by return date; rows without one only show when no range is set.
       .filter((r) => !fromDate || (!!r.return_date && sortableDate(r.return_date) >= fromDate))
       .filter((r) => !toDate || (!!r.return_date && sortableDate(r.return_date) <= toDate))
@@ -194,7 +198,7 @@ useEffect(() => {
       const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
       return cmp * dir;
     });
-  }, [rows, fromDate, toDate, query, sort]);
+  }, [rows, fromDate, toDate, query, sort, code]);
 
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
@@ -212,7 +216,7 @@ useEffect(() => {
   // which page, so whatever page we were on no longer means the same thing.
   useEffect(() => {
     setPage(1);
-  }, [query, fromDate, toDate, sort, pageSize]);
+  }, [query, fromDate, toDate, sort, pageSize, code]);
 
   const perPage = pageSize || filtered.length || 1;
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));

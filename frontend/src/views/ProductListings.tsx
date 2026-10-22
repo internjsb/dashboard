@@ -5,6 +5,7 @@ import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import api from "../api/client";
 import { matches } from "../utils/search";
+import { inMarketplace, useMarketplace } from "../hooks/useMarketplace";
 import { errorMessage } from "./productForm";
 import styles from "./ProductListings.module.css";
 
@@ -22,6 +23,7 @@ interface ListingRow {
   images?: { url: string; path: string }[];
   source: "added" | "amazon";
   sku?: string;
+  marketplaceId?: string; // not shown; used by the top-bar marketplace filter
 }
 
 interface AmazonListingRow {
@@ -33,6 +35,7 @@ interface AmazonListingRow {
   dti_item_description: string | null;
   type: string | null;
   ean: string | null;
+  marketplace_id: string | null;
 }
 
 type SourceFilter = "all" | "added" | "amazon";
@@ -95,6 +98,7 @@ export default function ProductListings() {
             id: r.source === "item" ? `item-${r.dti_item_code}` : `amazon-${r.sku || i}`,
             source: r.source === "item" ? ("added" as const) : ("amazon" as const),
             sku: r.sku ?? undefined,
+            marketplaceId: r.marketplace_id ?? undefined,
             division: r.division ?? "",
             dtiItemCode: r.dti_item_code ?? "",
             dtiItemDescription: r.dti_item_description ?? "",
@@ -115,18 +119,20 @@ export default function ProductListings() {
     };
   }, []);
 
+  const { code } = useMarketplace();
   const filtered = useMemo(
     () =>
       products
+        .filter((p) => inMarketplace(code, p.marketplaceId))
         .filter((p) => sourceFilter === "all" || p.source === sourceFilter)
         .filter((p) => matches(`${p.division} ${p.dtiItemCode} ${p.dtiItemDescription} ${p.type} ${p.ean}`, query)),
-    [products, query, sourceFilter],
+    [products, query, sourceFilter, code],
   );
 
   // A new search or page size changes which rows land on which page.
   useEffect(() => {
     setPage(1);
-  }, [query, pageSize, sourceFilter]);
+  }, [query, pageSize, sourceFilter, code]);
 
   const perPage = pageSize || filtered.length || 1;
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));

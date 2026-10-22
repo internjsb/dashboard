@@ -7,6 +7,8 @@ import DataTable, { type DataTableColumn, type DataTableFilter } from "../compon
 import ExportCsvButton from "../components/ExportCsvButton";
 import { errorMessage } from "./productForm";
 import styles from "./Inventory.module.css";
+import { inMarketplace, useMarketplace } from "../hooks/useMarketplace";
+
 
 // One row per SKU from GET /api/health/inventory_data (Cloud SQL).
 interface InventoryRow {
@@ -17,6 +19,7 @@ interface InventoryRow {
   fulfillable_quantity: number | null;
   unsellable_quantity: number | null;
   reserved_quantity: number | null;
+  marketplace_id: string | null; // not shown; used by the top-bar marketplace filter
 }
 
 // One row per shipped order line from GET /api/health/shipment_data (Cloud SQL).
@@ -29,6 +32,7 @@ interface Shipement {
   currency: string | null; // e.g. "USD"
   purchase_date: string | null; // ISO timestamp (JSON has no Date type)
   sales_channel: string | null;
+  marketplace_id: string | null; // not shown; used by the top-bar marketplace filter
 }
 
 function formatDate(iso: string | null): string {
@@ -108,7 +112,7 @@ function useRows<T>(url: string, nonce: number, fallbackError: string) {
 export default function Inventory() {
   const [nonce, setNonce] = useState(0);
   const {
-    rows: inventory,
+    rows: allInventory,
     loading: inventoryLoading,
     error: inventoryError,
   } = useRows<InventoryRow>("/health/inventory_data", nonce, "Couldn't load inventory.");
@@ -121,15 +125,21 @@ export default function Inventory() {
   // Purchase-date range for the Shipments table ("" = open-ended).
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const { code } = useMarketplace();
+  const inventory = useMemo(
+    () => allInventory.filter((i) => inMarketplace(code, i.marketplace_id)),
+    [allInventory, code],
+  );
   const filteredShipments = useMemo(
     () =>
       shipments.filter((s) => {
+        if (!inMarketplace(code, s.marketplace_id)) return false;
         if (!fromDate && !toDate) return true;
         if (!s.purchase_date) return false;
         const day = isoDay(new Date(s.purchase_date));
         return (!fromDate || day >= fromDate) && (!toDate || day <= toDate);
       }),
-    [shipments, fromDate, toDate],
+    [shipments, fromDate, toDate, code],
   );
   const hasDateFilter = !!(fromDate || toDate);
   const months = useMemo(lastTwelveMonths, []);

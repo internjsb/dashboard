@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../api/client";
 import ExportCsvButton from "./ExportCsvButton";
 import { matches } from "../utils/search";
+import { inMarketplace, useMarketplace } from "../hooks/useMarketplace";
 import styles from "./RecentOrders.module.css";
 
 // One row from GET /health/recent_order — the query returns exactly these columns.
@@ -12,6 +13,7 @@ interface OrderRow {
   dtiItemCode: string; // e.g. "2-011"
   qty: number; // units per SKU (core.item_sku_map)
   Price: number; // the order line's item price
+  marketplace_id: string | null; // not shown; used by the top-bar marketplace filter
 }
 
 const PAGE_SIZE = 5;
@@ -36,9 +38,11 @@ export default function RecentOrders() {
     };
   }, []);
 
-  const dtiOptions = Array.from(new Set(orders.map((o) => o.dtiItemCode))).sort();
+  const { code } = useMarketplace();
+  const marketOrders = orders.filter((o) => inMarketplace(code, o.marketplace_id));
+  const dtiOptions = Array.from(new Set(marketOrders.map((o) => o.dtiItemCode))).sort();
 
-  const filtered = orders
+  const filtered = marketOrders
     .filter((o) => !dtiFilter || o.dtiItemCode === dtiFilter)
     .filter((o) => matches(`${o.Price} ${o.sku} ${o.dtiItemCode} ${o.item_name}`, query));
 
@@ -48,7 +52,7 @@ export default function RecentOrders() {
   // page we were on no longer means the same thing — back to 1.
   useEffect(() => {
     setPage(1);
-  }, [query, dtiFilter]);
+  }, [query, dtiFilter, code]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);

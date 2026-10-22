@@ -328,7 +328,7 @@ router.get("/amazon-skus", ...unlessLocalDev(requireAuth, requireActive, require
   try {
     // One row per SKU, newest snapshot first (the report is re-pulled over time).
     const { rows } = await query(`
-      SELECT DISTINCT ON (sku) sku, fnsku, asin, product_name, available, snapshot_date
+      SELECT DISTINCT ON (sku) sku, fnsku, asin, product_name, available, snapshot_date, marketplace_id
         FROM amazon.get_fba_inventory_planning_data
        ORDER BY sku, snapshot_date DESC`);
     res.json({ rows });

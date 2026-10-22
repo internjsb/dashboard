@@ -60,7 +60,8 @@ router.get("/listing-data", ...unlessLocalDev(requireAuth, requireActive, requir
              m.item_code                                                   AS dti_item_code,
              m.item_name                                                   AS dti_item_description,
              initcap(replace(regexp_replace(ip.product_group, '^gl_', ''), '_', ' ')) AS type,
-             CASE WHEN l.product_id_type = '4' THEN l.product_id END      AS ean
+             CASE WHEN l.product_id_type = '4' THEN l.product_id END      AS ean,
+             l.marketplace_id                                              AS marketplace_id
         FROM amazon.get_merchant_listings_all_data l
         LEFT JOIN core.item_sku_map m
                ON m.seller_sku = l.seller_sku AND m.marketplace_id = l.marketplace_id
@@ -90,7 +91,8 @@ router.get("/inventory_data", ...unlessLocalDev(requireAuth, requireActive, requ
              i.afn_warehouse_quantity             AS warehouse_quantity,
              i.afn_fulfillable_quantity           AS fulfillable_quantity,
              i.afn_unsellable_quantity            AS unsellable_quantity,
-             i.afn_reserved_quantity              AS reserved_quantity
+             i.afn_reserved_quantity              AS reserved_quantity,
+             i.marketplace_id                     AS marketplace_id
         FROM amazon.get_fba_myi_all_inventory_data i
         LEFT JOIN LATERAL (
                SELECT country FROM amazon.get_ledger_detail_view_data d
@@ -125,7 +127,8 @@ router.get("/shipment_data", ...unlessLocalDev(requireAuth, requireActive, requi
              tracking_number,
              currency,
              purchase_date,
-             sales_channel
+             sales_channel,
+             marketplace_id
         FROM amazon.get_amazon_fulfilled_shipments_data_general
        ORDER BY purchase_date DESC NULLS LAST`);
     res.json({ rows });
@@ -148,7 +151,8 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 		Round((c.price/a.quantity_shipped),2) as Unit_price,
 		a.amazon_order_id as Order_id,
 		c.fulfillment_channel as Fulfillment,
-		to_char(a.shipment_date, 'DD/MM/YY') as Shipped_date
+		to_char(a.shipment_date, 'DD/MM/YY') as Shipped_date,
+		a.marketplace_id as marketplace_id
 		from amazon.get_amazon_fulfilled_shipments_data_general a
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
@@ -177,7 +181,8 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
            COALESCE(i.item_code, '')                                              AS "dtiItemCode",
   
            COALESCE(i.units_per_sku, 0)                                        AS qty,
-           COALESCE(a.item_price * i.units_per_sku, 0)::float8                    AS "Price"
+           COALESCE(a.item_price * i.units_per_sku, 0)::float8                    AS "Price",
+           a.marketplace_id                                                       AS marketplace_id
       FROM amazon.get_amazon_fulfilled_shipments_data_general a
       LEFT JOIN core.item_sku_map i
              ON i.seller_sku = a.sku AND i.marketplace_id = a.marketplace_id
@@ -206,7 +211,11 @@ router.get("/dti_items", ...unlessLocalDev(requireAuth, requireActive, requirePa
              COALESCE(i.item_name, '')                                   AS "dtiItemDescription",
              regexp_replace(split_part(COALESCE(i.item_name, ''), '-', 1), 'NIST$', '') AS division,
              COALESCE(initcap(replace(regexp_replace(pg.product_group, '^gl_', ''), '_', ' ')), '') AS type,
-             COALESCE(e.ean, '')                                         AS ean
+             COALESCE(e.ean, '')                                         AS ean,
+             -- core.items has no marketplace_id: an item can be sold in several
+             -- marketplaces, so list every one it has a SKU in.
+             ARRAY(SELECT DISTINCT m.marketplace_id FROM core.item_sku_map m
+                    WHERE m.item_code = i.item_code)                      AS marketplace_ids
         FROM core.items i
         LEFT JOIN LATERAL (
                SELECT f.product_group
@@ -249,7 +258,8 @@ SELECT DISTINCT ON (sku) transaction_type, Return_Date,
 	   Reason,
 	   Status,
 	   fulfillment,
-	   Purchase_Date
+	   Purchase_Date,
+	   marketplace_id
 FROM (
     SELECT  c.transaction_type as transaction_type,
 			to_char(a.return_date, 'DD/MM/YY')  as Return_Date,
@@ -264,7 +274,8 @@ FROM (
             a.reason                              as Reason,
             a.status                              as Status,
 			c.marketplace_name                   as fulfillment,
-            to_char(b.purchase_date,'DD/MM/YY')   as Purchase_Date
+            to_char(b.purchase_date,'DD/MM/YY')   as Purchase_Date,
+            a.marketplace_id                      as marketplace_id
     FROM amazon.get_fba_fulfillment_customer_returns_data a
     inner JOIN amazon.get_amazon_fulfilled_shipments_data_general b
             ON a.sku = b.sku
