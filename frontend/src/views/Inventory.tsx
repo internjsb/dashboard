@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
-import DataTable, { type DataTableColumn, type DataTableFilter } from "../components/DataTable";
+import DataTable, { type DataTableColumn } from "../components/DataTable";
 import ExportCsvButton from "../components/ExportCsvButton";
 import { errorMessage } from "./productForm";
 import styles from "./Inventory.module.css";
@@ -168,16 +168,6 @@ export default function Inventory() {
     qtyCol("reserved_quantity", "Reserved Qty"),
   ];
 
-  const inventoryFilters: DataTableFilter<InventoryRow>[] = [
-    {
-      key: "country",
-      label: "Country",
-      accessor: (i) => i.country ?? "",
-      options: Array.from(new Set(inventory.map((i) => i.country).filter((c): c is string => !!c)))
-        .sort()
-        .map((c) => ({ value: c, label: c })),
-    },
-  ];
 
   const shipmentColumns: DataTableColumn<Shipement>[] = [
     { key: "sku", header: "SKU", accessor: (s) => s.sku },
@@ -249,7 +239,6 @@ export default function Inventory() {
                     rows={inventory}
                     rowKey={(i) => i.sku}
                     showRowNumbers
-                    filters={inventoryFilters}
                     searchPlaceholder="Search SKUs, items, or countries…"
                     emptyMessage="No inventory records match your search."
                   />

@@ -85,14 +85,14 @@ router.get("/listing-data", ...unlessLocalDev(requireAuth, requireActive, requir
 router.get("/inventory_data", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("inventory")), async (req, res) => {
   try {
     const { rows } = await query(`
-      SELECT i.sku                                AS sku,
+      SELECT i.sku                                 AS sku,
              COALESCE(c.item_name, i.product_name) AS item_name,
-             l.country                            AS country,
-             i.afn_warehouse_quantity             AS warehouse_quantity,
-             i.afn_fulfillable_quantity           AS fulfillable_quantity,
-             i.afn_unsellable_quantity            AS unsellable_quantity,
-             i.afn_reserved_quantity              AS reserved_quantity,
-             i.marketplace_id                     AS marketplace_id
+             l.country                             AS country,
+             i.afn_warehouse_quantity              AS warehouse_quantity,
+             i.afn_fulfillable_quantity            AS fulfillable_quantity,
+             i.afn_unsellable_quantity             AS unsellable_quantity,
+             i.afn_reserved_quantity               AS reserved_quantity,
+             i.marketplace_id                      AS marketplace_id
         FROM amazon.get_fba_myi_all_inventory_data i
         LEFT JOIN LATERAL (
                SELECT country FROM amazon.get_ledger_detail_view_data d
@@ -144,15 +144,15 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 
     const { rows } = await query(`
       select to_char(a.purchase_date, 'DD/MM/YY') as Purchase_date,
-		d.item_code as Item_Code,
-		b.units_per_sku as Set_,
-		a.quantity_shipped as QTY,
-		a.item_price as Product_Sale_Price,
-		Round((c.price/a.quantity_shipped),2) as Unit_price,
-		a.amazon_order_id as Order_id,
-		c.fulfillment_channel as Fulfillment,
-		to_char(a.shipment_date, 'DD/MM/YY') as Shipped_date,
-		a.marketplace_id as marketplace_id
+		d.item_code                                   as Item_Code,
+		b.units_per_sku                               as Set_,
+		a.quantity_shipped                            as QTY,
+		a.item_price                                  as Product_Sale_Price,
+		Round((c.price/a.quantity_shipped),2)         as Unit_price,
+		a.amazon_order_id                             as Order_id,
+		c.fulfillment_channel                         as Fulfillment,
+		to_char(a.shipment_date, 'DD/MM/YY')          as Shipped_date,
+		a.marketplace_id                              as marketplace_id
 		from amazon.get_amazon_fulfilled_shipments_data_general a
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
@@ -179,8 +179,7 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
            COALESCE(p.product_name, a.product_name, '')                           AS item_name,
            a.sku                                                                  AS sku,
            COALESCE(i.item_code, '')                                              AS "dtiItemCode",
-  
-           COALESCE(i.units_per_sku, 0)                                        AS qty,
+           COALESCE(i.units_per_sku, 0)                                           AS qty,
            COALESCE(a.item_price * i.units_per_sku, 0)::float8                    AS "Price",
            a.marketplace_id                                                       AS marketplace_id
       FROM amazon.get_amazon_fulfilled_shipments_data_general a
@@ -261,21 +260,21 @@ SELECT DISTINCT ON (sku) transaction_type, Return_Date,
 	   Purchase_Date,
 	   marketplace_id
 FROM (
-    SELECT  c.transaction_type as transaction_type,
-			to_char(a.return_date, 'DD/MM/YY')  as Return_Date,
-			a.sku as sku,
-			d.item_code as Item_Code,
-		    d.units_per_sku as Set_,
-			a.quantity                            as Qty,
-            c.amount                              as product_refund_price,
-            round((c.amount / a.quantity),2)      as unit_price,
-			a.order_id                            as Order_id,
-            a.detailed_disposition                as detailed_disposition,
-            a.reason                              as Reason,
-            a.status                              as Status,
-			c.marketplace_name                   as fulfillment,
-            to_char(b.purchase_date,'DD/MM/YY')   as Purchase_Date,
-            a.marketplace_id                      as marketplace_id
+    SELECT  c.transaction_type                    as transaction_type,
+			to_char(a.return_date, 'DD/MM/YY')          as Return_Date,
+			a.sku                                       as sku,
+			d.item_code                                 as Item_Code,
+		  d.units_per_sku                             as Set_,
+			a.quantity                                  as Qty,
+      c.amount                                    as product_refund_price,
+      round((c.amount / a.quantity),2)            as unit_price,
+			a.order_id                                  as Order_id,
+      a.detailed_disposition                      as detailed_disposition,
+      a.reason                                    as Reason,
+      a.status                                    as Status,
+			c.marketplace_name                          as fulfillment,
+      to_char(b.purchase_date,'DD/MM/YY')         as Purchase_Date,
+      a.marketplace_id                            as marketplace_id
     FROM amazon.get_fba_fulfillment_customer_returns_data a
     inner JOIN amazon.get_amazon_fulfilled_shipments_data_general b
             ON a.sku = b.sku
