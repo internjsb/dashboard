@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
-import type { StockAvailableData, StockItem } from "../types";
+import type { StockItem } from "../views/StockAvailable";
 
 // One shared in-flight/settled fetch so the sidebar badge and the Stock page
 // don't each hit the endpoint. Call refreshStock() to force a re-fetch.
-let cache: Promise<StockAvailableData> | null = null;
+let cache: Promise<StockItem[]> | null = null;
 
-function load(): Promise<StockAvailableData> {
+function load(): Promise<StockItem[]> {
   if (!cache) {
     cache = api
-      .get<StockAvailableData>("/dashboard/stock-available")
-      .then((r) => r.data)
+      .get<{ rows: StockItem[] }>("/health/stocks", { timeout: 30000 })
+      // Postgres sends numeric columns as text — make them numbers so they
+      // sort and add up instead of joining as strings.
+      .then((r) =>
+        r.data.rows.map((row) => ({
+          ...row,
+          available: Number(row.available) || 0,
+          inbound: Number(row.inbound) || 0,
+          total_units: Number(row.total_units) || 0,
+        })),
+      )
       .catch((err) => {
         cache = null; // let the next mount retry
         throw err;
@@ -24,7 +33,7 @@ export function refreshStock(): void {
 }
 
 interface UseStock {
-  data: StockAvailableData | null;
+  rows: StockItem[];
   lowItems: StockItem[];
   loading: boolean;
   error: string;
@@ -35,7 +44,7 @@ interface UseStock {
 // badge) that render on every page, including ones a viewer without stock
 // access can't reach; no point 403ing on their behalf.
 export function useStock(enabled: boolean = true): UseStock {
-  const [data, setData] = useState<StockAvailableData | null>(null);
+  const [data, setData] = useState<StockItem[] | null>(null);
   const [error, setError] = useState("");
   const [nonce, setNonce] = useState(0);
 
@@ -55,10 +64,12 @@ export function useStock(enabled: boolean = true): UseStock {
     };
   }, [nonce, enabled]);
 
-  const lowItems = (data?.byItem ?? []).filter((i) => i.status !== "ok");
+  const rows = data ?? [];
+  // Amazon only fills in the alert (status) for SKUs that need attention.
+  const lowItems = rows.filter((i) => !!i.status);
 
   return {
-    data,
+    rows,
     lowItems,
     loading: !data && !error,
     error,

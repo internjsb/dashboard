@@ -41,36 +41,6 @@ export default function AppTopbar({ title = "" }: AppTopbarProps) {
           ))}
         </select>
 
-
-
-{/* 
-      <select
-          className={styles.select}
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-        >
-          <option value="">Select…</option>
-          <option value="option1">France</option>
-          <option value="option2"> Saudi Arabia</option>
-          <option value="option3"> Netherlands</option>
-          <option value="option1">Mexico</option>
-          <option value="option2"> Poland</option>
-          <option value="option3"> United Kingdom</option>
-            <option value="option3"> Germany</option>
-          <option value="option1">Spain</option>
-          <option value="option2"> Japan</option>
-          <option value="option3">  Ireland</option>
-            <option value="option3"> Canada</option>
-          <option value="option1">Sweden</option>
-          <option value="option2"> Brazil</option>
-          <option value="option3">  UAE</option>
-          <option value="option2"> Turkey</option>
-          <option value="option3">  Australia</option>
-            <option value="option3"> Belgium</option>
-          <option value="option1">Italy</option>
-          <option value="option2"> United States</option>
-
-        </select> */}
       </div>
     </header>
   );

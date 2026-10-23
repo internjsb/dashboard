@@ -57,11 +57,103 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  background: var(--danger-tint);
-  border: 1px solid var(--danger);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--danger);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 14px 18px;
   margin-bottom: 20px;
+}
+
+.alertMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.alertHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.alertSummary {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+/* One chip per flagged item: name · qty · ×SKUs */
+.chips {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.chipOut {
+  background: var(--danger-tint);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+.chipLow {
+  background: var(--warning-tint);
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+}
+
+.chipName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chipQty {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.chipOut .chipQty {
+  color: var(--danger);
+}
+
+.chipLow .chipQty {
+  color: var(--warning);
+}
+
+.chipSkus {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-right: 4px;
+}
+
+.chipMore {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.chipMore:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
 }
 
 .alertIcon {
@@ -82,12 +174,6 @@
 .alert strong {
   font-size: 13.5px;
   color: var(--danger);
-}
-
-.alertBody {
-  margin: 3px 0 0;
-  font-size: 12.5px;
-  color: var(--text-secondary);
 }
 
 /* --- Cards + tables -------------------------------------------------- */

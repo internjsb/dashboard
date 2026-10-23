@@ -186,7 +186,7 @@ export default function SaleReport() {
       const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
       return cmp * dir;
     });
-  }, [rows, fromDate, toDate, query, sort, code]);
+  }, [rows, fromDate, toDate, query, sort]);
 
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
@@ -204,7 +204,7 @@ export default function SaleReport() {
   // which page, so whatever page we were on no longer means the same thing.
   useEffect(() => {
     setPage(1);
-  }, [query, fromDate, toDate, sort, pageSize, code]);
+  }, [query, fromDate, toDate, sort, pageSize]);
 
   const perPage = pageSize || filtered.length || 1;
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));

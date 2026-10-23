@@ -117,12 +117,13 @@ export type StockStatus = "ok" | "low" | "out";
 
 export interface StockItem {
   sku: string;
-  dtiItemCode: string;
-  finish: string;
+  product_item_code: string;
+  item_description: string;
   available: number;
   inbound: number;
-  reorderLevel: number;
-  status: StockStatus;
+  total_units: number;
+  status: string;
+  marketplace_id : null;
 }
 
 export interface StockCountry {

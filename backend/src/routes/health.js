@@ -240,7 +240,7 @@ router.get("/dti_items", ...unlessLocalDev(requireAuth, requireActive, requirePa
   }
 });
 
-// Open to every signed-in, approved user (no page grant needed).
+
 router.get("/refund_table", ...unlessLocalDev(requireAuth, requireActive), async (req, res) => {
   try {
     const { rows } = await query(`
@@ -294,6 +294,26 @@ ORDER BY sku;
   }
 });
 
-
+router.get("/stocks", ...unlessLocalDev(requireAuth, requireActive), async (req, res) => {
+  try {
+    const { rows } = await query(`
+      Select	a.merchant_sku	as sku,
+          b.item_code         as product_item_code,
+          a.product_name 	    as item_description,
+          a.available 	      as available,
+          a.inbound 		      as inbound,
+          a.total_units	      as total_units,
+          a.alert			        as status,
+          a.marketplace_id    as marketplace_id
+      from amazon.get_restock_inventory_recommendations_report a
+      left join core.items b
+      on a.product_name = b.item_name
+    `);
+    res.json({ rows });
+  } catch (err) {
+    console.error("[health/refund_table]", err.message);
+    res.status(500).json({ error: "Failed to load refunds from the database" });
+  }
+});
 
 export default router;
