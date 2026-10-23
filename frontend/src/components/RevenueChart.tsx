@@ -9,6 +9,8 @@ interface RevenueChartProps {
   deltaSuffix?: string;
   format?: "currency" | "number";
   action?: ReactNode;
+  /** "latest" (default) shows the last point + change vs the one before; "total" shows the sum of all points. */
+  headline?: "latest" | "total";
 }
 
 const WIDTH = 560;
@@ -30,6 +32,7 @@ export default function RevenueChart({
   deltaSuffix = "MoM",
   format = "currency",
   action,
+  headline = "latest",
 }: RevenueChartProps) {
   const [hover, setHover] = useState<number | null>(null);
   const fmt = format === "currency" ? money : count;
@@ -65,6 +68,7 @@ export default function RevenueChart({
   const prev = data[data.length - 2]?.value ?? latest;
   const momDelta = prev ? ((latest - prev) / prev) * 100 : 0;
   const up = momDelta >= 0;
+  const total = data.reduce((sum, d) => sum + d.value, 0);
 
   const active = hover != null ? plotted[hover] : null;
 
@@ -77,10 +81,19 @@ export default function RevenueChart({
         </div>
         <div className={styles.headerRight}>
           <div className={styles.headline}>
-            <span className={styles.headValue}>{fmt(latest)}</span>
-            <span className={`${styles.headDelta} ${up ? styles.up : styles.down}`}>
-              {up ? "▲" : "▼"} {Math.abs(momDelta).toFixed(1)}% {deltaSuffix}
-            </span>
+            {headline === "total" ? (
+              <>
+                <span className={styles.headValue}>{fmt(total)}</span>
+                <span className={styles.headDelta}>{data.length}-day total</span>
+              </>
+            ) : (
+              <>
+                <span className={styles.headValue}>{fmt(latest)}</span>
+                <span className={`${styles.headDelta} ${up ? styles.up : styles.down}`}>
+                  {up ? "▲" : "▼"} {Math.abs(momDelta).toFixed(1)}% {deltaSuffix}
+                </span>
+              </>
+            )}
           </div>
           {action}
         </div>
