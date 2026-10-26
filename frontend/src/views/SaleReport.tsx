@@ -85,16 +85,6 @@ function shortDay(iso: string): string{
   return new Date(y, m-1, d).toLocaleDateString(undefined, {month: "short", day: "numeric"});
 }
 
-const LAST_30_DAYS = {
-  label: "Last 30 days",
-  range: (): [string, string] => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - 29);
-    return [isoDay(start), isoDay(end)];
-  },
-};
-
 const DATE_PRESETS: { label: string; range: () => [string, string] }[] = [
   {
     label: "Last 7 days",
@@ -105,7 +95,15 @@ const DATE_PRESETS: { label: string; range: () => [string, string] }[] = [
       return [isoDay(start), isoDay(end)];
     },
   },
-  LAST_30_DAYS,
+  {
+    label: "Last 30 days",
+    range: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 29);
+      return [isoDay(start), isoDay(end)];
+    },
+  },
   {
     label: "This month",
     range: () => {
@@ -145,10 +143,8 @@ export default function SaleReport() {
   const [error, setError] = useState("");
 
   const [query, setQuery] = useState("");
-  // The page opens on the last 30 days (the "Last 30 days" preset), so the
-  // totals, the chart and the table all start on the same range.
-  const [fromDate, setFromDate] = useState(() => LAST_30_DAYS.range()[0]);
-  const [toDate, setToDate] = useState(() => LAST_30_DAYS.range()[1]);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "shipped_date", dir: "desc" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -182,20 +178,13 @@ export default function SaleReport() {
   }, []);
 
   const { code } = useMarketplace();
-  // Rows matching the top-bar marketplace and the search box — shared by the
-  // table (which also applies the date range) and the 30-day chart.
-  const searched = useMemo(
-    () =>
-      rows
-        .filter((r) => inMarketplace(code, r.marketplace_id))
-        .filter((r) => matches(`${r.item_code} ${r.set_} ${r.order_id} ${r.fulfillment}`, query)),
-    [rows, code, query],
-  );
   const filtered = useMemo(() => {
-    const out = searched
+    const out = rows
+      .filter((r) => inMarketplace(code, r.marketplace_id))
       // Date range is by order fulfillment (shipped) date; rows without one only show when no range is set.
       .filter((r) => !fromDate || (!!r.shipped_date && sortableDate(r.shipped_date) >= fromDate))
-      .filter((r) => !toDate || (!!r.shipped_date && sortableDate(r.shipped_date) <= toDate));
+      .filter((r) => !toDate || (!!r.shipped_date && sortableDate(r.shipped_date) <= toDate))
+      .filter((r) => matches(`${r.item_code} ${r.set_} ${r.order_id} ${r.fulfillment}`, query));
     const dir = sort.dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
       const av = DATE_KEYS.has(sort.key) ? sortableDate(String(a[sort.key])) : a[sort.key];
@@ -203,7 +192,7 @@ export default function SaleReport() {
       const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
       return cmp * dir;
     });
-  }, [searched, fromDate, toDate, sort]);
+  }, [rows, fromDate, toDate, query, sort]);
 
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
@@ -217,35 +206,41 @@ export default function SaleReport() {
     };
   }, [filtered]);
 
-  // Daily sales for the last 30 days, by shipped date (the day the date filter
-  // uses). Follows the marketplace and the search box but not the date range,
-  // so it's always the last 30 days — and with the page's default "Last 30
-  // days" range, its total equals the Total sales box.
-  const chartDays = useMemo(() => {
-    const [y, m, d] = LAST_30_DAYS.range()[0].split("-").map(Number);
-    const days = Array.from({ length: 30 }, (_, i) => ({
-      date: isoDay(new Date(y, m - 1, d + i)),
-      sales: 0,
-      units: 0,
-    }));
+  const last30Days = useMemo(() => {
 
-    const byDate = new Map(days.map((day) => [day.date, day]));
-    for (const r of searched) {
-      if (!r.shipped_date) continue;
-      const day = byDate.get(sortableDate(r.shipped_date));
-      if (day) {
+    const marketRows = rows.filter((r) => r.purchase_date && inMarketplace(code, r.marketplace_id));
+
+    const newest = marketRows.reduce((max, r)=> {
+      const day = sortableDate(r.purchase_date);
+      return day > max ? day : max;
+    }, "");
+
+    if(!newest) return[];
+
+    const days = Array.from({ length: 30}, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29-i));
+      return {date : isoDay(d), sales: 0, units: 0};
+    });
+
+    const byDate = new Map(days.map((d) => [d.date, d]));
+    for (const r of rows){
+      if(!r.purchase_date || !inMarketplace(code, r.marketplace_id))continue;
+      const day = byDate.get(sortableDate(r.purchase_date));
+      if (day){
         day.sales += r.product_sale_price;
         day.units += r.qty;
       }
     }
+
     return days;
-  }, [searched]);
+  }, [rows, code]);
 
   // A new search, date range, sort or page size changes which rows land on
   // which page, so whatever page we were on no longer means the same thing.
   useEffect(() => {
     setPage(1);
-  }, [query, fromDate, toDate, sort, pageSize, code]);
+  }, [query, fromDate, toDate, sort, pageSize]);
 
   const perPage = pageSize || filtered.length || 1;
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -292,12 +287,12 @@ export default function SaleReport() {
           </p>
           
           <section className={styles.chartGrid}>
-            <RevenueChart
-              data={chartDays.map((d) => ({ month: shortDay(d.date), value: d.sales }))}
-              title="Sales — last 30 days"
-              subtitle={`${shortDay(chartDays[0].date)} – ${shortDay(chartDays[29].date)} · by shipped date`}
+            {/* <RevenueChart
+              data = {last30Days.map((d) => ({month: shortDay(d.date), value: d.sales}))}
+              title="Sales - last 30 days"
+              subtitle={last30Days.length ? `${shortDay(last30Days[0].date)} – ${shortDay(last30Days[29].date)}` : "No sales yet"}
               headline="total"
-            />
+            /> */}
 
           </section>  
           <section className={styles.card}>
