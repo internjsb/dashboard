@@ -245,47 +245,32 @@ router.get("/refund_table", ...unlessLocalDev(requireAuth, requireActive), async
   try {
     const { rows } = await query(`
   
-
-SELECT DISTINCT ON (sku) transaction_type, Return_Date,
-	   Item_Code,
-	   Set_,
-	   Qty,
-	   product_refund_price,
-	   unit_price,
-	   Order_id,
-	   detailed_disposition,
-	   Reason,
-	   Status,
-	   fulfillment,
-	   Purchase_Date,
-	   marketplace_id
-FROM (
-    SELECT  c.transaction_type                    as transaction_type,
-			to_char(a.return_date, 'DD/MM/YY')          as Return_Date,
-			a.sku                                       as sku,
-			d.item_code                                 as Item_Code,
-		  d.units_per_sku                             as Set_,
-			a.quantity                                  as Qty,
-      c.amount                                    as product_refund_price,
-      round((c.amount / a.quantity),2)            as unit_price,
-			a.order_id                                  as Order_id,
-      a.detailed_disposition                      as detailed_disposition,
-      a.reason                                    as Reason,
-      a.status                                    as Status,
-			c.marketplace_name                          as fulfillment,
-      to_char(b.purchase_date,'DD/MM/YY')         as Purchase_Date,
-      a.marketplace_id                            as marketplace_id
+ SELECT  c.transaction_type                   as transaction_type, --
+			to_char(a.return_date, 'DD/MM/YY')          as Return_Date, --X
+			a.sku                                          as sku, --
+			d.item_code                                 as Item_Code, --X
+		  d.units_per_sku                             as Set_, --X
+			a.quantity                            as Qty,  --X
+      c.amount                                    as product_refund_price, --
+      round((c.amount / a.quantity),2)            as unit_price, --
+			a.order_id                            as Order_id, --
+      a.detailed_disposition                      as detailed_disposition, --X
+      a.reason                                    as Reason, --X
+      a.status                                    as Status, --X
+			c.marketplace_name                    as fulfillment, --
+      to_char(b.purchase_date,'DD/MM/YY')         as Purchase_Date,  --X
+      a.marketplace_id                            as marketplace_id  --
     FROM amazon.get_fba_fulfillment_customer_returns_data a
-    inner JOIN amazon.get_amazon_fulfilled_shipments_data_general b
+    right JOIN amazon.get_amazon_fulfilled_shipments_data_general b
             ON a.sku = b.sku
-    inner JOIN amazon.get_v2_settlement_report_data_flat_file_v2 c
-            ON c.marketplace_id = a.marketplace_id
-	left join core.item_sku_map d
+    right JOIN amazon.v_settlement_lines c
+            ON c.sku = a.sku
+	right join core.item_sku_map d
 			on d.seller_sku = a.sku
     WHERE c.transaction_type = 'Refund'
       AND c.amount_description = 'Principal'
-) t
-ORDER BY sku;
+
+
     `);
     res.json({ rows });
   } catch (err) {

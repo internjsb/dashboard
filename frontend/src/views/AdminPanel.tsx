@@ -628,7 +628,7 @@ export default function AdminPanel() {
               <span>Role</span>
               <select value={invite.role} onChange={(e) => setInvite({ ...invite, role: e.target.value })}>
                 <option value="user">User</option>
-                {isSuperAdmin && <option value="admin">Admin</option>}
+                <option value="admin">Admin</option>
               </select>
             </label>
             <label className={styles.formField}>

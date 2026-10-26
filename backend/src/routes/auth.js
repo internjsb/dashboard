@@ -32,9 +32,8 @@ router.post("/invites", requireAuth, requireAdmin, async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email" });
   if (!["user", "admin"].includes(role)) return res.status(400).json({ error: "Choose a role" });
   if (!DEPARTMENTS.includes(department)) return res.status(400).json({ error: "Choose a department" });
-  if (role === "admin" && !req.user.isSuperAdmin) {
-    return res.status(403).json({ error: "Only the super admin can invite admins" });
-  }
+  // Any admin (requireAdmin above, which includes the super admin) can invite
+  // either role; standard users can't reach this route at all.
   if (isSuperAdminEmail(email)) return res.status(403).json({ error: "That email is reserved for the super admin" });
   try {
     await auth.getUserByEmail(email);

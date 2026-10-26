@@ -268,15 +268,15 @@ export default function StockAvailable() {
                 />
               </section>
 
-              <section className={styles.card}>
-                <div className={styles.cardHead}>
-                  <div>
+              {/* <section className={styles.card}>
+                <div className={styles.cardHead}> */}
+                  {/* <div>
                     <h3>Stock by country</h3>
                     <span className={styles.cardSub}>
                       {num(totalOnHand)} units on hand across {byCountry.length} warehouses
                     </span>
-                  </div>
-                  <ExportCsvButton
+                  </div> */}
+                  {/* <ExportCsvButton
                     filename="stock-by-country"
                     rows={byCountry}
                     columns={[
@@ -286,17 +286,18 @@ export default function StockAvailable() {
                       { header: "Warehouse", value: (c) => c.warehouse },
                       { header: "Available", value: (c) => c.available },
                     ]}
-                  />
-                </div>
-                <DataTable
+                  /> */}
+                {/* </div> */}
+                {/* <DataTable
                   columns={countryColumns}
                   rows={byCountry}
                   rowKey={(c) => `${c.sku}-${c.warehouse}`}
                   filters={countryFilters}
                   searchPlaceholder="Search countries or warehouses…"
                   emptyMessage="No countries match your search."
-                />
-              </section>
+                /> */}
+              {/* </section> */}
+
             </>
           )}
         </main>
