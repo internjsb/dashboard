@@ -229,7 +229,13 @@ router.post("/register", requireAuth, async (req, res) => {
       await audit(req, "user.invite_accept", { email, role: invite.role, department: invite.department });
       return res.status(201).json({ status: "active", role: invite.role });
     }
-
+    
+    if (!isSuperAdmin) {
+      const existing = await db.get(`users/${uid}`);
+      if (!existing) {
+        return res.status(403).json({ error: "Accounts are invite-only. Ask an admin for an invite link." });
+      }
+    }
 
 
   const status = isSuperAdmin ? "active" : "pending";

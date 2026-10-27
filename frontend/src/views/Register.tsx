@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, Link, useSearchParams, Navigate } from "react-router-dom";
 import axios from "axios";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
@@ -10,6 +10,7 @@ import PasswordField from "../components/PasswordField";
 import { PASSWORD_RULE_TEXT, passwordError } from "../utils/passwordPolicy";
 import type { UserStatus } from "../types";
 import styles from "./Register.module.css";
+
 
 export default function Register() {
   const [displayName, setDisplayName] = useState("");
@@ -107,9 +108,12 @@ export default function Register() {
         return "Email/password sign-up is disabled for this project.";
       default:
         return "Couldn't create the account. Please try again.";
+        
     }
+    
   }
-
+    // Invite-only: without an invite link, /register just goes back to sign-in.
+  if (!inviteCode) return <Navigate to="/login" replace />;
   return (
     <div className={styles.loginScreen}>
       <div className={styles.loginCard}>

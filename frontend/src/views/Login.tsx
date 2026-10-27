@@ -114,10 +114,10 @@ export default function Login() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
-
+{/* 
         <p className={styles.alt}>
           Don't have an account? <Link to="/register">Create one</Link>
-        </p>
+        </p> */}
       </div>
     </div>
   );
