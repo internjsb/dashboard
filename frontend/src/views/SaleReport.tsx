@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, Search, X } from "lucide-react";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
@@ -166,7 +167,10 @@ export default function SaleReport() {
             })),
           );
       } catch (err) {
-        if (!cancelled) setError("Couldn't load the sales report. Is the backend running?");
+        // A reply from the backend means it's up and the database query failed;
+        // no reply at all means the backend itself isn't reachable.
+        const serverError = axios.isAxiosError(err) ? (err.response?.data as { error?: string } | undefined)?.error : null;
+        if (!cancelled) setError(serverError || "Couldn't load the sales report. Is the backend running?");
         console.error(err);
       } finally {
         if (!cancelled) setLoading(false);

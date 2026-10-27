@@ -5,9 +5,7 @@ import DataTable, { type DataTableColumn, type DataTableFilter } from "../compon
 import ExportCsvButton from "../components/ExportCsvButton";
 import api from "../api/client";
 import type {
-  FinanceData,
   ReportStatus,
-  TaxRow,
   TaxStatus,
   TransactionRow,
   TransactionStatus,
@@ -15,6 +13,28 @@ import type {
   FinanceReportRow,
 } from "../types";
 import styles from "./Finance.module.css";
+import { inMarketplace, useMarketplace } from "../hooks/useMarketplace";
+
+
+export interface FinanceData {
+  transactions: TransactionRow[];
+  taxes: TaxRow[];
+  reports: FinanceReportRow[];
+}
+
+
+export interface TaxRow {
+  id: string;
+  sku: string;
+  dtiItemCode: string;
+  sale_channel: string;
+  item_tax: number;
+  sold_qty: number;
+  item_price: number;
+  order_id : string;
+  marketplace_id : string;
+}
+
 
 const EMPTY: FinanceData = { transactions: [], taxes: [], reports: [] };
 
@@ -30,9 +50,6 @@ const TXN_TYPE_OPTIONS = Object.entries(TXN_TYPE_LABEL).map(([value, label]) => 
 const TXN_STATUS_LABEL: Record<TransactionStatus, string> = { completed: "Completed", pending: "Pending" };
 const TXN_STATUS_OPTIONS = Object.entries(TXN_STATUS_LABEL).map(([value, label]) => ({ value, label }));
 
-const TAX_STATUS_LABEL: Record<TaxStatus, string> = { filed: "Filed", pending: "Pending" };
-const TAX_STATUS_OPTIONS = Object.entries(TAX_STATUS_LABEL).map(([value, label]) => ({ value, label }));
-
 const REPORT_STATUS_LABEL: Record<ReportStatus, string> = { final: "Final", draft: "Draft" };
 const REPORT_STATUS_OPTIONS = Object.entries(REPORT_STATUS_LABEL).map(([value, label]) => ({ value, label }));
 
@@ -47,15 +64,30 @@ function formatDate(iso: string): string {
 
 export default function Finance() {
   const [data, setData] = useState<FinanceData>(EMPTY);
+  const [taxes, setTaxes ] = useState<TaxRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const {code} = useMarketplace(); 
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.get<FinanceData>("/dashboard/finance");
-      setData(data);
+      const [ finance, tax ] = await Promise.all([
+        api.get<FinanceData>("/dashboard/finance"),
+        api.get<{ rows: TaxRow[]}>("/health/tax", { timeout: 30000 }),
+      ]);
+      setData(finance.data);
+      setTaxes(
+        tax.data.rows.map((r,i) => ({
+          ...r,
+          id: `${r.order_id ?? ""}-${r.sku}-${i}`,
+          item_tax : Number(r.item_tax) || 0,
+          sold_qty : Number(r.sold_qty) || 0,
+          item_price: Number(r.item_price) || 0,
+        })),
+      );
+   
     } catch (err) {
       setError("Couldn't load finance data. Is the backend running?");
       console.error(err);
@@ -63,6 +95,9 @@ export default function Finance() {
       setLoading(false);
     }
   }
+
+  const taxRows = taxes.filter((t)=> inMarketplace(code, t.marketplace_id));
+  const totalTax = taxRows.reduce((sum, t) => sum + t.item_tax, 0);
 
   useEffect(() => {
     load();
@@ -119,7 +154,7 @@ export default function Finance() {
   ];
 
   const taxColumns: DataTableColumn<TaxRow>[] = [
-    { key: "sku", header: "SKU", accessor: (t) => t.sku, render: (t) => t.sku || "—", className: styles.muted },
+    { key: "sku", header: "SKU", accessor: (t) => t.sku, className: styles.muted },
     {
       key: "dtiItemCode",
       header: "DTI Item Code",
@@ -127,47 +162,32 @@ export default function Finance() {
       render: (t) => t.dtiItemCode || "—",
       className: styles.muted,
     },
-    { key: "jurisdiction", header: "Jurisdiction", accessor: (t) => t.jurisdiction },
-    { key: "period", header: "Period", accessor: (t) => t.period, className: styles.muted },
+    { key: "sale_channel", header: "Sale Channel", accessor: (t) => t.sale_channel },
+    { key: "Item Tax", header: "Item Tax", accessor: (t) => t.item_tax, className: styles.muted },
     {
-      key: "taxableSales",
-      header: "Taxable sales",
-      accessor: (t) => t.taxableSales,
+      key: "Sold Qty",
+      header: "Sold Qty",
+      accessor: (t) => t.sold_qty,
       align: "right",
       className: styles.numCol,
-      render: (t) => money(t.taxableSales),
+      render: (t) => money(t.sold_qty),
     },
     {
-      key: "taxCollected",
-      header: "Tax collected",
-      accessor: (t) => t.taxCollected,
+      key: "Item Price",
+      header: "Item Price",
+      accessor: (t) => t.item_price,
       align: "right",
       className: styles.numCol,
-      render: (t) => money(t.taxCollected),
-    },
-    {
-      key: "status",
-      header: "Status",
-      accessor: (t) => t.status,
-      render: (t) => (
-        <span className={`${styles.pill} ${styles[t.status === "filed" ? "ok" : "low"]}`}>
-          {TAX_STATUS_LABEL[t.status]}
-        </span>
-      ),
+      render: (t) => money(t.item_price),
     },
   ];
 
-  const taxFilters: DataTableFilter<TaxRow>[] = [
-    { key: "status", label: "Status", accessor: (t) => t.status, options: TAX_STATUS_OPTIONS },
-    {
-      key: "dtiItemCode",
-      label: "DTI Item Code",
-      accessor: (t) => t.dtiItemCode,
-      options: Array.from(new Set(data.taxes.map((t) => t.dtiItemCode)))
-        .sort()
-        .map((code) => ({ value: code, label: code })),
-    },
-  ];
+  const optionsOf = (values: (string | null)[]) =>
+    Array.from(new Set(values.filter((v): v is string => !!v)))
+    .sort()
+    .map((v) => ({ value: v, label: v}));
+
+
 
   const reportColumns: DataTableColumn<FinanceReportRow>[] = [
     { key: "sku", header: "SKU", accessor: (r) => r.sku, render: (r) => r.sku || "—", className: styles.muted },
@@ -211,6 +231,22 @@ export default function Finance() {
     },
   ];
 
+    const taxFilters: DataTableFilter<TaxRow>[] = [
+    {
+      key: "dtiItemCode",
+      label: "DTI Item Code",
+      accessor: (t) => t.dtiItemCode ?? "",
+      options: optionsOf(taxRows.map((t) => t.dtiItemCode)),
+    },
+    {
+      key: "sale_channel",
+      label: "Sales Channel",
+      accessor: (t) => t.sale_channel ?? "",
+      options: optionsOf(taxRows.map((t) => t.sale_channel)),
+    },
+  ];
+
+
   return (
     <div className="app-shell">
       <AppSidebar />
@@ -230,13 +266,13 @@ export default function Finance() {
             <p className={`${styles.state} ${styles.error}`}>{error}</p>
           ) : (
             <>
-              <section className={styles.card}>
-                <div className={styles.cardHead}>
-                  <div>
-                    <h3>Transactions</h3>
-                    <span className={styles.cardSub}>Sales, refunds, payouts, fees, and ad spend</span>
-                  </div>
-                  <ExportCsvButton
+              {/* <section className={styles.card}> */}
+                {/* <div className={styles.cardHead}> */}
+                  {/* <div> */}
+                    {/* <h3>Transactions</h3> */}
+                    {/* <span className={styles.cardSub}>Sales, refunds, payouts, fees, and ad spend</span> */}
+                  {/* </div> */}
+                  {/* <ExportCsvButton
                     filename="transactions"
                     rows={data.transactions}
                     columns={[
@@ -248,17 +284,17 @@ export default function Finance() {
                       { header: "Amount", value: (t) => t.amount.toFixed(2) },
                       { header: "Status", value: (t) => TXN_STATUS_LABEL[t.status] },
                     ]}
-                  />
-                </div>
-                <DataTable
+                  /> */}
+                {/* </div> */}
+                {/* <DataTable
                   columns={transactionColumns}
                   rows={data.transactions}
                   rowKey={(t) => t.id}
                   filters={transactionFilters}
                   searchPlaceholder="Search transactions…"
                   emptyMessage="No transactions match your search."
-                />
-              </section>
+                /> */}
+              {/* </section> */}
 
               <section className={styles.card}>
                 <div className={styles.cardHead}>
@@ -268,21 +304,21 @@ export default function Finance() {
                   </div>
                   <ExportCsvButton
                     filename="taxes"
-                    rows={data.taxes}
+                    rows={taxRows}
                     columns={[
                       { header: "SKU", value: (t) => t.sku },
                       { header: "DTI Item Code", value: (t) => t.dtiItemCode },
-                      { header: "Jurisdiction", value: (t) => t.jurisdiction },
-                      { header: "Period", value: (t) => t.period },
-                      { header: "Taxable sales", value: (t) => t.taxableSales },
-                      { header: "Tax collected", value: (t) => t.taxCollected },
-                      { header: "Status", value: (t) => TAX_STATUS_LABEL[t.status] },
+                      { header: "sale_channel", value: (t) => t.sale_channel },
+                      { header: "Item Tax", value: (t) => t.item_tax },
+                      { header: "Sold Qty", value: (t) => t.sold_qty },
+                      { header: "Item Price", value: (t) => t.item_price },
+                    
                     ]}
                   />
                 </div>
                 <DataTable
                   columns={taxColumns}
-                  rows={data.taxes}
+                  rows={taxRows}
                   rowKey={(t) => t.id}
                   filters={taxFilters}
                   searchPlaceholder="Search taxes…"

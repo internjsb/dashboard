@@ -148,7 +148,8 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 		b.units_per_sku                               as Set_,
 		a.quantity_shipped                            as QTY,
 		a.item_price                                  as Product_Sale_Price,
-		Round((c.price/a.quantity_shipped),2)         as Unit_price,
+		-- nullif: one zero-quantity row would otherwise fail the whole query (division by zero)
+		coalesce(round(a.item_price / nullif(a.quantity_shipped, 0), 2), 0) as Unit_price,
 		a.amazon_order_id                             as Order_id,
 		c.fulfillment_channel                         as Fulfillment,
 		to_char(a.shipment_date, 'DD/MM/YY')          as Shipped_date,
@@ -163,8 +164,8 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 `);
     res.json({ rows });
   } catch (err) {
-    console.error("[health/shipment_data]", err.message);
-    res.status(500).json({ error: "Failed to load shipments from the database" });
+    console.error("[health/sale_report]", err.message);
+    res.status(500).json({ error: "Couldn't load the sales report: the database query failed. Check the database connection." });
   }
 });
 
@@ -264,7 +265,7 @@ router.get("/refund_table", ...unlessLocalDev(requireAuth, requireActive), async
     right JOIN amazon.get_amazon_fulfilled_shipments_data_general b
             ON a.sku = b.sku
     right JOIN amazon.v_settlement_lines c
-            ON c.sku = a.sku
+            ON c.order_id = a.order_id
 	right join core.item_sku_map d
 			on d.seller_sku = a.sku
     WHERE c.transaction_type = 'Refund'
@@ -296,7 +297,29 @@ router.get("/stocks", ...unlessLocalDev(requireAuth, requireActive), async (req,
     `);
     res.json({ rows });
   } catch (err) {
-    console.error("[health/refund_table]", err.message);
+    console.error("[health/stocks]", err.message);
+    res.status(500).json({ error: "Failed to load refunds from the database" });
+  }
+});
+
+router.get("/tax", ...unlessLocalDev(requireAuth, requireActive), async (req, res) => {
+  try {
+    const { rows } = await query(`
+     select b.sku           as sku,
+	   a.item_code            as "dtiItemCode",
+	   b.sales_channel        as sale_channel,
+	   b.item_tax             as item_tax,
+	   b.quantity_shipped     as sold_qty,
+	   b.item_price           as item_price,
+     b.amazon_order_id      as order_id,
+     b.marketplace_id       as marketplace_id
+	   from core.item_sku_map  a
+	   right join amazon.get_amazon_fulfilled_shipments_data_general b
+	   on a.seller_sku = b.sku
+    `);
+    res.json({ rows });
+  } catch (err) {
+    console.error("[health/tax]", err.message);
     res.status(500).json({ error: "Failed to load refunds from the database" });
   }
 });

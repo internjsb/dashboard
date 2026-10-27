@@ -185,16 +185,7 @@ export interface TransactionRow {
 
 export type TaxStatus = "filed" | "pending";
 
-export interface TaxRow {
-  id: string;
-  sku: string;
-  dtiItemCode: string;
-  jurisdiction: string;
-  period: string;
-  taxableSales: number;
-  taxCollected: number;
-  status: TaxStatus;
-}
+
 
 export type ReportStatus = "final" | "draft";
 
@@ -209,11 +200,6 @@ export interface FinanceReportRow {
   status: ReportStatus;
 }
 
-export interface FinanceData {
-  transactions: TransactionRow[];
-  taxes: TaxRow[];
-  reports: FinanceReportRow[];
-}
 
 export interface MeResponse {
   role: Role | null;
