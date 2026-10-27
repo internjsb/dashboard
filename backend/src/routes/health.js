@@ -144,12 +144,11 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 
     const { rows } = await query(`
       select to_char(a.purchase_date, 'DD/MM/YY') as Purchase_date,
-		d.item_code                                   as Item_Code,
+		b.item_code                                   as Item_Code,
 		b.units_per_sku                               as Set_,
 		a.quantity_shipped                            as QTY,
 		a.item_price                                  as Product_Sale_Price,
-		-- nullif: one zero-quantity row would otherwise fail the whole query (division by zero)
-		coalesce(round(a.item_price / nullif(a.quantity_shipped, 0), 2), 0) as Unit_price,
+		Round((a.item_price/a.quantity_shipped),2)         as Unit_price,
 		a.amazon_order_id                             as Order_id,
 		c.fulfillment_channel                         as Fulfillment,
 		to_char(a.shipment_date, 'DD/MM/YY')          as Shipped_date,
@@ -158,14 +157,12 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
 		left join amazon.get_merchant_listings_all_data c
-		on a.sku = c.seller_sku
-		left join core.items d
-		on d.item_name = c.item_name;
+		on a.sku = c.seller_sku;
 `);
     res.json({ rows });
   } catch (err) {
-    console.error("[health/sale_report]", err.message);
-    res.status(500).json({ error: "Couldn't load the sales report: the database query failed. Check the database connection." });
+    console.error("[health/shipment_data]", err.message);
+    res.status(500).json({ error: "Failed to load shipments from the database" });
   }
 });
 
