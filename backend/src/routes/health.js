@@ -13,6 +13,16 @@ import {
 
 const router = express.Router();
 
+router.get("/db", async (req, res) => {
+  try {
+    await query("SELECT 1");
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[health/db]", err.message);
+    res.status(503).json({ ok: false, error: "Database unreachable" });
+  }
+});
+
 const RATE_QUOTES = "JPY,EUR,GBP,CAD,AUD,MXN,BRL,SEK,PLN,TRY,AED,SAR";
 const ratesByDay = new Map(); // "2026-08-27" -> { USD: 1, JPY: 159.34, ... }
 
