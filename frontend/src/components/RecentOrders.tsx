@@ -68,7 +68,7 @@ export default function RecentOrders() {
           columns={[
             { header: "Item", value: (o) => o.item_name },
             { header: "SKU", value: (o) => o.sku },
-            { header: "DTI Item Code", value: (o) => o.dtiItemCode },
+            { header: "Product Item Code", value: (o) => o.dtiItemCode },
             { header: "Qty", value: (o) => o.qty },
             { header: "Price", value: (o) => o.Price.toFixed(2) },
           ]}
@@ -88,9 +88,9 @@ export default function RecentOrders() {
           className={styles.filterSelect}
           value={dtiFilter}
           onChange={(e) => setDtiFilter(e.target.value)}
-          aria-label="Filter by DTI item code"
+          aria-label="Filter by Product item code"
         >
-          <option value="">DTI item code: All</option>
+          <option value="">Product Item code: All</option>
           {dtiOptions.map((code) => (
             <option key={code} value={code}>
               {code}
@@ -108,9 +108,9 @@ export default function RecentOrders() {
       ) : (
         <>
           <div className={`${styles.row} ${styles.rowHead}`}>
-            <span>Item</span>
+            <span>Item Name</span>
             <span>SKU</span>
-            <span>DTI item code</span>
+            <span>Product item code</span>
             <span className={styles.priceHead}>Total Price</span>
           </div>
           <ul>

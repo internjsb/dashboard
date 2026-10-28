@@ -60,23 +60,32 @@ export default function Products() {
     // A product can have a second DTI item — shown on its own line in the same cell.
     {
       key: "dtiItemCode",
-      header: "DTI Item Code",
+      header: "Product Item Code",
       accessor: (p) => [p.dtiItemCode, p.dtiItemCode2].filter(Boolean).join(" / "),
       render: (p) => <TwoLines first={p.dtiItemCode} second={p.dtiItemCode2} />,
     },
     { key: "set", header: "Set", accessor: (p) => p.set },
     {
       key: "dtiItemDescription",
-      header: "DTI Item Description",
+      header: "Product Item Description",
       accessor: (p) => [p.dtiItemDescription, p.dtiItemDescription2].filter(Boolean).join(" / "),
-      render: (p) => <TwoLines first={p.dtiItemDescription} second={p.dtiItemDescription2} />,
+      render: (p) => (
+        <span className={styles.longText}>
+          <TwoLines first={p.dtiItemDescription} second={p.dtiItemDescription2} />
+        </span>
+      ),
     },
     { key: "type", header: "Type", accessor: (p) => p.type },
     { key: "country", header: "Country", accessor: (p) => p.country },
     { key: "asin", header: "ASIN", accessor: (p) => p.asin },
     { key: "fnsku", header: "FNSKU", accessor: (p) => p.fnsku },
     { key: "ean", header: "EAN", accessor: (p) => p.ean },
-    { key: "description", header: "Description", accessor: (p) => p.description },
+    {
+      key: "description",
+      header: "Description",
+      accessor: (p) => p.description,
+      render: (p) => <span className={styles.longText}>{p.description}</span>,
+    },
     { key: "status", header: "Status", accessor: (p) => p.status },
     {
       key: "actions",
@@ -113,7 +122,7 @@ export default function Products() {
   const productFilters: DataTableFilter<ProductRow>[] = [
     {
       key: "dtiItemCode",
-      label: "DTI Item Code",
+      label: "Product Item Code",
       accessor: (p) => p.dtiItemCode,
       options: Array.from(new Set(products.map((p) => p.dtiItemCode)))
         .sort()

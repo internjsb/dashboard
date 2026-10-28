@@ -107,7 +107,7 @@ export default function Finance() {
     { key: "sku", header: "SKU", accessor: (t) => t.sku, render: (t) => t.sku || "—", className: styles.muted },
     {
       key: "dtiItemCode",
-      header: "DTI Item Code",
+      header: "Product Item Code",
       accessor: (t) => t.dtiItemCode,
       render: (t) => t.dtiItemCode || "—",
       className: styles.muted,
@@ -145,7 +145,7 @@ export default function Finance() {
     { key: "status", label: "Status", accessor: (t) => t.status, options: TXN_STATUS_OPTIONS },
     {
       key: "dtiItemCode",
-      label: "DTI Item Code",
+      label: "Product Item Code",
       accessor: (t) => t.dtiItemCode,
       options: Array.from(new Set(data.transactions.map((t) => t.dtiItemCode)))
         .sort()
@@ -157,7 +157,7 @@ export default function Finance() {
     { key: "sku", header: "SKU", accessor: (t) => t.sku, className: styles.muted },
     {
       key: "dtiItemCode",
-      header: "DTI Item Code",
+      header: "Product Item Code",
       accessor: (t) => t.dtiItemCode,
       render: (t) => t.dtiItemCode || "—",
       className: styles.muted,
@@ -223,7 +223,7 @@ export default function Finance() {
     { key: "status", label: "Status", accessor: (r) => r.status, options: REPORT_STATUS_OPTIONS },
     {
       key: "dtiItemCode",
-      label: "DTI Item Code",
+      label: "Product Item Code",
       accessor: (r) => r.dtiItemCode,
       options: Array.from(new Set(data.reports.map((r) => r.dtiItemCode)))
         .sort()
@@ -234,7 +234,7 @@ export default function Finance() {
     const taxFilters: DataTableFilter<TaxRow>[] = [
     {
       key: "dtiItemCode",
-      label: "DTI Item Code",
+      label: "Product Item Code",
       accessor: (t) => t.dtiItemCode ?? "",
       options: optionsOf(taxRows.map((t) => t.dtiItemCode)),
     },
@@ -307,7 +307,7 @@ export default function Finance() {
                     rows={taxRows}
                     columns={[
                       { header: "SKU", value: (t) => t.sku },
-                      { header: "DTI Item Code", value: (t) => t.dtiItemCode },
+                      { header: "Product Item Code", value: (t) => t.dtiItemCode },
                       { header: "sale_channel", value: (t) => t.sale_channel },
                       { header: "Item Tax", value: (t) => t.item_tax },
                       { header: "Sold Qty", value: (t) => t.sold_qty },
@@ -326,7 +326,7 @@ export default function Finance() {
                 />
               </section>
 
-              <section className={styles.card}>
+              {/* <section className={styles.card}>
                 <div className={styles.cardHead}>
                   <div>
                     <h3>Finance reports</h3>
@@ -337,7 +337,7 @@ export default function Finance() {
                     rows={data.reports}
                     columns={[
                       { header: "SKU", value: (r) => r.sku },
-                      { header: "DTI Item Code", value: (r) => r.dtiItemCode },
+                      { header: "Product Item Code", value: (r) => r.dtiItemCode },
                       { header: "Report", value: (r) => r.name },
                       { header: "Period", value: (r) => r.period },
                       { header: "Type", value: (r) => r.type },
@@ -354,7 +354,7 @@ export default function Finance() {
                   searchPlaceholder="Search reports…"
                   emptyMessage="No reports match your search."
                 />
-              </section>
+              </section> */}
             </>
           )}
         </main>

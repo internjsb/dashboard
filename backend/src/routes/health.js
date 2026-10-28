@@ -13,13 +13,76 @@ import {
 
 const router = express.Router();
 
-router.get("/db", async (req, res) => {
+const RATE_QUOTES = "JPY,EUR,GBP,CAD,AUD,MXN,BRL,SEK,PLN,TRY,AED,SAR";
+const ratesByDay = new Map(); // "2026-08-27" -> { USD: 1, JPY: 159.34, ... }
+
+// Amazon marketplace countries and the currency each one sells in.
+const MARKETPLACE_COUNTRIES = [
+  { country: "United States", code: "US", currency: "USD" },
+  { country: "Japan", code: "JP", currency: "JPY" },
+  { country: "Canada", code: "CA", currency: "CAD" },
+  { country: "Mexico", code: "MX", currency: "MXN" },
+  { country: "Brazil", code: "BR", currency: "BRL" },
+  { country: "United Kingdom", code: "GB", currency: "GBP" },
+  { country: "Germany", code: "DE", currency: "EUR" },
+  { country: "France", code: "FR", currency: "EUR" },
+  { country: "Italy", code: "IT", currency: "EUR" },
+  { country: "Spain", code: "ES", currency: "EUR" },
+  { country: "Netherlands", code: "NL", currency: "EUR" },
+  { country: "Belgium", code: "BE", currency: "EUR" },
+  { country: "Ireland", code: "IE", currency: "EUR" },
+  { country: "Sweden", code: "SE", currency: "SEK" },
+  { country: "Poland", code: "PL", currency: "PLN" },
+  { country: "Turkey", code: "TR", currency: "TRY" },
+  { country: "UAE", code: "AE", currency: "AED" },
+  { country: "Saudi Arabia", code: "SA", currency: "SAR" },
+  { country: "Australia", code: "AU", currency: "AUD" },
+];
+
+router.get("/exchange_rates", ...unlessLocalDev(requireAuth, requireActive), async (req, res) => {
   try {
-    await query("SELECT 1");
-    res.json({ ok: true });
+    const days = [...new Set(String(req.query.dates ?? "").split(","))]
+      .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      .sort();
+    const missing = days.filter((d) => !ratesByDay.has(d));
+    if (missing.length) {
+      const url = new URL("https://api.frankfurter.dev/v2/rates");
+      url.searchParams.set("base", "USD");
+      url.searchParams.set("quotes", RATE_QUOTES);
+      url.searchParams.set("from", missing[0]);
+      url.searchParams.set("to", missing[missing.length - 1]);
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`Frankfurter HTTP ${r.status}`);
+      // Response: [{ date, base, quote, rate }, ...] — one entry per day per currency.
+      for (const { date, quote, rate } of await r.json()) {
+        if (!ratesByDay.has(date)) ratesByDay.set(date, { USD: 1 });
+        ratesByDay.get(date)[quote] = rate;
+      }
+    }
+    const rates = Object.fromEntries(days.filter((d) => ratesByDay.has(d)).map((d) => [d, ratesByDay.get(d)]));
+    // Optional ?country=JP or ?country=Japan (comma-separated for several) — limits
+    // byCountry to those countries; leave it out to list every marketplace country.
+    const wanted = String(req.query.country ?? "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const countries = wanted.length
+      ? MARKETPLACE_COUNTRIES.filter((c) => wanted.includes(c.code.toLowerCase()) || wanted.includes(c.country.toLowerCase()))
+      : MARKETPLACE_COUNTRIES;
+    if (wanted.length && !countries.length) {
+      return res.status(400).json({ error: `Unknown country: ${req.query.country}. Use a code (JP) or name (Japan).` });
+    }
+    // Same rates, listed per country — "rate" is that country's currency per 1 USD.
+    const byCountry = Object.fromEntries(
+      Object.entries(rates).map(([day, dayRates]) => [
+        day,
+        countries.map((c) => ({ ...c, rate: dayRates[c.currency] ?? null })),
+      ]),
+    );
+    res.json({ rates, byCountry });
   } catch (err) {
-    console.error("[health/db]", err.message);
-    res.status(503).json({ ok: false, error: "Database unreachable" });
+    console.error("[health/exchange_rates]", err.message);
+    res.status(502).json({ error: "Failed to load exchange rates" });
   }
 });
 
@@ -143,8 +206,9 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
   try {
 
     const { rows } = await query(`
-      select to_char(a.purchase_date, 'DD/MM/YY') as Purchase_date,
-		b.item_code                                   as Item_Code,
+
+ select to_char(a.purchase_date, 'DD/MM/YY') as Purchase_date,
+		b.item_code                                   as item_code,
 		b.units_per_sku                               as Set_,
 		a.quantity_shipped                            as QTY,
 		a.item_price                                  as Product_Sale_Price,
@@ -157,7 +221,10 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
 		left join amazon.get_merchant_listings_all_data c
-		on a.sku = c.seller_sku;
+		on a.sku = c.seller_sku
+		left join core.items d
+		on d.item_name = c.item_name;
+
 `);
     res.json({ rows });
   } catch (err) {
@@ -177,16 +244,18 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
            COALESCE(p.product_name, a.product_name, '')                           AS item_name,
            a.sku                                                                  AS sku,
            COALESCE(i.item_code, '')                                              AS "dtiItemCode",
-           COALESCE(i.units_per_sku, 0)                                           AS qty,
+           i.units_per_sku                                          AS qty,
            COALESCE(a.item_price * i.units_per_sku, 0)::float8                    AS "Price",
            a.marketplace_id                                                       AS marketplace_id
       FROM amazon.get_amazon_fulfilled_shipments_data_general a
       LEFT JOIN core.item_sku_map i
-             ON i.seller_sku = a.sku AND i.marketplace_id = a.marketplace_id
+             ON i.seller_sku = a.sku 
       LEFT JOIN core.products p
-             ON p.seller_sku = a.sku AND p.marketplace_id = a.marketplace_id
+             ON p.seller_sku = a.sku 
      ORDER BY a.purchase_date DESC NULLS LAST
-     LIMIT 100`);
+     LIMIT 100
+     `
+    );
     res.json({ rows });
   } catch (err) {
     console.error("[health/recent_order]", err.message);

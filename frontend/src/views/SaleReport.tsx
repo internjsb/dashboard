@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, Search, X } from "lucide-react";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
@@ -6,18 +6,42 @@ import api from "../api/client";
 import { matches } from "../utils/search";
 import { inMarketplace, useMarketplace } from "../hooks/useMarketplace";
 import styles from "./SaleReport.module.css";
-import RevenueChart from "../components/RevenueChart";
 
 // Rows-per-page choices; 0 means "All". Always starts at 10.
 const PAGE_SIZE_OPTIONS = [10, 50, 100, 0];
 
-// One row from GET /health/sale_report — the query returns exactly these
-// columns (no NULLs, prices as numbers, dates as YYYY-MM-DD).
+const MARKETPLACE_CURRENCY: Record<string, string> = {
+  ATVPDKIKX0DER: "USD", A1VC38T7YXB528: "JPY", A2EUQ1WTGCTBG2: "CAD", A1AM78C64UM0Y8: "MXN",
+  A2Q3Y263D00KWC: "BRL", A1F83G8C2ARO7P: "GBP", A1PA6795UKMFR9: "EUR", A13V1IB3VIYZZH: "EUR",
+  APJ6JRA9NG5V4: "EUR", A1RKKUPIHCS9HS: "EUR", A1805IZSGTT6HS: "EUR", AMEN7PMS3EDWL: "EUR",
+  A28R8C7NBKEWEA: "EUR", A2NODRKZP88ZB9: "SEK", A1C3SOZRARQ6R3: "PLN", A33AVAJ2PDY3EV: "TRY",
+  A2VIGQ35RCS4UG: "AED", A17E79C6D8DWNP: "SAR", A39IBJ37TRP1C6: "AUD",
+};
+
+// Rates are per 1 USD, so: amount ÷ rate(from) × rate(to). null when a rate is missing.
+function convert(amount: number, from: string, to: string, rates: Record<string, number>): number | null {
+  const f = rates[from], t = rates[to];
+  return f && t ? (amount / f) * t : null;
+}
+
+// The currency a row's prices are in (by its marketplace).
+// Symbol for a currency code: JPY -> ¥, USD -> $, EUR -> €, CAD -> CA$ (codes with no symbol stay as the code).
+function currencySymbol(currency: string): string {
+  return (
+    new Intl.NumberFormat("en-US", { style: "currency", currency }).formatToParts(0).find((p) => p.type === "currency")?.value ??
+    currency
+  );
+}
+
+function currencyOf(r: { marketplace_id: string | null }): string {
+  return MARKETPLACE_CURRENCY[r.marketplace_id ?? ""] ?? "USD";
+}
+
 interface SaleReport {
   id: string;
   purchase_date: string;
-  item_code: string;
-  set_: string;
+  item_code: string | null;
+  set_: string | null;
   qty: number;
   product_sale_price: number;
   unit_price: number;
@@ -42,6 +66,7 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "order_id", label: "Order id" },
   { key: "fulfillment", label: "Fulfillment" },
   { key: "shipped_date", label: "Order Fulfillment Date" },
+  
 ];
 
 // Plain two-decimal amounts (20.00, 7.50) — no currency symbol, per the format.
@@ -85,6 +110,7 @@ function shortDay(iso: string): string{
   return new Date(y, m-1, d).toLocaleDateString(undefined, {month: "short", day: "numeric"});
 }
 
+
 const DATE_PRESETS: { label: string; range: () => [string, string] }[] = [
   {
     label: "Last 7 days",
@@ -122,7 +148,7 @@ function csvCell(v: string | number): string {
 // YYYY-MM-DD, amounts with two decimals, blank Set left blank.
 function csvValue(r: SaleReport, key: SortKey): string | number {
   if (key === "product_sale_price" || key === "unit_price") return r[key].toFixed(2);
-  return r[key];
+  return r[key] ?? "";
 }
 
 function downloadCsv(rows: SaleReport[]) {
@@ -148,6 +174,21 @@ export default function SaleReport() {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "shipped_date", dir: "desc" });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  // Exchange rates by day ("2026-08-27" -> { USD: 1, JPY: 159.34, ... }), for each non-USD row's purchase date.
+  const [ratesByDay, setRatesByDay] = useState<Record<string, Record<string, number>>>({});
+
+  useEffect(() => {
+    const days = [...new Set(rows.filter((r) => currencyOf(r) !== "USD" && r.purchase_date).map((r) => sortableDate(r.purchase_date)))];
+    if (!days.length) return;
+    api.get<{ rates: Record<string, Record<string, number>> }>("/health/exchange_rates", { params: { dates: days.join(",") } })
+      .then(({ data }) => setRatesByDay(data.rates))
+      .catch((err) => console.error(err));
+  }, [rows]);
+
+  // A row's sale price in USD, at the rate on its purchase date (null until rates load).
+  const toUsd = (r: SaleReport) =>
+    convert(r.product_sale_price, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)] ?? {});
+
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +219,8 @@ export default function SaleReport() {
   }, []);
 
   const { code } = useMarketplace();
+  // Currency of the marketplace picked in the top bar; null for "All marketplaces" (mixed currencies).
+  const priceCurrency = code ? MARKETPLACE_CURRENCY[code] ?? null : null;
   const filtered = useMemo(() => {
     const out = rows
       .filter((r) => inMarketplace(code, r.marketplace_id))
@@ -196,7 +239,8 @@ export default function SaleReport() {
 
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
-    const sales = filtered.reduce((sum, r) => sum + r.product_sale_price, 0);
+    // In USD, so yen and dollar sales add up correctly.
+    const sales = filtered.reduce((sum, r) => sum + (toUsd(r) ?? 0), 0);
     const orders = new Set(filtered.map((r) => r.order_id)).size;
     return {
       orders,
@@ -204,7 +248,7 @@ export default function SaleReport() {
       sales,
       avgOrder: orders ? sales / orders : 0,
     };
-  }, [filtered]);
+  }, [filtered, ratesByDay]);
 
   const last30Days = useMemo(() => {
 
@@ -264,8 +308,8 @@ export default function SaleReport() {
   const stats = [
     { label: "Orders", value: compactCount(totals.orders) },
     { label: "Units sold", value: compactCount(totals.units) },
-    { label: "Total sales", value: compactMoney(totals.sales) },
-    { label: "Avg order value", value: compactMoney(totals.avgOrder) },
+    { label: "Total sales (USD)", value: compactMoney(totals.sales) },
+    { label: "Avg order value (USD)", value: compactMoney(totals.avgOrder) },
   ];
 
   return (
@@ -384,8 +428,8 @@ export default function SaleReport() {
                         {COLUMNS.map((c) => {
                           const active = sort.key === c.key;
                           return (
+                            <Fragment key={c.key}>
                             <th
-                              key={c.key}
                               className={c.numeric ? styles.num : ""}
                               aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
                             >
@@ -394,7 +438,9 @@ export default function SaleReport() {
                                 className={`${styles.sortBtn} ${active ? styles.sortActive : ""}`}
                                 onClick={() => toggleSort(c.key)}
                               >
-                                {c.label}
+                                {c.key === "product_sale_price" && priceCurrency
+                                  ? `${c.label} (${currencySymbol(priceCurrency)})`
+                                  : c.label}
                                 {active ? (
                                   sort.dir === "asc" ? (
                                     <ArrowUp size={13} aria-hidden="true" />
@@ -406,6 +452,9 @@ export default function SaleReport() {
                                 )}
                               </button>
                             </th>
+                            {/* Converted price sits right beside the original price. */}
+                            {c.key === "product_sale_price" && <th className={styles.num}>Sale (USD)</th>}
+                            </Fragment>
                           );
                         })}
                       </tr>
@@ -413,7 +462,7 @@ export default function SaleReport() {
                     <tbody>
                       {paged.length === 0 ? (
                         <tr>
-                          <td className={styles.empty} colSpan={COLUMNS.length + 1}>
+                          <td className={styles.empty} colSpan={COLUMNS.length + 2}>
                             <strong>No rows match your filters.</strong>
                             {hasFilters && (
                               <button type="button" className={styles.linkBtn} onClick={clearFilters}>
@@ -429,11 +478,14 @@ export default function SaleReport() {
                             <td className={`${styles.num} ${styles.muted}`}>{firstIndex + i + 1}</td>
                             <td className={styles.nowrap}>{formatDate(r.purchase_date)}</td>
                             <td>
-                              <span className={styles.code}>{r.item_code}</span>
+                              <span className={styles.code}>{r.item_code ?? "null"}</span>
                             </td>
-                            <td>{r.set_}</td>
+                            <td>{r.set_ ?? "null"}</td>
                             <td className={styles.num}>{r.qty}</td>
                             <td className={styles.num}>{money(r.product_sale_price)}</td>
+                            <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
+                              {toUsd(r) == null ? "—" : money(toUsd(r)!)}
+                            </td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
                             <td className={styles.mono}>{r.order_id}</td>
                             <td>

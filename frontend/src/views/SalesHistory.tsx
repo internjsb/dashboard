@@ -97,10 +97,10 @@ export default function SalesHistory() {
 
   const itemColumns: DataTableColumn<TopItemRow>[] = [
     { key: "sku", header: "SKU", accessor: (i) => i.sku },
-    { key: "dtiItemCode", header: "DTI Item Code", accessor: (i) => i.dtiItemCode },
+    { key: "dtiItemCode", header: "Product Item Code", accessor: (i) => i.dtiItemCode },
     {
       key: "name",
-      header: "Item",
+      header: "Item Name",
       accessor: (i) => i.name,
       render: (item) => (
         <>
@@ -142,7 +142,7 @@ export default function SalesHistory() {
   const itemFilters: DataTableFilter<TopItemRow>[] = [
     {
       key: "dtiItemCode",
-      label: "DTI Item Code",
+      label: "Product Item Code",
       accessor: (i) => i.dtiItemCode,
       options: Array.from(new Set(data.topItems.map((i) => i.dtiItemCode)))
         .sort()
@@ -303,8 +303,8 @@ export default function SalesHistory() {
                       rows={data.topItems}
                       columns={[
                         { header: "SKU", value: (i) => i.sku },
-                        { header: "DTI Item Code", value: (i) => i.dtiItemCode },
-                        { header: "Item", value: (i) => i.name },
+                        { header: "Product Item Code", value: (i) => i.dtiItemCode },
+                        { header: "Item Name", value: (i) => i.name },
                         { header: "Views", value: (i) => i.views },
                         { header: "Clicks", value: (i) => i.clicks },
                         { header: "Add to cart", value: (i) => i.addToCart },
