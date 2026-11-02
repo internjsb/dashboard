@@ -238,6 +238,7 @@ export default function SaleReport() {
   const { code } = useMarketplace();
   // Currency of the marketplace picked in the top bar; null for "All marketplaces" (mixed currencies).
   const priceCurrency = code ? MARKETPLACE_CURRENCY[code] ?? null : null;
+  const showUsd = priceCurrency !== "USD";
   const filtered = useMemo(() => {
     const out = rows
       .filter((r) => inMarketplace(code, r.marketplace_id))
@@ -480,7 +481,8 @@ export default function SaleReport() {
                               </button>
                             </th>
                             {/* Converted price sits right beside the original price. */}
-                            {c.key === "product_sale_price" && <th className={styles.num}>Sale (USD)</th>}
+
+                            {c.key === "product_sale_price" && showUsd && <th className={styles.num}>Sale (USD)</th>}
                             </Fragment>
                           );
                         })}
@@ -489,7 +491,7 @@ export default function SaleReport() {
                     <tbody>
                       {paged.length === 0 ? (
                         <tr>
-                          <td className={styles.empty} colSpan={COLUMNS.length + 2}>
+                          <td className={styles.empty} colSpan={COLUMNS.length + (showUsd ? 2: 1)} >
                             <strong>No rows match your filters.</strong>
                             {hasFilters && (
                               <button type="button" className={styles.linkBtn} onClick={clearFilters}>
@@ -512,9 +514,9 @@ export default function SaleReport() {
                             <td>{r.set_ ?? "null"}</td>
                             <td className={styles.num}>{r.qty}</td>
                             <td className={styles.num}>{money(r.product_sale_price)}</td>
-                            <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
+                            {showUsd && (<td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
                               {toUsd(r) == null ? "—" : money(toUsd(r)!)}
-                            </td>
+                            </td>)}
                             <td className={styles.num}>{money(r.price_wo_tax)}</td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
                             <td className={styles.num}>{money(r.net_price)}</td>
