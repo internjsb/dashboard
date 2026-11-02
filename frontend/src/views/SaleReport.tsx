@@ -200,7 +200,9 @@ export default function SaleReport() {
 
   // A row's sale price in USD, at the rate on its purchase date (null until rates load).
   const toUsd = (r: SaleReport) =>
-    convert(r.product_sale_price, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)] ?? {});
+    currencyOf(r) === "USD" ? r.product_sale_price : 
+    convert(r.product_sale_price, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)]??{});
+
 
 
   useEffect(() => {
@@ -499,10 +501,10 @@ export default function SaleReport() {
                               </button>
                             )}
                           </td>
-                        </tr>
+                        </tr >
                       ) : (
                         paged.map((r, i) => (
-                          <tr key={r.id}>
+                          <tr  key={`${r.order_id}-${firstIndex + i}`}>
                             {/* Running number across pages, so page 2 starts at 11. */}
 
                             <td className={`${styles.num} ${styles.muted}`}>{firstIndex + i + 1}</td>

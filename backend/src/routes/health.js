@@ -249,7 +249,8 @@ with base as (
 		from base a
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
-		left join amazon.get_merchant_listings_all_data c
+		left join (select distinct on (seller_sku) seller_sku, fulfillment_channel, item_name
+		           from amazon.get_merchant_listings_all_data) c
 		on a.sku = c.seller_sku;
 
 `);
