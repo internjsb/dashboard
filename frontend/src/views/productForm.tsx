@@ -28,6 +28,7 @@ export interface ProductRow {
   ean: string;
   description: string;
   status: string;
+  listing_date: string;
 }
 
 type FieldKey = Exclude<keyof ProductRow, "id" | "sn" | "set">;
@@ -48,10 +49,10 @@ const DEFAULT_SET = "1";
 const FIELDS: { key: FieldKey; label: string; required: boolean; options?: string[] }[] = [
   { key: "sku", label: "SKU", required: true },
   { key: "division", label: "Division", required: true },
-  { key: "dtiItemCode", label: "DTI Item Code", required: true },
-  { key: "dtiItemDescription", label: "DTI Item Description", required: true },
-  { key: "dtiItemCode2", label: "2nd DTI Item Code", required: false },
-  { key: "dtiItemDescription2", label: "2nd DTI Item Description", required: false },
+  { key: "dtiItemCode", label: "Product Item Code", required: true },
+  { key: "dtiItemDescription", label: "Product Item Description", required: true },
+  { key: "dtiItemCode2", label: "2nd Product Item Code", required: false },
+  { key: "dtiItemDescription2", label: "2nd Product Item Description", required: false },
   { key: "type", label: "Type", required: true },
   { key: "country", label: "Country", required: true },
   { key: "asin", label: "ASIN", required: true },
@@ -66,7 +67,7 @@ const FIELDS: { key: FieldKey; label: string; required: boolean; options?: strin
 type LayoutKey = FieldKey | "sn" | "set";
 const SECTIONS: { title: string; keys: LayoutKey[] }[] = [
   { title: "Basics", keys: ["sn", "sku", "status"] },
-  // Row 1: first DTI item + Division; row 2: second DTI item + Set; row 3: Type, Country.
+  // Row 1: first product item + Division; row 2: second product item + Set; row 3: Type, Country.
   {
     title: "Item details",
     keys: ["dtiItemCode", "dtiItemDescription", "division", "dtiItemCode2", "dtiItemDescription2", "set", "type", "country"],
@@ -84,15 +85,16 @@ const HINTS: Record<LayoutKey, string> = {
   division: "Type of the product",
   dtiItemCode: "Pick from the Product Listing items — fills in the description, division, type and EAN too.",
   set: "how many units come in one pack.",
-  dtiItemDescription: "This is the description for the DTI code",
-  dtiItemCode2: "Optional — a second DTI item in this product.",
-  dtiItemDescription2: "Matches the 2nd DTI Item Code.",
+  dtiItemDescription: "This is the description for the product code",
+  dtiItemCode2: "Optional — a second product item in this product.",
+  dtiItemDescription2: "Matches the 2nd product Item Code.",
   type: "Type of the product",
   country: "eg.US",
   asin: "10-character Amazon ID.",
   fnsku: " Amazon fulfillment label code.",
   ean: "barcode number.",
   description: "A short description of the product.",
+  listing_date: "date of listing in Amazon app",
 };
 
 // Greyed-out text inside each empty box. PLACEHOLDER TEXT — edit freely.
@@ -197,7 +199,7 @@ export function ProductForm({
     api
       .get<{ rows: DtiItem[] }>("/health/dti_items", { timeout: 30000 })
       .then(({ data }) => !cancelled && setDtiItems(data.rows))
-      .catch((err) => !cancelled && setDtiError(errorMessage(err, "Couldn't load DTI items.")))
+      .catch((err) => !cancelled && setDtiError(errorMessage(err, "Couldn't load product items.")))
       .finally(() => !cancelled && setDtiLoading(false));
     return () => {
       cancelled = true;
@@ -261,19 +263,19 @@ export function ProductForm({
     const code = form.dtiItemCode.trim();
     const keptOldCode = editing && code === editing.dtiItemCode;
     if (dtiItems.length > 0 && !keptOldCode && !dtiItems.some((i) => i.dtiItemCode === code)) {
-      setError("Pick a DTI Item Code from the list (Product Listing's items).");
+      setError("Pick a Product Item Code from the list (Product Listing's items).");
       return;
     }
 
     const code2 = form.dtiItemCode2.trim();
     if (code2) {
       if (code2 === code) {
-        setError("The 2nd DTI Item Code must be different from the first.");
+        setError("The 2nd Product Item Code must be different from the first.");
         return;
       }
       const keptOldCode2 = editing && code2 === editing.dtiItemCode2;
       if (dtiItems.length > 0 && !keptOldCode2 && !dtiItems.some((i) => i.dtiItemCode === code2)) {
-        setError("Pick the 2nd DTI Item Code from the list (Product Listing's items).");
+        setError("Pick the 2nd Product Item Code from the list (Product Listing's items).");
         return;
       }
     }
@@ -371,7 +373,7 @@ export function ProductForm({
       return (
         <div key={key} className={styles.field}>
           <span className={styles.fieldLabel}>
-            DTI Item Code
+            Product Item Code
             <span className={styles.required}> *</span>
           </span>
           <DtiItemPicker
@@ -380,7 +382,7 @@ export function ProductForm({
             onSelect={pickDtiItem}
             loading={dtiLoading}
             error={dtiError}
-            placeholder={`Select a DTI item code (e.g. ${PLACEHOLDERS.dtiItemCode})`}
+            placeholder={`Select a product item code (e.g. ${PLACEHOLDERS.dtiItemCode})`}
             required
           />
           {hint(key)}
@@ -394,7 +396,7 @@ export function ProductForm({
       return (
         <div key={key} className={styles.field}>
           <span className={styles.fieldLabel}>
-            2nd DTI Item Code <em className={styles.optional}>Optional</em>
+            2nd Product Item Code <em className={styles.optional}>Optional</em>
           </span>
           <DtiItemPicker
             items={dtiItems.filter((i) => i.dtiItemCode !== form.dtiItemCode)}
@@ -403,7 +405,7 @@ export function ProductForm({
             onClear={() => pickDtiItem2(null)}
             loading={dtiLoading}
             error={dtiError}
-            placeholder="Add a second DTI item (optional)"
+            placeholder="Add a second product item (optional)"
           />
           {hint(key)}
         </div>
@@ -413,14 +415,14 @@ export function ProductForm({
       return (
         <label key={key} className={styles.field}>
           <span className={styles.fieldLabel}>
-            2nd DTI Item Description <em className={styles.optional}>Auto</em>
+            2nd Product Item Description <em className={styles.optional}>Auto</em>
           </span>
           <input
             type="text"
             readOnly
             tabIndex={-1}
             className={styles.readOnlyInput}
-            placeholder={form.dtiItemCode2 ? "None on Product Listing" : "Filled in from the 2nd DTI Item Code"}
+            placeholder={form.dtiItemCode2 ? "None on Product Listing" : "Filled in from the 2nd Product Item Code"}
             value={matchedDti2?.dtiItemDescription ?? form.dtiItemDescription2}
           />
           {hint(key)}
@@ -440,10 +442,10 @@ export function ProductForm({
             readOnly
             tabIndex={-1}
             className={styles.readOnlyInput}
-            placeholder={matchedDti ? "None on Product Listing" : "Filled in from the DTI Item Code"}
+            placeholder={matchedDti ? "None on Product Listing" : "Filled in from the Product Item Code"}
             value={matchedDti ? matchedDti[linked] || (ALWAYS_LOCKED.includes(linked) ? "" : form[linked]) : form[linked]}
           />
-          {showHints && <small className={styles.fieldHint}>Matches the DTI Item Code you pick.</small>}
+          {showHints && <small className={styles.fieldHint}>Matches the Product Item Code you pick.</small>}
         </label>
       );
     }

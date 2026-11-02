@@ -255,16 +255,15 @@ export default function ProductListings() {
                             </div>
                           ) : (
                             <div className={styles.imageTile} role="img" aria-label={`No image yet for ${p.dtiItemCode}`}>
-                              <ImageIcon size={28} aria-hidden="true" />
+                              <ImageIcon size={18} aria-hidden="true" />
                             </div>
                           )}
                         </td>
-                        <td>{p.division || "—"}</td>
-                        <td>{p.dtiItemCode || "—"}</td>
-                        <td>{p.dtiItemDescription || "—"}</td>
-                        <td>{p.type || "—"}</td>
-                        <td>{p.ean || "—"}</td>
-                  
+                        <td>{p.division ? <span className={styles.division}>{p.division}</span> : <span className={styles.muted}>—</span>}</td>
+                        <td>{p.dtiItemCode ? <span className={styles.code}>{p.dtiItemCode}</span> : <span className={styles.muted}>—</span>}</td>
+                        <td>{p.dtiItemDescription || <span className={styles.muted}>—</span>}</td>
+                        <td>{p.type || <span className={styles.muted}>—</span>}</td>
+                        <td className={styles.ean}>{p.ean || <span className={styles.muted}>—</span>}</td>
                         <td className={styles.actionsCol}>
                           <div className={styles.rowActions}>
                             <button

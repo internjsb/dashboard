@@ -87,6 +87,7 @@ export default function Products() {
       render: (p) => <span className={styles.longText}>{p.description}</span>,
     },
     { key: "status", header: "Status", accessor: (p) => p.status },
+    { key: "amazon_listing_date", header: "amazon_listing_data", accessor: (p) => p.listing_date},
     {
       key: "actions",
       header: "Actions",

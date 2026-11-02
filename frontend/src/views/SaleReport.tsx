@@ -157,8 +157,10 @@ function csvCell(v: string | number): string {
 
 // Export in the exact accounting format: same columns and headings, dates as
 // YYYY-MM-DD, amounts with two decimals, blank Set left blank.
+const MONEY_KEYS = new Set<SortKey>(["product_sale_price", "price_wo_tax", "unit_price", "net_price", "net_tax", "tax_pre"]);
+
 function csvValue(r: SaleReport, key: SortKey): string | number {
-  if (key === "product_sale_price" || key === "unit_price") return r[key].toFixed(2);
+  if (MONEY_KEYS.has(key)) return (r[key] as number).toFixed(2);
   return r[key] ?? "";
 }
 
@@ -206,15 +208,19 @@ export default function SaleReport() {
     (async () => {
       try {
         const { data } = await api.get<{ rows: SaleReport[] }>("/health/sale_report");
-        // Postgres sends numeric columns (item_price, round(...)) as strings —
-        // turn them into numbers so totals add up instead of joining text.
+    
         if (!cancelled)
           setRows(
             data.rows.map((r) => ({
               ...r,
               qty: Number(r.qty) || 0,
+              category: "Order",
               product_sale_price: Number(r.product_sale_price) || 0,
+              price_wo_tax: Number(r.price_wo_tax) || 0,
               unit_price: Number(r.unit_price) || 0,
+              net_price: Number(r.net_price) || 0,
+              net_tax: Number(r.net_tax) || 0,
+              tax_pre: Number(r.tax_pre) || 0,
             })),
           );
       } catch (err) {
@@ -246,18 +252,21 @@ export default function SaleReport() {
       const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
       return cmp * dir;
     });
-  }, [rows, fromDate, toDate, query, sort]);
+  }, [rows, code, fromDate, toDate, query, sort]);
 
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
     // In USD, so yen and dollar sales add up correctly.
     const sales = filtered.reduce((sum, r) => sum + (toUsd(r) ?? 0), 0);
+    const jpsales = filtered.reduce((sum, r) => sum + (r.product_sale_price ?? 0), 0);
     const orders = new Set(filtered.map((r) => r.order_id)).size;
     return {
       orders,
       units: filtered.reduce((sum, r) => sum + r.qty, 0),
       sales,
+      jpsales,
       avgOrder: orders ? sales / orders : 0,
+      jpavgOrder: orders ? jpsales / orders : 0,
     };
   }, [filtered, ratesByDay]);
 
@@ -295,7 +304,7 @@ export default function SaleReport() {
   // which page, so whatever page we were on no longer means the same thing.
   useEffect(() => {
     setPage(1);
-  }, [query, fromDate, toDate, sort, pageSize]);
+  }, [query, fromDate, toDate, sort, pageSize, code]);
 
   const perPage = pageSize || filtered.length || 1;
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -321,6 +330,13 @@ export default function SaleReport() {
     { label: "Units sold", value: compactCount(totals.units) },
     { label: "Total sales (USD)", value: compactMoney(totals.sales) },
     { label: "Avg order value (USD)", value: compactMoney(totals.avgOrder) },
+
+    ...(priceCurrency && priceCurrency !== "USD"
+      ? [
+          { label: `Total sales (${currencySymbol(priceCurrency)})`, value: compactMoney(totals.jpsales) },
+          { label: `Avg order value (${currencySymbol(priceCurrency)})`, value: compactMoney(totals.jpavgOrder) },
+        ]
+      : []),
   ];
 
   return (
@@ -488,7 +504,7 @@ export default function SaleReport() {
                             {/* Running number across pages, so page 2 starts at 11. */}
 
                             <td className={`${styles.num} ${styles.muted}`}>{firstIndex + i + 1}</td>
-                            <td ></td>
+                            <td >{r.category}</td>
                             <td className={styles.nowrap}>{formatDate(r.purchase_date)}</td>
                             <td>
                               <span className={styles.code}>{r.item_code ?? "null"}</span>
@@ -499,15 +515,15 @@ export default function SaleReport() {
                             <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
                               {toUsd(r) == null ? "—" : money(toUsd(r)!)}
                             </td>
-                            <td className={styles.num}>{r.price_wo_tax}</td>
+                            <td className={styles.num}>{money(r.price_wo_tax)}</td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
-                            <td className={styles.num}>{r.net_price}</td>
-                           <td className={styles.num}> {r.net_tax}</td>
+                            <td className={styles.num}>{money(r.net_price)}</td>
+                            <td className={styles.num}>{money(r.net_tax)}</td>
                             <td className={styles.mono}>{r.order_id}</td>
                             <td>
                               <span className={styles.pill}>{r.fulfillment}</span>
                             </td>
-                            <td className={styles.num}> {r.tax_pre}</td>
+                            <td className={styles.num}>{r.tax_pre.toFixed(2)}</td>
                             <td className={styles.nowrap}>{formatDate(r.shipped_date)}</td>
                           </tr>
                         ))

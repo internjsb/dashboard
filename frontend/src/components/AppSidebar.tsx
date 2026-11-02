@@ -136,12 +136,12 @@ export default function AppSidebar() {
               Inventory
             </NavLink>
           )}
-          {canSeeFinance && (
+          {/* {canSeeFinance && (
             <NavLink to="/finance" className={navItemClass}>
               <Wallet className={styles.icon} size={18} />
               Finance
             </NavLink>
-          )} 
+          )}  */}
            {canSeeProductListings && (
             <NavLink to="/product-listings" className={navItemClass}>
               <ListChecks className={styles.icon} size={18} />

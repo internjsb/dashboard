@@ -11,6 +11,30 @@ import styles from "./SaleReport.module.css";
 // Rows-per-page choices; 0 means "All". Always starts at 10.
 const PAGE_SIZE_OPTIONS = [10, 50, 100, 0];
 
+const MARKETPLACE_CURRENCY: Record<string, string> = {
+  ATVPDKIKX0DER: "USD", A1VC38T7YXB528: "JPY", A2EUQ1WTGCTBG2: "CAD", A1AM78C64UM0Y8: "MXN",
+  A2Q3Y263D00KWC: "BRL", A1F83G8C2ARO7P: "GBP", A1PA6795UKMFR9: "EUR", A13V1IB3VIYZZH: "EUR",
+  APJ6JRA9NG5V4: "EUR", A1RKKUPIHCS9HS: "EUR", A1805IZSGTT6HS: "EUR", AMEN7PMS3EDWL: "EUR",
+  A28R8C7NBKEWEA: "EUR", A2NODRKZP88ZB9: "SEK", A1C3SOZRARQ6R3: "PLN", A33AVAJ2PDY3EV: "TRY",
+  A2VIGQ35RCS4UG: "AED", A17E79C6D8DWNP: "SAR", A39IBJ37TRP1C6: "AUD",
+};
+
+function convert(amount: number, from: string, to: string, rates: Record<string, number>): number | null {
+  const f = rates[from], t = rates[to];
+  return f && t ? (amount / f) * t : null;
+}
+
+function currencySymbol(currency: string): string {
+  return (
+    new Intl.NumberFormat("en-US", { style: "currency", currency }).formatToParts(0).find((p) => p.type === "currency")?.value ??
+    currency
+  );
+}
+
+function currencyOf(r: { marketplace_id: string | null }): string {
+  return MARKETPLACE_CURRENCY[r.marketplace_id ?? ""] ?? "USD";
+}
+
 // One refund / return line. No data source yet — the table is empty until a
 // query is hooked up (dates as DD/MM/YY, like the Sales report).
 interface RefundRow {
@@ -33,8 +57,6 @@ interface RefundRow {
 
 type SortKey = Exclude<keyof RefundRow, "id" | "marketplace_id">;
 type SortDir = "asc" | "desc";
-
-
 
 
 
@@ -145,6 +167,43 @@ export default function RefundTable() {
   const [rows, setRows] = useState<RefundRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+ const [ratesByDay, setRatesByDay] = useState<Record<string, Record<string, number>>>({});
+
+  const toUsd = (r: RefundRow) =>
+    convert(r.product_refund_price, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)] ?? {});
+
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get<{ rows: RefundRow[] }>("/health/sale_report");
+    
+        // if (!cancelled)
+        //   setRows(
+        //     data.rows.map((r) => ({
+        //       ...r,
+        //       qty: Number(r.qty) || 0,
+        //       category: "Order",
+        //       product_sale_price: Number(r.product_refund_price) || 0,
+        //       price_wo_tax: Number(r.price_wo_tax) || 0,
+        //       unit_price: Number(r.unit_price) || 0,
+        //       net_price: Number(r.net_price) || 0,
+        //       net_tax: Number(r.net_tax) || 0,
+        //       tax_pre: Number(r.tax_pre) || 0,
+        //     })),
+        //   );
+      } catch (err) {
+        if (!cancelled) setError("Couldn't load the sales report. Is the backend running?");
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
 useEffect(() => {
   let cancelled = false;
@@ -200,15 +259,23 @@ useEffect(() => {
     });
   }, [rows, fromDate, toDate, query, sort, code]);
 
+
+
+  
+  const priceCurrency = code ? MARKETPLACE_CURRENCY[code] ?? null : null;
+
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
     const refunded = filtered.reduce((sum, r) => sum + r.product_refund_price, 0);
+    const jprefunded =  filtered.reduce((sum, r) => sum + (toUsd(r) ?? 0), 0);
     const orders = filtered.length;
     return {
       orders,
       units: filtered.reduce((sum, r) => sum + (Number(r.set_) || 0), 0),
       refunded,
+      jprefunded,
       avgRefund: orders ? refunded / orders : 0,
+      jpavgRefund: orders ? jprefunded / orders : 0,
     };
   }, [filtered]);
 
@@ -242,8 +309,14 @@ useEffect(() => {
   const stats = [
     { label: "Total Refunded orders", value: compactCount(totals.orders) },
     { label: "Units returned", value: compactCount(totals.units) },
-    { label: "Total refunds", value: compactMoney(totals.refunded) },
-    { label: "Avg refund", value: compactMoney(totals.avgRefund) },
+    { label: "Total refunds (USD)", value: compactMoney(totals.refunded) },
+    { label: "Avg refund (USD)", value: compactMoney(totals.avgRefund) },
+       ...(priceCurrency && priceCurrency !== "USD"
+      ? [
+          { label: `Total sales (${currencySymbol(priceCurrency)})`, value: compactMoney(totals.jprefunded) },
+          { label: `Avg order value (${currencySymbol(priceCurrency)})`, value: compactMoney(totals.jpavgRefund) },
+        ]
+      : []),
   ];
 
   return (

@@ -7,17 +7,15 @@ import AppTopbar from "../components/AppTopbar";
 import { errorMessage } from "./productForm";
 import styles from "./AddListing.module.css";
 
-type ListingKey = "division" | "dtiItemCode" | "dtiItemDescription" | "type" | "ean";
+type ListingKey = "division" | "productItemCode" | "productItemDescription" | "type" | "ean";
 
-// Label, helper line and in-box placeholder for each field.
-// PLACEHOLDER TEXT — edit the hint / placeholder strings freely.
 const FIELDS: { key: ListingKey; label: string; hint: string; placeholder: string; required: boolean }[] = [
   { key: "division", label: "Division", hint: "This is the division of the item.", placeholder: "Enter a division like DWL", required: true },
-  { key: "dtiItemCode", label: "DTI item", hint: "This is the DTI code of the item.", placeholder: "Enter a code like 2-001", required: true },
+  { key: "productItemCode", label: "Product Item Code", hint: "This is the product item code of the item.", placeholder: "Enter a code like 2-001", required: true },
   {
-    key: "dtiItemDescription",
-    label: "DTI Item Description",
-    hint: "This is the DTI description of the item.",
+    key: "productItemDescription",
+    label: "Product Item Description",
+    hint: "This is the Product description of the item.",
     placeholder: "Enter a description like DWL-001",
     required: true,
   },
@@ -25,7 +23,7 @@ const FIELDS: { key: ListingKey; label: string; hint: string; placeholder: strin
   { key: "ean", label: "EAN", hint: "This is the barcode number of the item.", placeholder: "Enter an EAN like 0000000000000", required: false },
 ];
 
-const EMPTY: Record<ListingKey, string> = { division: "", dtiItemCode: "", dtiItemDescription: "", type: "", ean: "" };
+const EMPTY: Record<ListingKey, string> = { division: "", productItemCode: "", productItemDescription: "", type: "", ean: "" };
 
 type ListingRow = {
   division: string | null;
@@ -37,8 +35,8 @@ type ListingRow = {
 
 const toForm = (row: ListingRow): Record<ListingKey, string> => ({
   division: row.division ?? "",
-  dtiItemCode: row.dti_item_code ?? "",
-  dtiItemDescription: row.dti_item_description ?? "",
+  productItemCode: row.dti_item_code ?? "",
+  productItemDescription: row.dti_item_description ?? "",
   type: row.type ?? "",
   ean: row.ean ?? "",
 });
@@ -86,24 +84,24 @@ export default function AddListing() {
         // core.items / core.item_sku_map
         await api.patch(
           `/dashboard/listing-data/${encodeURIComponent(amazonSku!)}`,
-          { dtiItemCode: form.dtiItemCode, dtiItemDescription: form.dtiItemDescription, ean: form.ean, type: form.type, rowNo },
+          { dtiItemCode: form.productItemCode, dtiItemDescription: form.productItemDescription, ean: form.ean, type: form.type, rowNo },
           { timeout: 30000 },
         );
       } else if (isEdit) {
         await api.patch(
           `/dashboard/listing-items/${encodeURIComponent(editCode!)}`,
-          { dtiItemCode: form.dtiItemCode, dtiItemDescription: form.dtiItemDescription, rowNo },
+          { dtiItemCode: form.productItemCode, dtiItemDescription: form.productItemDescription, rowNo },
           { timeout: 30000 },
         );
       } else {
         await api.post(
           "/dashboard/listing-items",
-          { dtiItemCode: form.dtiItemCode, dtiItemDescription: form.dtiItemDescription },
+          { dtiItemCode: form.productItemCode, dtiItemDescription: form.productItemDescription },
           { timeout: 30000 },
         );
       }
       // Back to the listing; it shows a short note for this row.
-      navigate("/product-listings", { state: { [isEdit ? "updated" : "added"]: form.dtiItemCode || amazonSku } });
+      navigate("/product-listings", { state: { [isEdit ? "updated" : "added"]: form.productItemCode || amazonSku } });
     } catch (err) {
       setError(
         errorMessage(
@@ -162,7 +160,7 @@ export default function AddListing() {
               {/* Two columns; the description spans both. */}
               <div className={styles.fieldGrid}>
                 {fields.map((f) => {
-                  const wide = f.key === "dtiItemDescription" ? styles.wide : "";
+                  const wide = f.key === "productItemDescription" ? styles.wide : "";
                   return f.key === "division" ? (
                     <div key={f.key} className={`${styles.field} ${wide}`}>
                       <span className={styles.label}>
@@ -170,7 +168,7 @@ export default function AddListing() {
                         <em className={styles.optional}>Auto</em>
                       </span>
                       <span className={styles.readOnly}>
-                        {form.dtiItemDescription.split("-")[0].replace(/NIST$/, "") || "—"}
+                        {form.productItemDescription.split("-")[0].replace(/NIST$/, "") || "—"}
                       </span>
                       <span className={styles.hint}>From the start of the description (DWL-001 → DWL).</span>
                     </div>
@@ -182,19 +180,24 @@ export default function AddListing() {
                       </span>
                       <input
                         type="text"
-                        required={isAmazon ? f.key === "dtiItemCode" || f.key === "dtiItemDescription" : f.required}
+                        required={isAmazon ? f.key === "productItemCode" || f.key === "productItemDescription" : f.required}
                         placeholder={f.placeholder}
                         value={form[f.key]}
                         onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                       />
+                      
                       <span className={styles.hint}>
-                        {isAmazon && f.key === "dtiItemDescription"
+                        {isAmazon && f.key === "productItemDescription"
                           ? "Changes this item's description for every SKU that uses it."
                           : isAmazon && (f.key === "ean" || f.key === "type")
                             ? "Leave blank to use Amazon's value."
                             : f.hint}
                       </span>
+
+                      
                     </label>
+
+                    
                   );
                 })}
               </div>
