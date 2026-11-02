@@ -262,7 +262,7 @@ export default function SaleReport() {
     // In USD, so yen and dollar sales add up correctly.
     const sales = filtered.reduce((sum, r) => sum + (toUsd(r) ?? 0), 0);
     const jpsales = filtered.reduce((sum, r) => sum + (r.product_sale_price ?? 0), 0);
-    const orders = new Set(filtered.map((r) => r.order_id)).size;
+    const orders = filtered.length;
     return {
       orders,
       units: filtered.reduce((sum, r) => sum + r.qty, 0),
@@ -356,9 +356,7 @@ export default function SaleReport() {
               </div>
             ))}
           </section>
-          <p className={styles.statsNote}>
-            {hasFilters ? "Totals for the rows matching your filters." : "Totals for all rows."}
-          </p>
+       
           
           <section className={styles.chartGrid}>
             {/* <RevenueChart
