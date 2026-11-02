@@ -329,7 +329,7 @@ export default function SaleReport() {
   }
 
   const stats = [
-    { label: "Orders", value: compactCount(totals.orders) },
+    { label: "Total Orders", value: compactCount(totals.orders) },
     { label: "Units sold", value: compactCount(totals.units) },
     { label: "Total sales (USD)", value: compactMoney(totals.sales) },
     { label: "Avg order value (USD)", value: compactMoney(totals.avgOrder) },
