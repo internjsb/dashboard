@@ -154,9 +154,13 @@ function csvCell(v: string | number): string {
   const s = String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
+const month_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-// Export in the exact accounting format: same columns and headings, dates as
-// YYYY-MM-DD, amounts with two decimals, blank Set left blank.
+function monthRange(month: number): [string, string]{
+  const year = new Date().getFullYear();
+  return [isoDay (new Date(year, month, 1)), isoDay(new Date(year, month + 1, 0))];
+}
+
 const MONEY_KEYS = new Set<SortKey>(["product_sale_price", "price_wo_tax", "unit_price", "net_price", "net_tax", "tax_pre"]);
 
 function csvValue(r: SaleReport, key: SortKey): string | number {
@@ -242,6 +246,7 @@ export default function SaleReport() {
   const priceCurrency = code ? MARKETPLACE_CURRENCY[code] ?? null : null;
   const showUsd = priceCurrency !== "USD";
   const filtered = useMemo(() => {
+  
     const out = rows
       .filter((r) => inMarketplace(code, r.marketplace_id))
       // Date range is by order fulfillment (shipped) date; rows without one only show when no range is set.
@@ -256,7 +261,10 @@ export default function SaleReport() {
       return cmp * dir;
     });
   }, [rows, code, fromDate, toDate, query, sort]);
-
+  const selectedMonth = month_names.findIndex((_, m) => {
+      const [f, t] = monthRange(m);
+      return fromDate === f && toDate === t;
+    })
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
     // In USD, so yen and dollar sales add up correctly.
@@ -434,6 +442,25 @@ export default function SaleReport() {
                   </button>
                 );
               })}
+                <select
+                className={`${styles.chip} ${selectedMonth >= 0 ? styles.chipActive : ""}`}
+                value={selectedMonth}
+                onChange={(e) => {
+                  const m = Number(e.target.value);
+                  const [from, to] = m >= 0 ? monthRange(m) : ["", ""];
+                  setFromDate(from);
+                  setToDate(to);
+                }}
+                aria-label="Filter by month"
+              >
+                <option value={-1}>All months</option>
+                {month_names.map((name, m) => (
+                  <option key={name} value={m} disabled={m > new Date().getMonth()}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+
               {hasFilters && (
                 <button type="button" className={styles.clearBtn} onClick={clearFilters}>
                   <X size={14} aria-hidden="true" />
