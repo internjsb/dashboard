@@ -40,6 +40,7 @@ interface AuthContextValue {
   // Whether the account has 2FA turned on at all, vs. whether THIS session
   // has already proven possession of the authenticator (see markTwoFactorVerified).
   twoFactorEnabled: boolean | null;
+  twoFactorSetupRequired: boolean;
   twoFactorVerified: boolean;
   // True for the full span of any hydrate() call, not just the first one.
   // waitUntilReady()/ready only ever resolve once (on app boot), so without
@@ -74,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pageAccess, setPageAccess] = useState<PageAccessMap>({});
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null);
+  const [twoFactorSetupRequired, setTwoFactorSetupRequired ] = useState(false);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [ready, setReady] = useState(false); // true once the first auth state has been resolved
@@ -158,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus(data.status);
       setDepartment(data.department);
       setPageAccess(data.pageAccess || {});
+      setTwoFactorSetupRequired(!!data.twoFactorSetupRequired)
       setIsSuperAdmin(data.isSuperAdmin);
       setTwoFactorEnabled(data.twoFactorEnabled);
       let verifiedThisSession = false;
@@ -181,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDepartment(null);
       setPageAccess({});
       setIsSuperAdmin(false);
+      setTwoFactorSetupRequired(false);
       // Unknown 2FA state — fail closed (treat as enabled-but-unverified)
       // rather than silently letting the session through unchecked.
       setTwoFactorEnabled(true);
@@ -246,6 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setTwoFactorEnabled(true);
     setTwoFactorVerified(true);
+    setTwoFactorSetupRequired(false);
   }
 
   // Called once the account owner turns 2FA off from Profile. Clears the
@@ -283,6 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     displayName,
     role,
+    twoFactorSetupRequired,
     status,
     department,
     pageAccess,
@@ -307,3 +313,5 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 }
+
+

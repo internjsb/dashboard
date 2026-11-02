@@ -27,6 +27,7 @@ export default function ProtectedRoute({ children, role, page, superAdmin }: Pro
     twoFactorEnabled,
     twoFactorVerified,
     profileLoading,
+    twoFactorSetupRequired,
     waitUntilReady,
   } = useAuth();
   const [checked, setChecked] = useState(false);
@@ -67,11 +68,20 @@ export default function ProtectedRoute({ children, role, page, superAdmin }: Pro
     return <Navigate to={defaultPageFor(isSuperAdmin, pageAccess)} replace />;
   }
 
+  // Already set up — the backend won't issue a second QR, so the setup page
+  // would only show an error. Send them on to the OTP check (or home).
+  if (location.pathname === "/setup-2fa" && twoFactorEnabled === true) {
+    return <Navigate to={twoFactorVerified ? "/" : "/verify-2fa"} replace />;
+  }
+
   // 2FA is opt-in (toggled from Profile), not forced on every account. An
   // account that has turned it on still has to prove it each new session
   // before reaching anything else — regardless of how they arrived here
   // (fresh login, a bookmarked URL, or an already-signed-in Firebase session).
   if (location.pathname !== "/setup-2fa" && location.pathname !== "/verify-2fa") {
+    if (twoFactorSetupRequired) {
+      return <Navigate to="/setup-2fa" replace />;
+    }
     if (twoFactorEnabled === true && !twoFactorVerified) {
       return <Navigate to="/verify-2fa" replace />;
     }

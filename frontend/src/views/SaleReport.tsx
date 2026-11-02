@@ -39,14 +39,19 @@ function currencyOf(r: { marketplace_id: string | null }): string {
 
 interface SaleReport {
   id: string;
+  category : string;
   purchase_date: string;
   item_code: string | null;
   set_: string | null;
   qty: number;
   product_sale_price: number;
+  price_wo_tax: number;
   unit_price: number;
+  net_price: number ;
+  net_tax: number;
   order_id: string;
   fulfillment: string;
+  tax_pre: number;
   shipped_date: string;
   marketplace_id: string | null; // not shown; used by the top-bar marketplace filter
 }
@@ -57,14 +62,20 @@ type SortDir = "asc" | "desc";
 // Column order and headings follow the accounting department's "Format for
 // Sales Report" (the CSV export uses the same, for import into the ERP).
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
+  {key: "category", label: "Category"},
   { key: "purchase_date", label: "Purchase Date" },
   { key: "item_code", label: "Product Item Code" },
   { key: "set_", label: "Set" },
   { key: "qty", label: "QTY", numeric: true },
-  { key: "product_sale_price", label: "Product Sales Price", numeric: true },
+  { key: "product_sale_price", label: "Gross Product Sales Price", numeric: true },
+  {key : "price_wo_tax", label: "Product Sales Price w/o Tax", numeric: true},
+
   { key: "unit_price", label: "Unit price (Sales/Qty)", numeric: true },
+  { key: "net_price", label: "Net Price", numeric: true },
+  { key: "net_tax", label: "Net Tax", numeric: true },
   { key: "order_id", label: "Order id" },
   { key: "fulfillment", label: "Fulfillment" },
+  { key: "tax_pre", label: "Tax %", numeric: true },
   { key: "shipped_date", label: "Order Fulfillment Date" },
   
 ];
@@ -475,7 +486,9 @@ export default function SaleReport() {
                         paged.map((r, i) => (
                           <tr key={r.id}>
                             {/* Running number across pages, so page 2 starts at 11. */}
+
                             <td className={`${styles.num} ${styles.muted}`}>{firstIndex + i + 1}</td>
+                            <td ></td>
                             <td className={styles.nowrap}>{formatDate(r.purchase_date)}</td>
                             <td>
                               <span className={styles.code}>{r.item_code ?? "null"}</span>
@@ -486,11 +499,15 @@ export default function SaleReport() {
                             <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
                               {toUsd(r) == null ? "—" : money(toUsd(r)!)}
                             </td>
+                            <td className={styles.num}>{r.price_wo_tax}</td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
+                            <td className={styles.num}>{r.net_price}</td>
+                           <td className={styles.num}> {r.net_tax}</td>
                             <td className={styles.mono}>{r.order_id}</td>
                             <td>
                               <span className={styles.pill}>{r.fulfillment}</span>
                             </td>
+                            <td className={styles.num}> {r.tax_pre}</td>
                             <td className={styles.nowrap}>{formatDate(r.shipped_date)}</td>
                           </tr>
                         ))

@@ -175,6 +175,7 @@ router.get("/me", requireAuth, async (req, res) => {
     pageAccess: req.user.pageAccess,
     isSuperAdmin: req.user.isSuperAdmin,
     twoFactorEnabled: req.user.twoFactorEnabled,
+    twoFactorSetupRequired: req.user.twoFactorSetupRequired
   });
 });
 
@@ -224,6 +225,7 @@ router.post("/register", requireAuth, async (req, res) => {
         status: "active",
         department: invite.department,
         pageAccess,
+        twoFactorRequired: true
       });
       await db.update(`invites/${invite.id}`, { usedAt: Date.now(), usedByUid: uid }); // tear up the ticket
       await audit(req, "user.invite_accept", { email, role: invite.role, department: invite.department });
@@ -397,6 +399,7 @@ router.post("/users", requireAuth, requireAdmin, async (req, res) => {
       department,
       pageAccess,
       createdBy: req.user.uid,
+      twoFactorRequired: true
     });
     await audit(req, "user.create", { targetUid: created.uid, email, department });
     res.status(201).json({ uid: created.uid, email, role: "user", status: "active", department, pageAccess });

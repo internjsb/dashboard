@@ -70,6 +70,7 @@ export async function requireAuth(req, res, next) {
       pageAccess: record?.pageAccess || {},
       isSuperAdmin: superAdmin,
       twoFactorEnabled: !!record?.twoFactor?.enabled,
+      twoFactorSetupRequired : !!record?.twoFactorRequired && !record?.twoFactor?.enabled,
     };
     next();
   } catch (err) {

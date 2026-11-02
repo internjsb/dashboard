@@ -5,7 +5,7 @@ import TwoFAVerification from "../components/TwoFAVerification";
 
 const Verify2FA = () => {
     const navigate = useNavigate();
-    const { markTwoFactorVerified } = useAuth();
+    const { markTwoFactorVerified, markTwoFactorDisabled } = useAuth();
 
     const handleVerifySuccess = () => {
         markTwoFactorVerified();
@@ -13,6 +13,7 @@ const Verify2FA = () => {
     };
 
     const handleResetSuccess = () => {
+        markTwoFactorDisabled(); // backend just cleared "enabled" — keep the guard in sync
         navigate("/setup-2fa");
     };
 

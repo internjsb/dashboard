@@ -97,6 +97,7 @@ router.post("/verify", requireAuth, async (req, res) => {
     }
 
     await db.update(`users/${req.user.uid}/twoFactor`, { enabled: true });
+    await db.update(`users/${req.user.uid}`, {twoFactorRequired: null});
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

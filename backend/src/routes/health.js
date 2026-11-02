@@ -217,23 +217,40 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 
     const { rows } = await query(`
 
+with base as (
+    select a.*,
+           round(( 1- ((a.item_price - a.item_tax) / a.item_price)) * 100, 2) as taxper,
+		   	a.item_price - a.item_tax					  as Price_wo_tax,
+			  Round(a.item_promotion_discount / ((1+ t.taxper)/100),2) as discount_wo_tax
+			   
+    from amazon.get_amazon_fulfilled_shipments_data_general a
+	cross join lateral (
+        select round((1 - ((a.item_price - a.item_tax) / nullif(a.item_price, 0))) * 100, 2) as taxper
+    ) t
+)
  select to_char(a.purchase_date, 'DD/MM/YY') as Purchase_date,
+ 		a.taxper 		as taxper,
+		a.item_promotion_discount as discount,
+	    Round(a.item_promotion_discount / ((1+ taxper)/100),2) as discount_wo_tax,
 		b.item_code                                   as item_code,
 		b.units_per_sku                               as Set_,
 		a.quantity_shipped                            as QTY,
 		a.item_price                                  as Product_Sale_Price,
-		Round((a.item_price/a.quantity_shipped),2)         as Unit_price,
+		a.item_price - a.item_tax					  as price_wo_tax,
+		Round((a.item_price/a.quantity_shipped),2)    as Unit_price,
+		a.price_wo_tax - a.discount_wo_tax			  as net_price,
+		a.item_tax - ( a.item_promotion_discount - a.discount_wo_tax) as net_tax,
 		a.amazon_order_id                             as Order_id,
 		c.fulfillment_channel                         as Fulfillment,
+    taxper as tax_pre,
 		to_char(a.shipment_date, 'DD/MM/YY')          as Shipped_date,
-		a.marketplace_id                              as marketplace_id
-		from amazon.get_amazon_fulfilled_shipments_data_general a
+		a.marketplace_id                              as marketplace_id,
+		a.sku										  as sku
+		from base a
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
 		left join amazon.get_merchant_listings_all_data c
-		on a.sku = c.seller_sku
-		left join core.items d
-		on d.item_name = c.item_name;
+		on a.sku = c.seller_sku;
 
 `);
     res.json({ rows });
@@ -255,7 +272,7 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
            a.sku                                                                  AS sku,
            COALESCE(i.item_code, '')                                              AS "dtiItemCode",
            i.units_per_sku                                          AS qty,
-           COALESCE(a.item_price * i.units_per_sku, 0)::float8                    AS "Price",
+           a.item_price                   AS item_price,
            a.marketplace_id                                                       AS marketplace_id
       FROM amazon.get_amazon_fulfilled_shipments_data_general a
       LEFT JOIN core.item_sku_map i
@@ -264,6 +281,7 @@ router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requir
              ON p.seller_sku = a.sku 
      ORDER BY a.purchase_date DESC NULLS LAST
      LIMIT 100
+
      `
     );
     res.json({ rows });
@@ -322,7 +340,7 @@ router.get("/refund_table", ...unlessLocalDev(requireAuth, requireActive), async
   try {
     const { rows } = await query(`
   
- SELECT  c.transaction_type                   as transaction_type, --
+ SELECT  c.transaction_type                   as category, --
 			to_char(a.return_date, 'DD/MM/YY')          as Return_Date, --X
 			a.sku                                          as sku, --
 			d.item_code                                 as Item_Code, --X

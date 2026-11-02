@@ -208,6 +208,7 @@ export interface MeResponse {
   pageAccess: Record<string, boolean>;
   isSuperAdmin: boolean;
   twoFactorEnabled: boolean;
+  twoFactorSetupRequired? : boolean;
 }
 
 export interface UserRecord {

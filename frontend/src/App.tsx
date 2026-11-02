@@ -40,6 +40,7 @@ function HomeRedirect() {
     twoFactorEnabled,
     twoFactorVerified,
     profileLoading,
+    twoFactorSetupRequired,
     waitUntilReady,
   } = useAuth();
   const [checked, setChecked] = useState(false);
@@ -65,6 +66,7 @@ function HomeRedirect() {
   // 2FA is opt-in (toggled from Profile) rather than forced at login — only a
   // session that hasn't proven possession of an *already-enabled* authenticator
   // gets routed to the OTP check.
+  if (twoFactorSetupRequired) return <Navigate to="/setup-2fa" replace />;
   if (twoFactorEnabled === true && !twoFactorVerified) return <Navigate to="/verify-2fa" replace />;
   return <Navigate to={defaultPageFor(isSuperAdmin, pageAccess)} replace />;
 }
