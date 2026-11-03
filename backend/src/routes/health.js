@@ -251,7 +251,7 @@ with base as (
 		on a.sku = b.seller_sku 
 		left join (select distinct on (seller_sku) seller_sku, fulfillment_channel, item_name
 		           from amazon.get_merchant_listings_all_data) c
-		on a.sku = c.seller_sku;
+		on a.sku = c.seller_sku
 
 `);
     res.json({ rows });
@@ -341,31 +341,39 @@ router.get("/refund_table", ...unlessLocalDev(requireAuth, requireActive), async
   try {
     const { rows } = await query(`
   
- SELECT  c.transaction_type                   as category, --
-			to_char(a.return_date, 'DD/MM/YY')          as Return_Date, --X
-			a.sku                                          as sku, --
-			d.item_code                                 as Item_Code, --X
-		  d.units_per_sku                             as Set_, --X
-			a.quantity                            as Qty,  --X
-      c.amount                                    as product_refund_price, --
-      round((c.amount / a.quantity),2)            as unit_price, --
-			a.order_id                            as Order_id, --
-      a.detailed_disposition                      as detailed_disposition, --X
-      a.reason                                    as Reason, --X
-      a.status                                    as Status, --X
-			c.marketplace_name                    as fulfillment, --
-      to_char(b.purchase_date,'DD/MM/YY')         as Purchase_Date,  --X
-      a.marketplace_id                            as marketplace_id  --
-    FROM amazon.get_fba_fulfillment_customer_returns_data a
-    right JOIN amazon.get_amazon_fulfilled_shipments_data_general b
-            ON a.sku = b.sku
-    right JOIN amazon.v_settlement_lines c
-            ON c.order_id = a.order_id
-	right join core.item_sku_map d
-			on d.seller_sku = a.sku
-    WHERE c.transaction_type = 'Refund'
-      AND c.amount_description = 'Principal'
+SELECT  c.transaction_type                             as category,
+        to_char(a.return_date, 'DD/MM/YY')             as return_date,
+        c.sku                                          as sku,
+        d.item_code                                    as item_code,
+        d.units_per_sku                                as set_,
+        coalesce(a.quantity, o.quantity)               as qty,
+        c.amount                                       as product_refund_price,
+        round(c.amount / nullif(coalesce(a.quantity, o.quantity), 0), 2) as unit_price,
+        c.order_id                                     as order_id,
+        a.detailed_disposition                         as detailed_disposition,
+        a.reason                                       as reason,
+        a.status                                       as status,
+        c.marketplace_name                             as fulfillment,
+        to_char(o.purchase_date, 'DD/MM/YY')           as purchase_date,
+        c.marketplace_id                               as marketplace_id
+FROM amazon.v_settlement_lines c
+LEFT JOIN LATERAL (
+        select sum(s.quantity_purchased) as quantity, min(s.posted_date::date) as purchase_date
+        from amazon.v_settlement_lines s
+        where s.order_id = c.order_id and s.sku = c.sku
+          and s.transaction_type = 'Order' and s.amount_description = 'Principal'
+     ) o ON true
 
+LEFT JOIN LATERAL (
+        select max(r.return_date) as return_date, sum(r.quantity) as quantity,
+               max(r.detailed_disposition) as detailed_disposition,
+               max(r.reason) as reason, max(r.status) as status
+        from amazon.get_fba_fulfillment_customer_returns_data r
+        where r.order_id = c.order_id and r.sku = c.sku
+     ) a ON true
+LEFT JOIN core.item_sku_map d ON d.seller_sku = c.sku
+WHERE c.transaction_type = 'Refund'
+  AND c.amount_description = 'Principal'
 
     `);
     res.json({ rows });

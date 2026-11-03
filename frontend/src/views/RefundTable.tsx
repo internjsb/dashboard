@@ -216,7 +216,11 @@ useEffect(() => {
           ...r,
           id: `${r.order_id}-${i}`, // the query has no id column
           set_: r.set_ == null ? "" : String(r.set_),
-          // numeric columns arrive as text — make them numbers so totals add up
+          return_date : r.return_date ?? "",
+          purchase_date: r.purchase_date ?? "",
+          detailed_disposition: r.detailed_disposition ?? "",
+          reason: r.reason ?? "",
+          status: r.status ?? "",
           qty: Number(r.qty) || 0,
           product_refund_price: Number(r.product_refund_price) || 0,
           unit_price: Number(r.unit_price) || 0,
