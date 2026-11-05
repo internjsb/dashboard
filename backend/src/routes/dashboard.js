@@ -632,6 +632,59 @@ router.delete("/products/:id", ...productsAccess, async (req, res) => {
   }
 });
 
+
+// --- Sales report: converted prices (Firebase RTDB) --------------------------
+// Prices converted with the Sales report's currency calculator, keyed by sales
+// line, so they survive a refresh. Writes go through here like products do.
+// (Same saleReportAccess guard as the saleReport routes above.)
+const SALE_CONVERSIONS_PATH = "saleConversions";
+
+router.get("/sale-conversions", ...saleReportAccess, async (req, res) => {
+  try{
+    res.json({ conversions: (await db.get(SALE_CONVERSIONS_PATH)) || {} });
+  } catch (err){
+    console.error(err);
+    res.status(500).json({error: "Failed to load converted prices"});
+
+  }
+});
+
+//Body
+router.patch("/sale-conversions", ...saleReportAccess, async( req, res) =>{
+  const input = req.body?.conversions;
+  if(!input || typeof input !== "object") return res.status(400).json({ error :"conversions is required"});
+  const clean = {};
+  for (const [key, c] of Object.entries(input)){
+    const value = Number(c?.value);
+    if (!key || /[.#$[\]/]/.test(key)) return res.status(400).json({ error: `Bad line key: ${key}` });
+    if (!Number.isFinite(value) || !/^[A-Z]{3}$/.test(c?.currency ?? "")) {
+      return res.status(400).json({ error: `Bad value for ${key}` });
+    }
+    clean[key] = {value, currency: c.currency};
+  }
+  if (!Object.keys(clean).length) return res.json({ok:true});
+  try {
+    await db.update(SALE_CONVERSIONS_PATH, clean);
+    await audit(req, "sale_conversions.update", {count: Object.keys(clean).length});
+    res.json ({ok : true});
+  } catch(err){
+    console.error(err);
+    res.status(500).json({error: "Failed to save converted prices"});
+  }
+});
+
+router.delete("/sale-conversions", ...saleReportAccess, async (req, res) =>{
+  try{
+    await db.remove(SALE_CONVERSIONS_PATH);
+    await audit(req, "sale_conversions.clear");
+    res.json({ok:true});
+  }
+  catch (err){
+    console.error(err);
+    res.status(500).json({error : "Failed to clear converted prices"});
+  }
+});
+
 // --- Google Sheets connection check ----------------------------------------
 // Super admin only: confirms GOOGLE_CREDENTIALS_JSON works and the spreadsheet
 // in GOOGLE_SHEET_ID (or ?id=) is shared with the service account. Returns the

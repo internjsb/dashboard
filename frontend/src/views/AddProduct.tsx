@@ -35,6 +35,8 @@ export default function AddProduct() {
               <h3>New product</h3>
               <p>Fill in the details below. S/N is filled in automatically if you leave it blank.</p>
             </div>
+          
+          
             {loadError && <p className={styles.error}>{loadError}</p>}
             <ProductForm
               products={products}

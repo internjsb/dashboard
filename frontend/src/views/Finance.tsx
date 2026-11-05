@@ -54,7 +54,7 @@ const REPORT_STATUS_LABEL: Record<ReportStatus, string> = { final: "Final", draf
 const REPORT_STATUS_OPTIONS = Object.entries(REPORT_STATUS_LABEL).map(([value, label]) => ({ value, label }));
 
 function money(n: number): string {
-  const abs = `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const abs = `${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return n < 0 ? `-${abs}` : abs;
 }
 
@@ -170,7 +170,7 @@ export default function Finance() {
       accessor: (t) => t.sold_qty,
       align: "right",
       className: styles.numCol,
-      render: (t) => money(t.sold_qty),
+      render: (t) => t.sold_qty.toLocaleString(),
     },
     {
       key: "Item Price",
@@ -193,7 +193,7 @@ export default function Finance() {
     { key: "sku", header: "SKU", accessor: (r) => r.sku, render: (r) => r.sku || "—", className: styles.muted },
     {
       key: "dtiItemCode",
-      header: "DTI Item Code",
+      header: "Product Item Code",
       accessor: (r) => r.dtiItemCode,
       render: (r) => r.dtiItemCode || "—",
       className: styles.muted,

@@ -367,6 +367,53 @@
   opacity: 0.4;
 }
 
+/* Column title + its "?" help icon, kept on one line. */
+.thInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.help {
+  position: relative;
+  display: inline-flex;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.help:hover {
+  color: var(--text-primary);
+}
+
+/* Instant tooltip — the browser's own title tooltip is slow and easy to miss. */
+.help::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  width: max-content;
+  max-width: 240px;
+  padding: 6px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--text-primary);
+  color: var(--surface);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.help:hover::after {
+  opacity: 1;
+}
+
 /* Actions stay pinned to the right edge while the table scrolls sideways. */
 .actionsCol {
   position: sticky;
@@ -688,4 +735,35 @@
   background: var(--danger);
   border-color: var(--danger) !important;
   color: #fff;
+}
+
+/* Currency calculator box above the table. */
+.calc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.calc .dateInput {
+  background: var(--surface);
+}
+
+.calcTitle {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calcResult {
+  align-self: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }

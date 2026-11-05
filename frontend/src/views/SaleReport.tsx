@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, CircleHelp, Download, Search, X } from "lucide-react";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import api from "../api/client";
@@ -17,6 +17,9 @@ const MARKETPLACE_CURRENCY: Record<string, string> = {
   A28R8C7NBKEWEA: "EUR", A2NODRKZP88ZB9: "SEK", A1C3SOZRARQ6R3: "PLN", A33AVAJ2PDY3EV: "TRY",
   A2VIGQ35RCS4UG: "AED", A17E79C6D8DWNP: "SAR", A39IBJ37TRP1C6: "AUD",
 };
+
+const CALC_CURRENCIES = [...new Set(Object.values(MARKETPLACE_CURRENCY))];
+
 
 // Rates are per 1 USD, so: amount ÷ rate(from) × rate(to). null when a rate is missing.
 function convert(amount: number, from: string, to: string, rates: Record<string, number>): number | null {
@@ -61,22 +64,22 @@ type SortDir = "asc" | "desc";
 
 // Column order and headings follow the accounting department's "Format for
 // Sales Report" (the CSV export uses the same, for import into the ERP).
-const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
-  {key: "category", label: "Category"},
-  { key: "purchase_date", label: "Purchase Date" },
-  { key: "item_code", label: "Product Item Code" },
-  { key: "set_", label: "Set" },
-  { key: "qty", label: "QTY", numeric: true },
-  { key: "product_sale_price", label: "Gross Product Sales Price", numeric: true },
-  {key : "price_wo_tax", label: "Product Sales Price w/o Tax", numeric: true},
+const COLUMNS: { key: SortKey; label: string; numeric?: boolean; help:string }[] = [
+  {key: "category", label: "Category", help:"placeholder"},
+  { key: "purchase_date", label: "Purchase Date" , help:"placeholder"},
+  { key: "item_code", label: "Product Item Code" , help:"placeholder"},
+  { key: "set_", label: "Set" , help:"placeholder"},
+  { key: "qty", label: "QTY", numeric: true , help:"placeholder"},
+  { key: "product_sale_price", label: "Gross Product Sales Price", numeric: true , help:"placeholder"},
+  {key : "price_wo_tax", label: "Product Sales Price w/o Tax", numeric: true , help:"placeholder"},
 
-  { key: "unit_price", label: "Unit price (Sales/Qty)", numeric: true },
-  { key: "net_price", label: "Net Price", numeric: true },
-  { key: "net_tax", label: "Net Tax", numeric: true },
-  { key: "order_id", label: "Order id" },
-  { key: "fulfillment", label: "Fulfillment" },
-  { key: "tax_pre", label: "Tax %", numeric: true },
-  { key: "shipped_date", label: "Order Fulfillment Date" },
+  { key: "unit_price", label: "Unit price (Sales/Qty)", numeric: true, help:"placeholder" },
+  { key: "net_price", label: "Net Price", numeric: true, help:"placeholder" },
+  { key: "net_tax", label: "Net Tax", numeric: true , help:"placeholder"},
+  { key: "order_id", label: "Order id", help:"placeholder" },
+  { key: "fulfillment", label: "Fulfillment", help:"placeholder" },
+  { key: "tax_pre", label: "Tax %", numeric: true , help:"placeholder"},
+  { key: "shipped_date", label: "Order Fulfillment Date" , help:"placeholder"},
   
 ];
 
@@ -244,7 +247,7 @@ export default function SaleReport() {
   const { code } = useMarketplace();
   // Currency of the marketplace picked in the top bar; null for "All marketplaces" (mixed currencies).
   const priceCurrency = code ? MARKETPLACE_CURRENCY[code] ?? null : null;
-  const showUsd = priceCurrency !== "USD";
+  // const showUsd = priceCurrency !== "USD";
   const filtered = useMemo(() => {
   
     const out = rows
@@ -265,6 +268,70 @@ export default function SaleReport() {
       const [f, t] = monthRange(m);
       return fromDate === f && toDate === t;
     })
+  
+  const [calcFrom, setCalcFrom] = useState("JPY");
+  const [calcTo, setCalcTo] = useState("USD");
+  const [calcStart, setCalcStart] = useState("");
+  const [calcEnd, setCalcEnd] = useState("");
+  const [calcRate, setCalcRate] = useState("");
+  const rate = Number(calcRate);
+  const calcOn = rate > 0;
+
+  function calcValue(r: SaleReport): number | null {
+    if (!calcOn || currencyOf(r) !== calcFrom || !r.purchase_date) return null;
+    const day = sortableDate(r.purchase_date);
+    if ((calcStart && day < calcStart) || (calcEnd && day > calcEnd)) return null;
+    return r.product_sale_price * rate;
+  }
+
+  const calcRows = rows.filter((r) => calcValue(r) != null);
+  const calcFromTotal = calcRows.reduce((sum, r) => sum + r.product_sale_price, 0);
+  const calcToTotal = calcRows.reduce((sum, r) => sum + (calcValue(r) ?? 0), 0);
+  const [converted, setConverted] = useState<Record<string, {value: number; currency: string}>>({});
+  const [calcError, setCalcError] = useState("");
+  const linekey = (r: SaleReport) => 
+    `${r.order_id}|${r.item_code}|${r.purchase_date}|${r.product_sale_price}`.replace(/[.#$[\]/]/g, "_");
+    useEffect(() => {
+    api
+      .get<{ conversions: Record<string, { value: number; currency: string }> }>("/dashboard/sale-conversions")
+      .then(({ data }) => setConverted(data.conversions))
+      .catch((err) => console.error(err));
+  }, []);
+ async function applyRate() {
+    const additions: Record<string, { value: number; currency: string }> = {};
+    for (const r of rows) {
+      const v = calcValue(r);
+      if (v != null) additions[linekey(r)] = { value: Math.round(v * 100) / 100, currency: calcTo };
+    }
+    if (!Object.keys(additions).length) return;
+    setCalcError("");
+    try {
+      await api.patch("/dashboard/sale-conversions", { conversions: additions });
+      setConverted((prev) => ({ ...prev, ...additions }));
+    } catch (err) {
+      setCalcError("Couldn't save the converted prices. Try again.");
+      console.error(err);
+    }
+  }
+
+async function clearConverted() {
+    if (!window.confirm("Remove all saved converted prices? This clears them for everyone.")) return;
+    setCalcError("");
+    try {
+      await api.delete("/dashboard/sale-conversions");
+      setConverted({});
+    } catch (err) {
+      setCalcError("Couldn't clear the converted prices. Try again.");
+      console.error(err);
+    }
+  }
+
+  function convertedText(r: SaleReport): string {
+    const c = converted[linekey(r)];
+    if (!c) return "—";
+    return c.currency === "USD" ? money(c.value) : `${money(c.value)} ${c.currency}`;
+  }
+
   // Totals for whatever the filters currently match (not just this page).
   const totals = useMemo(() => {
     // In USD, so yen and dollar sales add up correctly.
@@ -468,6 +535,88 @@ export default function SaleReport() {
                 </button>
               )}
             </div>
+                          <div className={styles.calc}>
+              <span className={styles.calcTitle}>Currency calculator</span>
+              <div className={styles.dateGroup}>
+                <span className={styles.dateLabel}>From</span>
+                <select className={styles.dateInput} value={calcFrom} onChange={(e) => setCalcFrom(e.target.value)}>
+                   {CALC_CURRENCIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.dateGroup}>
+                <span className={styles.dateLabel}>To</span>
+                <select className={styles.dateInput} value={calcTo} onChange={(e) => setCalcTo(e.target.value)}>
+                 {CALC_CURRENCIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.dateGroup}>
+                <span className={styles.dateLabel}>Purchase Date</span>
+                <div className={styles.dateRow}>
+                  <input
+                    type="date"
+                    className={styles.dateInput}
+                    value={calcStart}
+                    max={calcEnd || undefined}
+                    onChange={(e) => setCalcStart(e.target.value)}
+                    aria-label="Rate applies from"
+                  />
+                  <span className={styles.dateTo}>to</span>
+                  <input
+                    type="date"
+                    className={styles.dateInput}
+                    value={calcEnd}
+                    min={calcStart || undefined}
+                    onChange={(e) => setCalcEnd(e.target.value)}
+                    aria-label="Rate applies to"
+                  />
+                  {(calcStart || calcEnd) && (
+                    <button
+                      type="button"
+                      className={styles.clearBtn}
+                      onClick={() => {
+                        setCalcStart("");
+                        setCalcEnd("");
+                      }}
+                    >
+                      <X size={14} aria-hidden="true" />
+                      Clear dates
+                    </button>
+                  )}
+
+                </div>
+              </div>
+              <div className={styles.dateGroup}>
+                <span className={styles.dateLabel}>Rate (1 {calcFrom} = ? {calcTo})</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={styles.dateInput}
+                  value={calcRate}
+                  onChange={(e) => setCalcRate(e.target.value)}
+                  placeholder="e.g. 0.0067"
+                />
+              </div>
+              <button type="button" className={styles.exportBtn} onClick={applyRate} disabled={!calcOn}>
+                Apply
+              </button>
+              {Object.keys(converted).length > 0 && (
+                <button type="button" className={styles.clearBtn} onClick={clearConverted}>
+                  <X size={14} aria-hidden="true" />
+                  Clear converted
+                </button>
+              )}
+              {calcError && <span className={styles.error}>{calcError}</span>}
+              {calcOn && (
+                <span className={styles.calcResult}>
+                  {calcRows.length} rows · {money(calcFromTotal)} {calcFrom} → {money(calcToTotal)} {calcTo}
+                </span>
+              )}
+            </div>
 
             {loading ? (
               <p className={styles.state}>Loading…</p>
@@ -488,6 +637,9 @@ export default function SaleReport() {
                               className={c.numeric ? styles.num : ""}
                               aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
                             >
+                            <span className={styles.thInner}>
+
+                          
                               <button
                                 type="button"
                                 className={`${styles.sortBtn} ${active ? styles.sortActive : ""}`}
@@ -503,13 +655,21 @@ export default function SaleReport() {
                                     <ArrowDown size={13} aria-hidden="true" />
                                   )
                                 ) : (
+                                  
                                   <ArrowUpDown size={13} className={styles.sortIdle} aria-hidden="true" />
                                 )}
                               </button>
+                                  <span className={styles.help} data-tip={c.help} aria-label={c.help} role='img'>
+
+                                  <CircleHelp size={13} aria-hidden="true"></CircleHelp>
+                                </span>
+                              </span>
                             </th>
                             {/* Converted price sits right beside the original price. */}
 
-                            {c.key === "product_sale_price" && showUsd && <th className={styles.num}>Sale (USD)</th>}
+ {/* API HEREEEEEEEEEE  */}
+                            {c.key === "product_sale_price" && <th className={styles.num}>Sale (USD)</th>}
+                            {/* {c.key === "product_sale_price" && showUsd && <th className={styles.num}>Sale (USD)</th>} */}
                             </Fragment>
                           );
                         })}
@@ -518,7 +678,8 @@ export default function SaleReport() {
                     <tbody>
                       {paged.length === 0 ? (
                         <tr>
-                          <td className={styles.empty} colSpan={COLUMNS.length + (showUsd ? 2: 1)} >
+ {/* API HEREEEEEEEEEE add this + (showUsd ? 2: 1) */}
+                          <td className={styles.empty} colSpan={COLUMNS.length + 2 } >
                             <strong>No rows match your filters.</strong>
                             {hasFilters && (
                               <button type="button" className={styles.linkBtn} onClick={clearFilters}>
@@ -531,7 +692,6 @@ export default function SaleReport() {
                         paged.map((r, i) => (
                           <tr  key={`${r.order_id}-${firstIndex + i}`}>
                             {/* Running number across pages, so page 2 starts at 11. */}
-
                             <td className={`${styles.num} ${styles.muted}`}>{firstIndex + i + 1}</td>
                             <td >{r.category}</td>
                             <td className={styles.nowrap}>{formatDate(r.purchase_date)}</td>
@@ -541,9 +701,14 @@ export default function SaleReport() {
                             <td>{r.set_ ?? "null"}</td>
                             <td className={styles.num}>{r.qty}</td>
                             <td className={styles.num}>{money(r.product_sale_price)}</td>
-                            {showUsd && (<td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
-                              {toUsd(r) == null ? "—" : money(toUsd(r)!)}
-                            </td>)}
+                            {/* Saved converted price (from the calculator's Apply). */}
+                            <td className={styles.num}>{convertedText(r)}</td>
+
+{/* API HEREEEEEEEEEE  ADD THIS {showUsd && (*/}
+                            {/* <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
+                               {toUsd(r) == null ? "—" : money(toUsd(r)!)}
+                            </td> */}
+
                             <td className={styles.num}>{money(r.price_wo_tax)}</td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
                             <td className={styles.num}>{money(r.net_price)}</td>

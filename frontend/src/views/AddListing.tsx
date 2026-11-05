@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ImagePlus, X } from "lucide-react";
 import api from "../api/client";
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
@@ -57,6 +57,20 @@ export default function AddListing() {
   const [loadingRow, setLoadingRow] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Photo box: a local preview only — the photo isn't uploaded or saved anywhere yet.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
+
+  // Free the preview URL when the photo changes or the page closes.
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview("");
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
 
   // Edit: load the row's current values from Cloud SQL.
   useEffect(() => {
@@ -119,7 +133,8 @@ export default function AddListing() {
   }
 
   // Your items only store DTI item + description; Type / EAN come from Amazon.
-  const fields = isAmazon ? FIELDS : FIELDS.filter((f) => f.key !== "type" && f.key !== "ean");
+  // (Type / EAN boxes show for every row now; for your items they aren't saved yet.)
+  const fields = FIELDS;
 
   return (
     <div className="app-shell">
@@ -145,10 +160,47 @@ export default function AddListing() {
                 </p>
               </div>
 
-              <div className={styles.amazonNote}>
-                <strong>Photos</strong>
-                <span>Listings are stored in the database, which doesn't have a place for photos yet.</span>
-              </div>
+              <label className={`${styles.dropZone} ${imagePreview ? styles.hasPreview : ""}`}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    setImageFile(e.target.files?.[0] ?? null);
+                    e.target.value = ""; // so picking the same file again still fires
+                  }}
+                />
+                {imagePreview ? (
+                  <>
+                    <img src={imagePreview} alt="Selected product photo" className={styles.preview} />
+                    <span className={styles.changeBadge}>Change</span>
+                  </>
+                ) : (
+                  <span className={styles.dropInner}>
+                    <span className={styles.dropIcon}>
+                      <ImagePlus size={28} aria-hidden="true" />
+                    </span>
+                    <span className={styles.dropTitle}>Add a product photo</span>
+                    <span className={styles.dropSub}>
+                      Click to <span className={styles.browse}>browse</span>
+                    </span>
+                    <span className={styles.dropMeta}>PNG, JPG or WEBP</span>
+                  </span>
+                )}
+              </label>
+
+              {imageFile && (
+                <div className={styles.imageActions}>
+                  <button type="button" className={styles.removeImage} onClick={() => setImageFile(null)}>
+                    <X size={14} aria-hidden="true" />
+                    Remove
+                  </button>
+                </div>
+              )}
+              <p className={styles.imageNote}>
+                {imageFile && <span className={styles.fileName}>{imageFile.name}</span>}
+                <span>Preview only — the photo isn't saved yet.</span>
+              </p>
             </section>
 
             <section className={styles.fieldsSide}>
