@@ -177,3 +177,113 @@ body.sidebar-resizing .app-content { transition: none; }
   padding: 0;
   background: rgba(0, 0, 0, 0.45);
 }
+
+
+
+/* =====================================================================
+   Extra animations 
+   Module class names look like _stat_ab12c_3 in dev, so [class*="_stat_"]
+   style selectors work here; plain element selectors work everywhere.
+   ===================================================================== */
+
+/* 1. After the page turn, each block on the page floats up one after another. */
+.app-content main > * {
+  animation: rise-in 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+.app-content main > *:nth-child(1) { animation-delay: 0.35s; }
+.app-content main > *:nth-child(2) { animation-delay: 0.45s; }
+.app-content main > *:nth-child(3) { animation-delay: 0.55s; }
+.app-content main > *:nth-child(4) { animation-delay: 0.65s; }
+.app-content main > *:nth-child(n + 5) { animation-delay: 0.75s; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 2. Stat tiles pop in one by one, and lift when you hover them. */
+[class*="_stat_"] {
+  animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+[class*="_stat_"]:nth-child(1) { animation-delay: 0.45s; }
+[class*="_stat_"]:nth-child(2) { animation-delay: 0.52s; }
+[class*="_stat_"]:nth-child(3) { animation-delay: 0.59s; }
+[class*="_stat_"]:nth-child(4) { animation-delay: 0.66s; }
+[class*="_stat_"]:nth-child(n + 5) { animation-delay: 0.73s; }
+[class*="_stat_"]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(16, 21, 38, 0.12);
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 3. Table rows ripple in from the top, like lines being written on the page. */
+tbody tr {
+  animation: row-in 0.35s ease-out backwards;
+}
+tbody tr:nth-child(1)  { animation-delay: 0.60s; }
+tbody tr:nth-child(2)  { animation-delay: 0.64s; }
+tbody tr:nth-child(3)  { animation-delay: 0.68s; }
+tbody tr:nth-child(4)  { animation-delay: 0.72s; }
+tbody tr:nth-child(5)  { animation-delay: 0.76s; }
+tbody tr:nth-child(6)  { animation-delay: 0.80s; }
+tbody tr:nth-child(7)  { animation-delay: 0.84s; }
+tbody tr:nth-child(8)  { animation-delay: 0.88s; }
+tbody tr:nth-child(9)  { animation-delay: 0.92s; }
+tbody tr:nth-child(n + 10) { animation-delay: 0.96s; }
+tbody td { transition: background-color 0.2s ease; }
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 4. Buttons lift on hover and squish when pressed. */
+button:not(:disabled),
+a[class*="Btn"] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+button:not(:disabled):hover,
+a[class*="Btn"]:hover { transform: translateY(-1px); }
+button:not(:disabled):active,
+a[class*="Btn"]:active { transform: scale(0.96); }
+
+/* 5. Sidebar links slide right on hover. */
+.app-sidebar a {
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+.app-sidebar a:hover { transform: translateX(4px); }
+
+/* 6. Inputs glow softly when you click into them. */
+input:focus,
+select:focus,
+textarea:focus {
+  animation: focus-glow 0.6s ease-out;
+}
+
+@keyframes focus-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(174, 108, 108, 0.45); }
+  100% { box-shadow: 0 0 0 6px rgba(174, 108, 108, 0); }
+}
+
+/* 7. Pop-up windows fade in, and the box zooms up from slightly smaller. */
+[class*="_modalOverlay_"] { animation: fade-in 0.2s ease-out backwards; }
+[class*="_modal_"]        { animation: modal-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+
+@keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 8. "Loading…" text breathes while it waits. */
+[class*="_state_"] { animation: breathe 1.4s ease-in-out infinite; }
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}

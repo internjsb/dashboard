@@ -1,8 +1,6 @@
 import { initializeApp } from "firebase/app";
 import {
   initializeAuth,
-  indexedDBLocalPersistence,
-  browserLocalPersistence,
   browserSessionPersistence,
   inMemoryPersistence,
   browserPopupRedirectResolver,
@@ -28,9 +26,11 @@ const app = initializeApp(firebaseConfig);
 // the app is stuck on a blank screen. An explicit fallback chain lets Auth
 // degrade to session/in-memory storage instead of hanging.
 export const auth = initializeAuth(app, {
+  // Session-only: the login lasts while the tab is open (refresh is fine), and
+  // closing it signs you out — reopening the link always asks you to log in.
+  // indexedDB/local persistence are left out on purpose; they'd keep you signed
+  // in for days.
   persistence: [
-    indexedDBLocalPersistence,
-    browserLocalPersistence,
     browserSessionPersistence,
     inMemoryPersistence,
   ],
