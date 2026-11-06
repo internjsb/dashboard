@@ -231,22 +231,24 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 
 with base as (
     select a.*,
-        case
-          when a.item_tax is null or a.item_tax = 0 then null
-          else round((a.item_price - a.item_tax) / (a.item_price - (a.item_price - a.item_tax)), 2)
-        end as taxper,
-		   	a.item_price - a.item_tax					  as Price_wo_tax,
-			  Round(a.item_promotion_discount / ((1+ t.taxper)/100),2) as discount_wo_tax
+		case
+		  when a.item_tax is null or a.item_tax = 0 then null
+		  else round((a.item_price - a.item_tax) / (a.item_price - (a.item_price - a.item_tax)), 2)
+		end as taxper,		   	a.item_price - a.item_tax					  as Price_wo_tax,
+			  Round(abs(a.item_promotion_discount) / (1+ (t.taxper)/100),2) as discount_wo_tax
 			   
     from amazon.get_amazon_fulfilled_shipments_data_general a
 	cross join lateral (
-        select round((1 - ((a.item_price - a.item_tax) / nullif(a.item_price, 0))) * 100, 2) as taxper
+       select case
+		  when a.item_tax is null or a.item_tax = 0 then null
+		  else round((a.item_price - a.item_tax) / (a.item_price - (a.item_price - a.item_tax)), 2)
+		end as taxper
     ) t
 )
  select to_char(a.purchase_date, 'DD/MM/YY') as Purchase_date,
  		a.taxper 		as taxper,
 		a.item_promotion_discount as discount,
-	    Round(a.item_promotion_discount / ((1+ taxper)/100),2) as discount_wo_tax,
+	    a.discount_wo_tax as discount_wo_tax,
 		b.item_code                                   as item_code,
 		b.units_per_sku                               as Set_,
 		a.quantity_shipped                            as QTY,
