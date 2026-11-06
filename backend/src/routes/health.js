@@ -55,20 +55,32 @@ router.get("/exchange_rates", ...unlessLocalDev(requireAuth, requireActive), asy
       .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
       .sort();
     const missing = days.filter((d) => !ratesByDay.has(d));
-    if (missing.length) {
-      const url = new URL("https://api.frankfurter.dev/v2/rates");
-      url.searchParams.set("base", "USD");
-      url.searchParams.set("quotes", RATE_QUOTES);
-      url.searchParams.set("from", missing[0]);
-      url.searchParams.set("to", missing[missing.length - 1]);
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(`Frankfurter HTTP ${r.status}`);
-      // Response: [{ date, base, quote, rate }, ...] — one entry per day per currency.
-      for (const { date, quote, rate } of await r.json()) {
-        if (!ratesByDay.has(date)) ratesByDay.set(date, { USD: 1 });
-        ratesByDay.get(date)[quote] = rate;
-      }
-    }
+///// FREECURRENCY API
+ for(const day of missing){
+  const url = new URL("https://api.freecurrencyapi.com/v1/historical");
+  
+ }
+
+
+
+
+
+
+// FRANKFURTER ///////////
+    // if (missing.length) {
+    //   const url = new URL("https://api.frankfurter.dev/v2/rates");
+    //   url.searchParams.set("base", "USD");
+    //   url.searchParams.set("quotes", RATE_QUOTES);
+    //   url.searchParams.set("from", missing[0]);
+    //   url.searchParams.set("to", missing[missing.length - 1]);
+    //   const r = await fetch(url);
+    //   if (!r.ok) throw new Error(`Frankfurter HTTP ${r.status}`);
+    //   // Response: [{ date, base, quote, rate }, ...] — one entry per day per currency.
+    //   for (const { date, quote, rate } of await r.json()) {
+    //     if (!ratesByDay.has(date)) ratesByDay.set(date, { USD: 1 });
+    //     ratesByDay.get(date)[quote] = rate;
+    //   }
+    // }
     const rates = Object.fromEntries(days.filter((d) => ratesByDay.has(d)).map((d) => [d, ratesByDay.get(d)]));
     // Optional ?country=JP or ?country=Japan (comma-separated for several) — limits
     // byCountry to those countries; leave it out to list every marketplace country.
@@ -219,7 +231,10 @@ router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, require
 
 with base as (
     select a.*,
-           round(( 1- ((a.item_price - a.item_tax) / a.item_price)) * 100, 2) as taxper,
+        case
+          when a.item_tax is null or a.item_tax = 0 then null
+          else round((a.item_price - a.item_tax) / (a.item_price - (a.item_price - a.item_tax)), 2)
+        end as taxper,
 		   	a.item_price - a.item_tax					  as Price_wo_tax,
 			  Round(a.item_promotion_discount / ((1+ t.taxper)/100),2) as discount_wo_tax
 			   
@@ -256,7 +271,7 @@ with base as (
 `);
     res.json({ rows });
   } catch (err) {
-    console.error("[health/shipment_data]", err.message);
+    console.error("[health/sale_report]", err.message);
     res.status(500).json({ error: "Failed to load shipments from the database" });
   }
 });
