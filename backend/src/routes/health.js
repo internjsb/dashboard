@@ -233,7 +233,7 @@ with base as (
     select a.*,
 		case
 		  when a.item_tax is null or a.item_tax = 0 then null
-		  else round((a.item_price - a.item_tax) / (a.item_price - (a.item_price - a.item_tax)), 2)
+		  else round(((a.item_price - a.item_tax) / (a.item_price - (a.item_price - a.item_tax))), 1)
 		end as taxper,		   	a.item_price - a.item_tax					  as Price_wo_tax,
 			  Round(abs(a.item_promotion_discount) / (1+ (t.taxper)/100),2) as discount_wo_tax
 			   
