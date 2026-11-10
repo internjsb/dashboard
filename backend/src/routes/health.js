@@ -24,7 +24,7 @@ router.get("/db", async (req, res) => {
 });
 
 const RATE_QUOTES = "JPY,EUR,GBP,CAD,AUD,MXN,BRL,SEK,PLN,TRY,AED,SAR";
-const ratesByDay = new Map(); // "2026-08-27" -> { USD: 1, JPY: 159.34, ... }
+const ratesByDay = new Map(); 
 
 // Amazon marketplace countries and the currency each one sells in.
 const MARKETPLACE_COUNTRIES = [
@@ -49,41 +49,126 @@ const MARKETPLACE_COUNTRIES = [
   { country: "Australia", code: "AU", currency: "AUD" },
 ];
 
+// --- Twelve Data exchange rates ---------------------------------------------
+// The free plan allows 8 requests a minute, and every currency is one request.
+// To stay under it: each currency's daily rates are fetched once for the last
+// two years and kept in memory (refreshed at most once a day, and only when a
+// newer date is asked for), page loads asking at the same time share one
+// request, and requests wait for a free slot instead of failing.
+const TWELVE_DATA_PER_MINUTE = 8;
+const seriesByQuote = new Map(); // "JPY" -> { fetchedOn: "2026-11-10", closes: [["2026-08-27", 159.34], ...] } oldest first
+const seriesInFlight = new Map(); // "JPY" -> Promise of the above, while it's being fetched
+let twelveDataCalls = []; // times of recent requests, for the per-minute limit
+
+// Wait until fewer than 8 Twelve Data requests went out in the last minute.
+async function waitForTwelveDataSlot() {
+  for (;;) {
+    const now = Date.now();
+    twelveDataCalls = twelveDataCalls.filter((t) => now - t < 60_000);
+    if (twelveDataCalls.length < TWELVE_DATA_PER_MINUTE) {
+      twelveDataCalls.push(now);
+      return;
+    }
+    // The oldest request in the window turns a minute old at this point.
+    await new Promise((resolve) => setTimeout(resolve, 60_000 - (now - twelveDataCalls[0]) + 100));
+  }
+}
+
+// Two years of daily closes for one currency: how many of it 1 USD buys.
+async function fetchSeries(quote) {
+  await waitForTwelveDataSlot();
+  const start = new Date();
+  start.setUTCFullYear(start.getUTCFullYear() - 2);
+  const url = new URL("https://api.twelvedata.com/time_series");
+  url.searchParams.set("symbol", `USD/${quote}`);
+  url.searchParams.set("interval", "1day");
+  url.searchParams.set("start_date", start.toISOString().slice(0, 10));
+  url.searchParams.set("outputsize", "5000");
+  url.searchParams.set("apikey", process.env.TWELVE_DATA_API_KEY);
+  const r = await fetch(url);
+  const body = await r.json();
+  // Twelve Data reports problems (bad key, rate limit) as { status: "error", code, message }.
+  if (!r.ok || body.status === "error") {
+    throw new Error(`Twelve Data USD/${quote}: ${body.message ?? `HTTP ${r.status}`}`);
+  }
+  return {
+    fetchedOn: new Date().toISOString().slice(0, 10),
+    closes: (body.values ?? []).map((v) => [v.datetime.slice(0, 10), Number(v.close)]).reverse(),
+  };
+}
+
+// A currency's closes from memory, fetching only when we have none yet or
+// `lastDay` is newer than what we have (and we haven't already fetched today).
+async function getSeries(quote, lastDay) {
+  const today = new Date().toISOString().slice(0, 10);
+  const cached = seriesByQuote.get(quote);
+  const newest = cached?.closes[cached.closes.length - 1]?.[0] ?? "";
+  if (cached && (lastDay <= newest || cached.fetchedOn === today)) return cached;
+  if (!seriesInFlight.has(quote)) {
+    seriesInFlight.set(
+      quote,
+      fetchSeries(quote)
+        .then((s) => {
+          seriesByQuote.set(quote, s);
+          return s;
+        })
+        .finally(() => seriesInFlight.delete(quote)),
+    );
+  }
+  try {
+    return await seriesInFlight.get(quote);
+  } catch (err) {
+    if (cached) return cached; // a failed refresh keeps the copy we already have
+    throw err;
+  }
+}
+
+// The last close on or before `day` — FX markets close on weekends and
+// holidays, so those days get the previous trading day's rate.
+function closeOn(closes, day) {
+  let rate = null;
+  for (const [d, close] of closes) {
+    if (d > day) break;
+    rate = close;
+  }
+  return rate;
+}
+
 router.get("/exchange_rates", ...unlessLocalDev(requireAuth, requireActive), async (req, res) => {
   try {
     const days = [...new Set(String(req.query.dates ?? "").split(","))]
       .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
       .sort();
-    const missing = days.filter((d) => !ratesByDay.has(d));
-///// FREECURRENCY API
- for(const day of missing){
-  const url = new URL("https://api.freecurrencyapi.com/v1/historical");
-  
- }
+    // Only the currencies asked for (?currencies=JPY,EUR); defaults to all of them.
+    const allQuotes = RATE_QUOTES.split(",");
+    const quotes = String(req.query.currencies || RATE_QUOTES)
+      .split(",")
+      .map((q) => q.trim().toUpperCase())
+      .filter((q) => allQuotes.includes(q));
 
+    // One currency failing (e.g. Twelve Data down) leaves just that one out.
+    const series = {};
+    if (days.length) {
+      const lastDay = days[days.length - 1];
+      const results = await Promise.allSettled(quotes.map((q) => getSeries(q, lastDay)));
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled") series[quotes[i]] = result.value;
+        else console.error("[health/exchange_rates]", result.reason?.message);
+      });
+    }
 
+    // "2026-08-27" -> { USD: 1, JPY: 159.34, ... } — each currency per 1 USD.
+    const rates = Object.fromEntries(
+      days.map((day) => {
+        const dayRates = { USD: 1 };
+        for (const [quote, s] of Object.entries(series)) {
+          const rate = closeOn(s.closes, day);
+          if (rate != null) dayRates[quote] = rate;
+        }
+        return [day, dayRates];
+      }),
+    );
 
-
-
-
-// FRANKFURTER ///////////
-    // if (missing.length) {
-    //   const url = new URL("https://api.frankfurter.dev/v2/rates");
-    //   url.searchParams.set("base", "USD");
-    //   url.searchParams.set("quotes", RATE_QUOTES);
-    //   url.searchParams.set("from", missing[0]);
-    //   url.searchParams.set("to", missing[missing.length - 1]);
-    //   const r = await fetch(url);
-    //   if (!r.ok) throw new Error(`Frankfurter HTTP ${r.status}`);
-    //   // Response: [{ date, base, quote, rate }, ...] — one entry per day per currency.
-    //   for (const { date, quote, rate } of await r.json()) {
-    //     if (!ratesByDay.has(date)) ratesByDay.set(date, { USD: 1 });
-    //     ratesByDay.get(date)[quote] = rate;
-    //   }
-    // }
-    const rates = Object.fromEntries(days.filter((d) => ratesByDay.has(d)).map((d) => [d, ratesByDay.get(d)]));
-    // Optional ?country=JP or ?country=Japan (comma-separated for several) — limits
-    // byCountry to those countries; leave it out to list every marketplace country.
     const wanted = String(req.query.country ?? "")
       .split(",")
       .map((s) => s.trim().toLowerCase())
@@ -94,7 +179,7 @@ router.get("/exchange_rates", ...unlessLocalDev(requireAuth, requireActive), asy
     if (wanted.length && !countries.length) {
       return res.status(400).json({ error: `Unknown country: ${req.query.country}. Use a code (JP) or name (Japan).` });
     }
-    // Same rates, listed per country — "rate" is that country's currency per 1 USD.
+
     const byCountry = Object.fromEntries(
       Object.entries(rates).map(([day, dayRates]) => [
         day,
@@ -108,37 +193,10 @@ router.get("/exchange_rates", ...unlessLocalDev(requireAuth, requireActive), asy
   }
 });
 
-// Test endpoint for the /testing page: raw ledger rows from Cloud SQL.
-// Admin sign-in required — this is real business data.
-// router.get("/orders", requireAuth, requireActive, requireAdmin, async (req, res) => {
-//   try {
-//     const result = await query("SELECT * FROM amazon.get_ledger_detail_view_data LIMIT 100");
-//     res.json(result.rows);
-//   } catch (err) {
-//     console.error("[health/orders]", err.message);
-    
-//     res.status(500).json({ error: `Database error: ${err.message}` });
-//   }
-// });
-
-
-// router.get("/amazon-skus", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("products")), async (req, res) => {
-//   try {
-//     // One row per SKU, newest snapshot first (the report is re-pulled over time).
-//     const { rows } = await query(`
-//       SELECT DISTINCT ON (sku) sku, fnsku, asin, product_name, available, snapshot_date
-//         FROM amazon.get_fba_inventory_planning_data
-//        ORDER BY sku, snapshot_date DESC`);
-//     res.json({ rows });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: "Failed to load SKUs from the database" });
-//   }
-// });
 
 router.get("/listing-data", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("product_listings")), async (req, res) => {
   try {
-    // One row per Amazon listing: image, division, DTI code/description, type (Amazon product group), EAN.
+
     const { rows } = await query(`
       SELECT l.image_url                                                    AS image_url,
              regexp_replace(split_part(i.item_name, '-', 1), 'NIST$', '')  AS division,
@@ -253,12 +311,13 @@ with base as (
 		b.units_per_sku                               as Set_,
 		a.quantity_shipped                            as QTY,
 		a.item_price                                  as Product_Sale_Price,
-		a.item_price - a.item_tax					  as price_wo_tax,
+		a.item_price - a.item_tax					            as price_wo_tax,
 		Round((a.item_price/a.quantity_shipped),2)    as Unit_price,
-		a.price_wo_tax - a.discount_wo_tax			  as net_price,
-		a.item_tax - ( a.item_promotion_discount - a.discount_wo_tax) as net_tax,
-		a.amazon_order_id                             as Order_id,
-		c.fulfillment_channel                         as Fulfillment,
+		a.price_wo_tax - a.discount_wo_tax			      as net_price,
+		a.item_tax - ( a.item_promotion_discount - a.discount_wo_tax)   as net_tax,
+		a.amazon_order_id                                               as Order_id,
+		a.fulfillment_center_id				                                 as fulfillment_center,
+		a.sales_channel                         as fulfillment_sale_channel,
     taxper as tax_pre,
 		to_char(a.shipment_date, 'DD/MM/YY')          as Shipped_date,
 		a.marketplace_id                              as marketplace_id,
@@ -266,10 +325,9 @@ with base as (
 		from base a
 		left join core.item_sku_map b
 		on a.sku = b.seller_sku 
-		left join (select distinct on (seller_sku) seller_sku, fulfillment_channel, item_name
+		left join (select distinct on (seller_sku) seller_sku,  item_name
 		           from amazon.get_merchant_listings_all_data) c
 		on a.sku = c.seller_sku
-
 `);
     res.json({ rows });
   } catch (err) {
@@ -281,9 +339,6 @@ with base as (
 
 router.get("/recent_order", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("dashboard")), async (req, res) => {
   try {
-    // Dashboard "Recent orders": one row per shipped order line, newest first.
-    // Column names match the OrderRow interface in RecentOrders.tsx. Joined on
-    // the SKU (joining on marketplace alone paired every SKU with every order).
     const { rows } = await query(`
     SELECT 
            COALESCE(p.product_name, a.product_name, '')                           AS item_name,

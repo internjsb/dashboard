@@ -53,7 +53,8 @@ interface SaleReport {
   net_price: number ;
   net_tax: number;
   order_id: string;
-  fulfillment: string;
+  fulfillment_center: string;
+  fulfillment_sale_channel: string;
   tax_pre: number;
   shipped_date: string;
   marketplace_id: string | null; // not shown; used by the top-bar marketplace filter
@@ -70,14 +71,15 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean; help:string }[]
   { key: "item_code", label: "Product Item Code" , help:"placeholder"},
   { key: "set_", label: "Set" , help:"placeholder"},
   { key: "qty", label: "QTY", numeric: true , help:"placeholder"},
-  { key: "product_sale_price", label: "Gross Product Sales Price", numeric: true , help:"placeholder"},
-  {key : "price_wo_tax", label: "Product Sales Price w/o Tax", numeric: true , help:"placeholder"},
+  { key: "product_sale_price", label: "Gross Product Sales Price", numeric: true , help:"Original list price, inclusive of tax and before discounts."},
+  {key : "price_wo_tax", label: "Product Sales Price w/o Tax", numeric: true , help:"Sales excluding tax, before discounts."},
 
   { key: "unit_price", label: "Unit price (Sales/Qty)", numeric: true, help:"placeholder" },
-  { key: "net_price", label: "Net Price", numeric: true, help:"placeholder" },
-  { key: "net_tax", label: "Net Tax", numeric: true , help:"placeholder"},
+  { key: "net_price", label: "Net Price", numeric: true, help:"Sales excluding tax, after discounts." },
+  { key: "net_tax", label: "Net Tax", numeric: true , help:"Tax after discount."},
   { key: "order_id", label: "Order id", help:"placeholder" },
-  { key: "fulfillment", label: "Fulfillment", help:"placeholder" },
+  { key: "fulfillment_center", label: "Fulfillment Center", help:"placeholder" },
+  { key: "fulfillment_sale_channel", label: "Fulfillment Sale Channel", help:"placeholder" },
   { key: "tax_pre", label: "Tax %", numeric: true , help:"placeholder"},
   { key: "shipped_date", label: "Order Fulfillment Date" , help:"placeholder"},
   
@@ -198,18 +200,29 @@ export default function SaleReport() {
   const [ratesByDay, setRatesByDay] = useState<Record<string, Record<string, number>>>({});
 
   useEffect(() => {
-    const days = [...new Set(rows.filter((r) => currencyOf(r) !== "USD" && r.purchase_date).map((r) => sortableDate(r.purchase_date)))];
+    const nonUsd = rows.filter((r) => currencyOf(r) !== "USD" && r.purchase_date);
+    const days = [...new Set(nonUsd.map((r) => sortableDate(r.purchase_date)))];
+    const currencies = [...new Set(nonUsd.map(currencyOf))];
     if (!days.length) return;
-    api.get<{ rates: Record<string, Record<string, number>> }>("/health/exchange_rates", { params: { dates: days.join(",") } })
+    api.get<{ rates: Record<string, Record<string, number>> }>("/health/exchange_rates", {
+      params: { dates: days.join(",") , currencies: currencies.join(",") },
+      // The first load after a backend restart can wait up to a minute for Twelve
+      // Data's per-minute limit; after that rates come back right away.
+      timeout: 90000,
+    })
       .then(({ data }) => setRatesByDay(data.rates))
       .catch((err) => console.error(err));
   }, [rows]);
 
+
   // A row's sale price in USD, at the rate on its purchase date (null until rates load).
   const toUsd = (r: SaleReport) =>
-    currencyOf(r) === "USD" ? r.product_sale_price : 
-    convert(r.product_sale_price, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)]??{});
+    currencyOf(r) === "USD" ? r.price_wo_tax : 
+    convert(r.price_wo_tax, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)]??{});
 
+ const taxtoUsd = (r: SaleReport) =>
+    currencyOf(r) === "USD" ? r.net_tax : 
+    convert(r.net_tax, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)]??{});
 
 
   useEffect(() => {
@@ -247,7 +260,7 @@ export default function SaleReport() {
   const { code } = useMarketplace();
   // Currency of the marketplace picked in the top bar; null for "All marketplaces" (mixed currencies).
   const priceCurrency = code ? MARKETPLACE_CURRENCY[code] ?? null : null;
-  // const showUsd = priceCurrency !== "USD";
+  const showUsd = priceCurrency !== "USD";
   const filtered = useMemo(() => {
   
     const out = rows
@@ -255,7 +268,7 @@ export default function SaleReport() {
       // Date range is by order fulfillment (shipped) date; rows without one only show when no range is set.
       .filter((r) => !fromDate || (!!r.shipped_date && sortableDate(r.shipped_date) >= fromDate))
       .filter((r) => !toDate || (!!r.shipped_date && sortableDate(r.shipped_date) <= toDate))
-      .filter((r) => matches(`${r.item_code} ${r.set_} ${r.order_id} ${r.fulfillment}`, query));
+      .filter((r) => matches(`${r.item_code} ${r.set_} ${r.order_id} ${r.fulfillment_sale_channel}`, query));
     const dir = sort.dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
       const av = DATE_KEYS.has(sort.key) ? sortableDate(String(a[sort.key])) : a[sort.key];
@@ -336,9 +349,11 @@ async function clearConverted() {
   const totals = useMemo(() => {
     // In USD, so yen and dollar sales add up correctly.
     const sales = filtered.reduce((sum, r) => sum + (toUsd(r) ?? 0), 0);
-    const jpsales = filtered.reduce((sum, r) => sum + (r.product_sale_price ?? 0), 0);
+    const jpsales = filtered.reduce((sum, r) => sum + (r.price_wo_tax ?? 0), 0);
     const orders = filtered.length;
+    const totaltaxs = filtered.reduce((sum, r) => sum + (taxtoUsd(r)?? 0), 0);
     return {
+      totaltaxs,
       orders,
       units: filtered.reduce((sum, r) => sum + r.qty, 0),
       sales,
@@ -407,14 +422,24 @@ async function clearConverted() {
     { label: "Total Orders", value: compactCount(totals.orders) },
     { label: "Units sold", value: compactCount(totals.units) },
     { label: "Total sales (USD)", value: compactMoney(totals.sales) },
-    { label: "Avg order value (USD)", value: compactMoney(totals.avgOrder) },
+  
 
     ...(priceCurrency && priceCurrency !== "USD"
       ? [
           { label: `Total sales (${currencySymbol(priceCurrency)})`, value: compactMoney(totals.jpsales) },
+        ]
+      : []),
+
+  { label: "Avg order value (USD)", value: compactMoney(totals.avgOrder) },
+
+        ...(priceCurrency && priceCurrency !== "USD"
+      ? [
           { label: `Avg order value (${currencySymbol(priceCurrency)})`, value: compactMoney(totals.jpavgOrder) },
         ]
       : []),
+
+      { label: "Total Taxes (USD)", value: compactMoney(totals.totaltaxs) },
+
   ];
 
   return (
@@ -665,11 +690,13 @@ async function clearConverted() {
                                 </span>
                               </span>
                             </th>
-                            {/* Converted price sits right beside the original price. */}
 
  {/* API HEREEEEEEEEEE  */}
-                            {c.key === "product_sale_price" && <th className={styles.num}>Sale (USD)</th>}
-                            {/* {c.key === "product_sale_price" && showUsd && <th className={styles.num}>Sale (USD)</th>} */}
+                            {c.key === "net_tax" && showUsd && <th className={styles.num}>Tax (USD)</th>}
+
+                            {c.key === "price_wo_tax" && showUsd && <th className={styles.num}>Sale (USD)</th>}
+
+                            {/* {c.key === "product_sale_price" && <th className={styles.num}>Sale (USD)</th>} */}
                             </Fragment>
                           );
                         })}
@@ -679,7 +706,7 @@ async function clearConverted() {
                       {paged.length === 0 ? (
                         <tr>
  {/* API HEREEEEEEEEEE add this + (showUsd ? 2: 1) */}
-                          <td className={styles.empty} colSpan={COLUMNS.length + 2 } >
+                          <td className={styles.empty} colSpan={COLUMNS.length + (showUsd ? 2: 1)} >
                             <strong>No rows match your filters.</strong>
                             {hasFilters && (
                               <button type="button" className={styles.linkBtn} onClick={clearFilters}>
@@ -702,20 +729,25 @@ async function clearConverted() {
                             <td className={styles.num}>{r.qty}</td>
                             <td className={styles.num}>{money(r.product_sale_price)}</td>
                             {/* Saved converted price (from the calculator's Apply). */}
-                            <td className={styles.num}>{convertedText(r)}</td>
+                            {/* <td className={styles.num}>{convertedText(r)}</td> */}
 
 {/* API HEREEEEEEEEEE  ADD THIS {showUsd && (*/}
-                            {/* <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
-                               {toUsd(r) == null ? "—" : money(toUsd(r)!)}
-                            </td> */}
+                           
 
                             <td className={styles.num}>{money(r.price_wo_tax)}</td>
+                             <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
+                               {toUsd(r) == null ? "—" : money(toUsd(r)!)}
+                            </td>
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
                             <td className={styles.num}>{money(r.net_price)}</td>
                             <td className={styles.num}>{money(r.net_tax)}</td>
+                             <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
+                               {taxtoUsd(r) == null ? "—" : money(taxtoUsd(r)!)}
+                            </td>
                             <td className={styles.mono}>{r.order_id}</td>
+                            <td className={styles.num}>{r.fulfillment_center}</td>
                             <td>
-                              <span className={styles.pill}>{r.fulfillment}</span>
+                              <span className={styles.pill}>{r.fulfillment_sale_channel}</span>
                             </td>
                             <td className={styles.num}>{r.tax_pre.toFixed(2)}</td>
                             <td className={styles.nowrap}>{formatDate(r.shipped_date)}</td>
