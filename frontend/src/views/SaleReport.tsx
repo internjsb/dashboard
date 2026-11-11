@@ -422,7 +422,7 @@ async function clearConverted() {
 
   const stats = [
     { label: "Total Orders", value: compactCount(totals.orders) },
-    { label: "Units sold", value: compactCount(totals.units) },
+  
     { label: "Total sales (USD)", value: compactMoney(totals.sales) },
   
 
@@ -432,6 +432,10 @@ async function clearConverted() {
         ]
       : []),
 
+            { label: "Total Taxes (USD)", value: compactMoney(totals.totaltaxs) },
+
+  { label: "Units sold", value: compactCount(totals.units) },
+
   { label: "Avg order value (USD)", value: compactMoney(totals.avgOrder) },
 
         ...(priceCurrency && priceCurrency !== "USD"
@@ -440,7 +444,6 @@ async function clearConverted() {
         ]
       : []),
 
-      { label: "Total Taxes (USD)", value: compactMoney(totals.totaltaxs) },
 
   ...(priceCurrency && priceCurrency !== "USD"
       ? [
