@@ -74,7 +74,7 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean; help:string }[]
   { key: "product_sale_price", label: "Gross Product Sales Price", numeric: true , help:"Original list price, inclusive of tax and before discounts."},
   {key : "price_wo_tax", label: "Product Sales Price w/o Tax", numeric: true , help:"Sales excluding tax, before discounts."},
 
-  { key: "unit_price", label: "Unit price (Price w/o Tax/Qty)", numeric: true, help:"Price of one Unit" },
+  { key: "unit_price", label: "Unit price (Product Sales Price w/o Tax/Qty)", numeric: true, help:"Price of one Unit" },
   { key: "net_price", label: "Net Price", numeric: true, help:"Sales excluding tax, after discounts." },
   { key: "net_tax", label: "Net Tax", numeric: true , help:"Tax after discount."},
   { key: "order_id", label: "Order id", help:"placeholder" },
