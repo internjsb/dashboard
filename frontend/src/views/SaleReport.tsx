@@ -567,8 +567,8 @@ async function clearConverted() {
                 </button>
               )}
             </div>
-                          <div className={styles.calc}>
-              <span className={styles.calcTitle}>Currency calculator</span>
+                          {/* <div className={styles.calc}> */}
+{/*             
               <div className={styles.dateGroup}>
                 <span className={styles.dateLabel}>From</span>
                 <select className={styles.dateInput} value={calcFrom} onChange={(e) => setCalcFrom(e.target.value)}>
@@ -576,16 +576,16 @@ async function clearConverted() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-              </div>
-              <div className={styles.dateGroup}>
+              </div> */}
+              {/* <div className={styles.dateGroup}>
                 <span className={styles.dateLabel}>To</span>
                 <select className={styles.dateInput} value={calcTo} onChange={(e) => setCalcTo(e.target.value)}>
                  {CALC_CURRENCIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-              </div>
-              <div className={styles.dateGroup}>
+              </div> */}
+              {/* <div className={styles.dateGroup}>
                 <span className={styles.dateLabel}>Purchase Date</span>
                 <div className={styles.dateRow}>
                   <input
@@ -620,8 +620,8 @@ async function clearConverted() {
                   )}
 
                 </div>
-              </div>
-              <div className={styles.dateGroup}>
+              </div> */}
+              {/* <div className={styles.dateGroup}>
                 <span className={styles.dateLabel}>Rate (1 {calcFrom} = ? {calcTo})</span>
                 <input
                   type="number"
@@ -632,23 +632,23 @@ async function clearConverted() {
                   onChange={(e) => setCalcRate(e.target.value)}
                   placeholder="e.g. 0.0067"
                 />
-              </div>
-              <button type="button" className={styles.exportBtn} onClick={applyRate} disabled={!calcOn}>
+              </div> */}
+              {/* <button type="button" className={styles.exportBtn} onClick={applyRate} disabled={!calcOn}>
                 Apply
-              </button>
-              {Object.keys(converted).length > 0 && (
+              </button> */}
+              {/* {Object.keys(converted).length > 0 && (
                 <button type="button" className={styles.clearBtn} onClick={clearConverted}>
                   <X size={14} aria-hidden="true" />
                   Clear converted
                 </button>
-              )}
-              {calcError && <span className={styles.error}>{calcError}</span>}
+              )} */}
+              {/* {calcError && <span className={styles.error}>{calcError}</span>}
               {calcOn && (
                 <span className={styles.calcResult}>
                   {calcRows.length} rows · {money(calcFromTotal)} {calcFrom} → {money(calcToTotal)} {calcTo}
                 </span>
               )}
-            </div>
+            </div> */}
 
             {loading ? (
               <p className={styles.state}>Loading…</p>
