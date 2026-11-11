@@ -67,18 +67,18 @@ type SortDir = "asc" | "desc";
 // Sales Report" (the CSV export uses the same, for import into the ERP).
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean; help:string }[] = [
   {key: "category", label: "Category", help:"placeholder"},
-  { key: "purchase_date", label: "Purchase Date" , help:"placeholder"},
-  { key: "item_code", label: "Product Item Code" , help:"placeholder"},
-  { key: "set_", label: "Set" , help:"placeholder"},
-  { key: "qty", label: "QTY", numeric: true , help:"placeholder"},
+  { key: "purchase_date", label: "Purchase Date" , help:""},
+  { key: "item_code", label: "Product Item Code" , help:""},
+  { key: "set_", label: "Set" , help:"Set per package"},
+  { key: "qty", label: "QTY", numeric: true , help:"QTY Sold"},
   { key: "product_sale_price", label: "Gross Product Sales Price", numeric: true , help:"Original list price, inclusive of tax and before discounts."},
   {key : "price_wo_tax", label: "Product Sales Price w/o Tax", numeric: true , help:"Sales excluding tax, before discounts."},
 
-  { key: "unit_price", label: "Unit price (Sales/Qty)", numeric: true, help:"placeholder" },
+  { key: "unit_price", label: "Unit price (Price w/o Tax/Qty)", numeric: true, help:"Price of one Unit" },
   { key: "net_price", label: "Net Price", numeric: true, help:"Sales excluding tax, after discounts." },
   { key: "net_tax", label: "Net Tax", numeric: true , help:"Tax after discount."},
   { key: "order_id", label: "Order id", help:"placeholder" },
-  { key: "fulfillment_center", label: "Fulfillment Center", help:"placeholder" },
+  { key: "fulfillment_center", label: "Fulfillment Center", help:"fulfillment center idk also" },
   { key: "fulfillment_sale_channel", label: "Fulfillment Sale Channel", help:"placeholder" },
   { key: "tax_pre", label: "Tax %", numeric: true , help:"placeholder"},
   { key: "shipped_date", label: "Order Fulfillment Date" , help:"placeholder"},
@@ -351,9 +351,11 @@ async function clearConverted() {
     const sales = filtered.reduce((sum, r) => sum + (toUsd(r) ?? 0), 0);
     const jpsales = filtered.reduce((sum, r) => sum + (r.price_wo_tax ?? 0), 0);
     const orders = filtered.length;
+    const totaltaxjp =  filtered.reduce((sum, r) => sum + (r.net_tax ?? 0), 0);
     const totaltaxs = filtered.reduce((sum, r) => sum + (taxtoUsd(r)?? 0), 0);
     return {
       totaltaxs,
+      totaltaxjp,
       orders,
       units: filtered.reduce((sum, r) => sum + r.qty, 0),
       sales,
@@ -440,6 +442,11 @@ async function clearConverted() {
 
       { label: "Total Taxes (USD)", value: compactMoney(totals.totaltaxs) },
 
+  ...(priceCurrency && priceCurrency !== "USD"
+      ? [
+          { label: `Total Taxes  (${currencySymbol(priceCurrency)})`, value: compactMoney(totals.totaltaxjp) },
+        ]
+      : []),
   ];
 
   return (
@@ -735,15 +742,21 @@ async function clearConverted() {
                            
 
                             <td className={styles.num}>{money(r.price_wo_tax)}</td>
-                             <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
+                            {showUsd && (
+                               <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
                                {toUsd(r) == null ? "—" : money(toUsd(r)!)}
                             </td>
+                            )}
+                            
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
                             <td className={styles.num}>{money(r.net_price)}</td>
                             <td className={styles.num}>{money(r.net_tax)}</td>
-                             <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
+                            {showUsd && (
+                               <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
                                {taxtoUsd(r) == null ? "—" : money(taxtoUsd(r)!)}
                             </td>
+                            )}
+                            
                             <td className={styles.mono}>{r.order_id}</td>
                             <td className={styles.num}>{r.fulfillment_center}</td>
                             <td>

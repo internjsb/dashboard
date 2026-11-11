@@ -282,7 +282,7 @@ router.get("/shipment_data", ...unlessLocalDev(requireAuth, requireActive, requi
 });
 
 
-router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive, requirePageAccess("sale_report")), async (req, res) => {
+router.get("/sale_report", ...unlessLocalDev(requireAuth, requireActive), async (req, res) => {
   try {
 
     const { rows } = await query(`
@@ -312,7 +312,7 @@ with base as (
 		a.quantity_shipped                            as QTY,
 		a.item_price                                  as Product_Sale_Price,
 		a.item_price - a.item_tax					            as price_wo_tax,
-		Round((a.item_price/a.quantity_shipped),2)    as Unit_price,
+		Round((a.price_wo_tax/a.quantity_shipped),2)    as Unit_price,
 		a.price_wo_tax - a.discount_wo_tax			      as net_price,
 		a.item_tax - ( a.item_promotion_discount - a.discount_wo_tax)   as net_tax,
 		a.amazon_order_id                                               as Order_id,
@@ -321,6 +321,7 @@ with base as (
     taxper as tax_pre,
 		to_char(a.shipment_date, 'DD/MM/YY')          as Shipped_date,
 		a.marketplace_id                              as marketplace_id,
+    a.currency                                    as currency,
 		a.sku										  as sku
 		from base a
 		left join core.item_sku_map b
