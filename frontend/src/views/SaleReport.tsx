@@ -224,6 +224,10 @@ export default function SaleReport() {
     currencyOf(r) === "USD" ? r.net_tax : 
     convert(r.net_tax, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)]??{});
 
+ const netpricetoUsd = (r: SaleReport) =>
+    currencyOf(r) === "USD" ? r.net_price : 
+    convert(r.net_price, currencyOf(r), "USD", ratesByDay[sortableDate(r.purchase_date)]??{});
+
 
   useEffect(() => {
     let cancelled = false;
@@ -702,9 +706,9 @@ async function clearConverted() {
                             </th>
 
  {/* API HEREEEEEEEEEE  */}
-                            {c.key === "net_tax" && showUsd && <th className={styles.num}>Tax (USD)</th>}
+                            {c.key === "net_price" && showUsd && <th className={styles.num}>Net Price (USD)</th>}
 
-                            {c.key === "price_wo_tax" && showUsd && <th className={styles.num}>Sale (USD)</th>}
+                            {c.key === "price_wo_tax" && showUsd && <th className={styles.num}>Sale w/o tax (USD)</th>}
 
                             {/* {c.key === "product_sale_price" && <th className={styles.num}>Sale (USD)</th>} */}
                             </Fragment>
@@ -753,12 +757,13 @@ async function clearConverted() {
                             
                             <td className={`${styles.num} ${styles.strong}`}>{money(r.unit_price)}</td>
                             <td className={styles.num}>{money(r.net_price)}</td>
-                            <td className={styles.num}>{money(r.net_tax)}</td>
-                            {showUsd && (
+                                {showUsd && (
                                <td className={styles.num} title={`Rate on ${sortableDate(r.purchase_date)}`}>
-                               {taxtoUsd(r) == null ? "—" : money(taxtoUsd(r)!)}
+                               {netpricetoUsd(r) == null ? "—" : money(netpricetoUsd(r)!)}
                             </td>
                             )}
+                            <td className={styles.num}>{money(r.net_tax)}</td>
+                        
                             
                             <td className={styles.mono}>{r.order_id}</td>
                             <td className={styles.num}>{r.fulfillment_center}</td>
